@@ -1,0 +1,93 @@
+/* Basic styling */
+    body 
+    {
+        margin: 0;
+        font-family: Arial, sans-serif;
+    }
+/**/
+
+
+/* Navbar container */
+    .navbar 
+    {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #333;
+        padding: 10px 20px;
+    }
+/**/
+
+
+/* Logo styling */
+    .navbar .logo a 
+    {
+        color: white;
+        text-decoration: none;
+        font-size: 24px;
+    }
+/**/
+
+
+/* Navbar links styling */
+    .nav-links 
+    {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+    }
+/**/
+
+
+/* Navbar link items */
+    .nav-links li 
+    {
+        margin-left: 20px;
+    }
+/**/
+
+
+/* Navbar links */
+    .nav-links li a 
+    {
+        color: white;
+        text-decoration: none;
+        font-size: 18px;
+    }
+/**/
+
+
+/* Hamburger menu (mobile) */
+    .hamburger 
+    {
+        display: none;
+        font-size: 30px;
+        cursor: pointer;
+        color: white;
+    }
+/**/
+
+
+/* Media Query for smaller screens (mobile) */
+    @media (max-width: 768px) 
+    {
+        .nav-links {
+            display: none; /* Hide links on mobile */
+            width: 100%;
+            text-align: center;
+        }
+
+        .nav-links li {
+            margin: 15px 0;
+        }
+
+        .hamburger {
+            display: block; /* Show hamburger on mobile */
+        }
+
+        .nav-links.active {
+            display: block; /* Show links when hamburger is clicked */
+        }
+    }
+/**/
