@@ -1,0 +1,16 @@
+cd path/to/my-first-site
+git init
+git add .
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/idkeeee/Personal-Raysite-.git
+git push -u origin main
+
+
+
+every time you work on it : 
+    git add .
+    git commit -m "update message"
+    git push
+
+yea no thats it, the same
