@@ -16,4 +16,7 @@ body
 {
     background-color: rgb(63, 63, 71);
     color : rgb(226, 231, 192);
+
+    margin: 0;
+    font-family: "Arial", sans-serif;
 }
