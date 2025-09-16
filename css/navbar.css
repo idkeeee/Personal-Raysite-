@@ -13,17 +13,9 @@
         display: flex;
         justify-content: space-between;
         align-items: center;                /* ensures vertical centering */
-        background-color: #333;
+        background-color: #1b191c;
         padding: 10px 20px;                 /* top&bottom=10   left&right=20 */
 
-        /* Extra thickness for desktop only */
-        @media (min-width: 769px) 
-        {
-            .navbar {
-                padding: 20px 40px;  
-                /* top/bottom = 20px, left/right = 40px */
-            }
-        }
     }
 /**/
 
@@ -104,4 +96,15 @@
             display: block; /* Show links when hamburger is clicked */
         }
     }
+/**/
+
+/* Extra thickness for desktop only */
+        @media (min-width: 769px) 
+        {
+            .navbar 
+            {
+                padding: 20px 40px;  
+                /* top/bottom = 20px, left/right = 40px */
+            }
+        }
 /**/
