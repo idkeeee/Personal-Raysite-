@@ -40,6 +40,13 @@
 
 
 /* hamburger styling */
+    .hamburger 
+    {
+        display: block;    
+        font-size: 50px;   
+        cursor: pointer;
+        color: rgb(209, 233, 52);
+    }
 /**/
 
 /* The title */
