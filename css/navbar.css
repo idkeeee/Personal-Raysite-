@@ -100,7 +100,7 @@
 /**/
 
 
-/* Media Query for smaller screens (mobile) */
+/* Media Query for smaller screens (mobile) 📳 */  
     @media (max-width: 768px) 
     {
         .nav-links 
@@ -124,10 +124,25 @@
         {
             display: block; /* Show links when hamburger is clicked */
         }
+
+        .ray_title::after 
+        {
+            content: "BALLS 🔥💯💀🥀";   /* will show only on mobile  ,  to overide the main code kinda*/
+        }
+
+        .ray_title 
+        {
+            position: absolute;   /* ignore flexbox spacing */
+            left: 50%;            /* move to middle horizontally */
+            transform: translateX(-50%); /* shift back by half its width */
+            font-family: "Cyberfont", sans-serif; /* optional: use your font */
+            font-size: 18px;
+            color: rgb(209, 233, 52);   /* matches your body text color */
+        }
     }
 /**/
 
-/* Extra thickness for desktop only */
+/* Media Query for bigger screens (PC) 💻 */ 
         @media (min-width: 769px) 
         {
             .navbar 
