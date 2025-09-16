@@ -76,18 +76,6 @@
     }
 /**/
 
-
-/* Hamburger menu (mobile) */
-    .hamburger 
-    {
-        display: none;
-        font-size: 30px;
-        cursor: pointer;
-        color: white;
-    }
-/**/
-
-
 /* Media Query for smaller screens (mobile) 📳 */  
     @media (max-width: 768px) 
     {
@@ -108,20 +96,22 @@
             display: block; /* Show links when hamburger is clicked */
         }
 
-        .ray_title::after 
-        {
-            content: "BALLS 🔥💯💀🥀";   /* will show only on mobile  ,  to overide the main code kinda*/
-        }
 
-        .ray_title 
-        {
-            position: absolute;   /* ignore flexbox spacing */
-            left: 50%;            /* move to middle horizontally */
-            transform: translateX(-50%); /* shift back by half its width */
-            font-family: "Cyberfont", sans-serif; /* optional: use your font */
-            font-size: 18px;
-            color: rgb(209, 233, 52);   /* matches your body text color */
-        }
+        /* title : "Ray's super cracked web" or smth */ 
+            .ray_title::after 
+            {
+                content: "BALLS 🔥💯💀🥀";   /* will show only on mobile  ,  to overide the main code kinda*/
+            }
+
+            .ray_title 
+            {
+                position: absolute;   /* ignore flexbox spacing */
+                left: 50%;            /* move to middle horizontally */
+                transform: translateX(-50%); /* shift back by half its width */
+                font-family: "Cyberfont", sans-serif; /* optional: use your font */
+                font-size: 18px;
+                color: rgb(209, 233, 52);   /* matches your body text color */
+            }
     }
 /**/
 
@@ -134,24 +124,23 @@
             /* top/bottom = 20px, left/right = 40px */
         }
 
-        /* title : "Ray's super cracked web" or smth */
+        
 
 
+        /* title : "Ray's super cracked web" or smth */ 
+            .ray_title::after
+            {
+                content: "Ray's super fire website 💯🔥" ;
+            }
 
-            
-        .ray_title::after
-        {
-            content: "Ray's super fire website 💯🔥" ;
-        }
-
-        .navbar .ray_title 
-        {
-            position: absolute;   /* ignore flexbox spacing */
-            left: 50%;            /* move to middle horizontally */
-            transform: translateX(-50%); /* shift back by half its width */
-            font-family: "Cyberfont", sans-serif; /* optional: use your font */
-            font-size: 30px;
-            color: rgb(209, 233, 52);   /* matches your body text color */
-        }
+            .navbar .ray_title 
+            {
+                position: absolute;   /* ignore flexbox spacing */
+                left: 50%;            /* move to middle horizontally */
+                transform: translateX(-50%); /* shift back by half its width */
+                font-family: "Cyberfont", sans-serif; /* optional: use your font */
+                font-size: 30px;
+                color: rgb(209, 233, 52);   /* matches your body text color */
+            }
     }
 /**/
