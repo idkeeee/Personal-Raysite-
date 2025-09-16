@@ -14,13 +14,22 @@
         justify-content: space-between;
         align-items: center;                /* ensures vertical centering */
         background-color: #333;
-        padding: 10px 20px;
+        padding: 10px 20px;                 /* top&bottom=10   left&right=20 */
+
+        /* Extra thickness for desktop only */
+        @media (min-width: 769px) 
+        {
+            .navbar {
+                padding: 20px 40px;  
+                /* top/bottom = 20px, left/right = 40px */
+            }
+        }
     }
 /**/
 
 
 /* Logo styling */
-    .navbar .home_logo 
+    .navbar .home_logo   /* → styles home_logo only if it’s inside an element with class navbar. */
     {
         height: 40px;
         width: auto;             /*to keep aspect ratio*/
@@ -73,21 +82,25 @@
 /* Media Query for smaller screens (mobile) */
     @media (max-width: 768px) 
     {
-        .nav-links {
+        .nav-links 
+        {
             display: none; /* Hide links on mobile */
             width: 100%;
             text-align: center;
         }
 
-        .nav-links li {
+        .nav-links li 
+        {
             margin: 15px 0;
         }
 
-        .hamburger {
+        .hamburger 
+        {
             display: block; /* Show hamburger on mobile */
         }
 
-        .nav-links.active {
+        .nav-links.active 
+        {
             display: block; /* Show links when hamburger is clicked */
         }
     }
