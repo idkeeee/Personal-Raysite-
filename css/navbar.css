@@ -48,6 +48,13 @@
 /**/
 
 /* title : "Ray's super cracked web" or smth */
+
+    .ray_title::after
+    {
+        content: "Ray's super fire website 💯🔥" ;
+    }
+    
+
     .navbar .ray_title 
     {
         position: absolute;   /* ignore flexbox spacing */
@@ -113,11 +120,6 @@
         .nav-links li 
         {
             margin: 15px 0;
-        }
-
-        .hamburger 
-        {
-            display: block; /* Show hamburger on mobile */
         }
 
         .nav-links.active 
