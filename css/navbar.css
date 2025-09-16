@@ -28,10 +28,10 @@
     .navbar 
     {
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-start;
         align-items: center;                /* ensures vertical centering */
         background-color: #1b191c;
-        padding: 10px 20px;                 /* top&bottom=10   left&right=20 */
+        padding: 20px 40px;                 /* top&bottom=10   left&right=20 */
         position: relative;                 /* lets us absolutely position children */
     }
 /**/
@@ -39,8 +39,8 @@
 
 
 
-/* Logo styling */
-    .navbar .home_logo   /* → styles home_logo only if it’s inside an element with class navbar. */
+/* hamburger styling */
+    .navbar .hamburger   /* → styles hamburger only if it’s inside an element with class navbar. */
     {
         height: 40px;
         width: auto;             /*to keep aspect ratio*/
@@ -63,32 +63,7 @@
     }
 /**/
 
-/* Navbar links styling */
-    .nav-links 
-    {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        display: flex;
-    }
-/**/
 
-/* Navbar link items */
-    .nav-links li 
-    {
-        margin-left: 20px;
-    }
-/**/
-
-
-/* Navbar links */
-    .nav-links li a 
-    {
-        color: inherit;
-        text-decoration: none;
-        font-size: 18px;
-    }
-/**/
 
 
 
@@ -117,7 +92,7 @@
 
 
         /* title : "Ray's super cracked web" or smth */ 
-            .ray_title { font-size: 18px; }
+            .ray_title { font-size: 15px; }
             .ray_title::after { content: "BALLS 🔥💯💀🥀"; }
                 /* will show only on mobile  ,  to overide the main code kinda*/
     }
