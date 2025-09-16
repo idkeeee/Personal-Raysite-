@@ -2,9 +2,12 @@
     @font-face 
     {
         font-family: "Cyberfont";
-        src: url("../assets/fonts/Cyberpunk-Regular.ttf")format("truetype");
-        font-weight:normal;     /*could be bold or smth*/
+        src: url("/Personal-Raysite-/assets/fonts/Cyberpunk-Regular.woff2") format("woff2"),
+                  url("/Personal-Raysite-/assets/fonts/Cyberpunk-Regular.woff") format("woff"),
+                  url("/Personal-Raysite-/assets/fonts/Cyberpunk-Regular.ttf") format("truetype");
+        font-weight:400;     /*is normal, could be bold or smth*/
         font-style: normal;     /*could be italic or smth*/
+        font-display : swap ;
     }
 /**/
 
