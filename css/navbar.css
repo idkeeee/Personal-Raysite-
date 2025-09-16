@@ -32,7 +32,7 @@
         align-items: center;                /* ensures vertical centering */
         background-color: #1b191c;
         padding: 10px 20px;                 /* top&bottom=10   left&right=20 */
-
+        position: relative;                 /* lets us absolutely position children */
     }
 /**/
 
@@ -47,6 +47,19 @@
     }
 /**/
 
+/* title : "Ray's super cracked web" or smth */
+    .navbar .ray_title 
+    {
+        position: absolute;   /* ignore flexbox spacing */
+        left: 50%;            /* move to middle horizontally */
+        transform: translateX(-50%); /* shift back by half its width */
+        font-family: "Cyberfont", sans-serif; /* optional: use your font */
+        font-size: 20px;
+        color: rgb(209, 233, 52);   /* matches your body text color */
+    }
+/**/
+
+
 
 /* Navbar links styling */
     .nav-links 
@@ -57,7 +70,6 @@
         display: flex;
     }
 /**/
-
 
 /* Navbar link items */
     .nav-links li 
