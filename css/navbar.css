@@ -43,7 +43,7 @@
     .hamburger 
     {
         display: block;    
-        font-size: 50px;   
+        font-size: 100px;   
         cursor: pointer;
         color: rgb(209, 233, 52);
     }
