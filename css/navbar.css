@@ -54,7 +54,7 @@
         left: 50%;            /* move to middle horizontally */
         transform: translateX(-50%); /* shift back by half its width */
         font-family: "Cyberfont", sans-serif; /* optional: use your font */
-        font-size: 20px;
+        font-size: 30px;
         color: rgb(209, 233, 52);   /* matches your body text color */
     }
 /**/
