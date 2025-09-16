@@ -37,6 +37,8 @@
 /**/
 
 
+
+
 /* Logo styling */
     .navbar .home_logo   /* → styles home_logo only if it’s inside an element with class navbar. */
     {
@@ -47,7 +49,17 @@
     }
 /**/
 
-
+/* The title */
+    .ray_title 
+    {
+        position: absolute;   /* ignore flexbox spacing */
+        left: 50%;            /* move to middle horizontally */
+        transform: translateX(-50%); /* shift back by half its width */
+        font-family: "Cyberfont", sans-serif; /* optional: use your font */
+        font-size: 30px;
+        color: rgb(209, 233, 52);   /* matches your body text color */
+    }
+/**/
 
 /* Navbar links styling */
     .nav-links 
@@ -76,6 +88,11 @@
     }
 /**/
 
+
+
+
+
+
 /* Media Query for smaller screens (mobile) 📳 */  
     @media (max-width: 768px) 
     {
@@ -102,18 +119,9 @@
             {
                 content: "BALLS 🔥💯💀🥀";   /* will show only on mobile  ,  to overide the main code kinda*/
             }
-
-            .ray_title 
-            {
-                position: absolute;   /* ignore flexbox spacing */
-                left: 50%;            /* move to middle horizontally */
-                transform: translateX(-50%); /* shift back by half its width */
-                font-family: "Cyberfont", sans-serif; /* optional: use your font */
-                font-size: 18px;
-                color: rgb(209, 233, 52);   /* matches your body text color */
-            }
     }
 /**/
+
 
 /* Media Query for bigger screens (PC) 💻 */ 
     @media (min-width: 769px) 
@@ -124,23 +132,11 @@
             /* top/bottom = 20px, left/right = 40px */
         }
 
-        
-
 
         /* title : "Ray's super cracked web" or smth */ 
             .ray_title::after
             {
                 content: "Ray's super fire website 💯🔥" ;
-            }
-
-            .navbar .ray_title 
-            {
-                position: absolute;   /* ignore flexbox spacing */
-                left: 50%;            /* move to middle horizontally */
-                transform: translateX(-50%); /* shift back by half its width */
-                font-family: "Cyberfont", sans-serif; /* optional: use your font */
-                font-size: 30px;
-                color: rgb(209, 233, 52);   /* matches your body text color */
             }
     }
 /**/
