@@ -31,7 +31,7 @@
         justify-content: flex-start;
         align-items: center;                /* ensures vertical centering */
         background-color: #1b191c;
-        padding: 20px 40px;                 /* top&bottom=10   left&right=20 */
+        padding: 10px 20px;                 /* top&bottom=10   left&right=20 */
         position: relative;                 /* lets us absolutely position children */
     }
 /**/
@@ -40,13 +40,6 @@
 
 
 /* hamburger styling */
-    .navbar .hamburger   /* → styles hamburger only if it’s inside an element with class navbar. */
-    {
-        height: 40px;
-        width: auto;             /*to keep aspect ratio*/
-        margin-right: 20px; 
-        cursor: pointer;         /* optional: makes it feel clickable */
-    }
 /**/
 
 /* The title */
