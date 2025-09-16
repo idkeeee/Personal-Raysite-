@@ -1,5 +1,19 @@
+/*Loading cyberpunk font*/
+    @font-face 
+    {
+        font-family: "Cyberfont";
+        src: url("../assets/fonts/Cyberpunk-Regular.ttf")format("truetype");
+        font-weight:normal;     /*could be bold or smth*/
+        font-style: normal;     /*could be italic or smth*/
+    }
+/**/
+
+
+
+
+
 body
 {
     background-color: rgb(63, 63, 71);
-    color : rgb(226, 231, 192)
+    color : rgb(226, 231, 192);
 }
