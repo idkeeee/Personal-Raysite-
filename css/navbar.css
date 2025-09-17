@@ -39,11 +39,11 @@
 
 
 
-/* hamburger styling  (on that left side) */
+/* hamburger styling  (on that left side)  🍔  */
     .hamburger 
     {
         display: block;    
-        font-size: 60px;   
+        font-size: 40px;   
         cursor: pointer;
         color: rgb(209, 233, 52);
     }
@@ -97,7 +97,7 @@
 
 
         /* title : "Ray's super cracked web" or smth */ 
-            .ray_title { font-size: 15px; }
+            .ray_title { font-size: 20px; }
             .ray_title::after { content: "BALLS 🔥💯💀🥀"; }
                 /* will show only on mobile  ,  to overide the main code kinda*/
     }
@@ -115,7 +115,7 @@
 
 
         /* title : "Ray's super cracked web" or smth */ 
-             .ray_title { font-size: 30px; }
+             .ray_title { font-size: 35px; }
              .ray_title::after { content: "Ray's Super Cracked Fire Website 💯🔥"; }
     }
 /**/
