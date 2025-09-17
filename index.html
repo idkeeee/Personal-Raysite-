@@ -11,15 +11,24 @@
 
         <title> 🔥 </title>  
         <link rel="stylesheet" href="css/navbar.css?v=3">
+        <link rel="stylesheet" href="css/sidebar.css"?v=3>
         <link rel="stylesheet" href="css/general_styles.css?v=3">
     </head>
 
     <body>
         <!-- Navbar -->
-        <nav class="navbar">
+         <nav class="navbar">
             <div class="hamburger" onclick="toggleMenu()">&#9776;</div>
             <div class="ray_title"> <!-- the title is in navbar.css --></div>                 <!-- title -->
         </nav>
+
+        <!-- Sidebar -->
+         <aside class="side_menu" id="sideMenu" aria-hidden="true">
+            <button class="side_menu-close-button" aria-label="Close" onclick="toggleMenu()">x</button> <!-- close button -->
+        </aside>
+        <div class="backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>   <!-- darkens page when sidemenu opens , in generals.js -->
+
+
 
         <h1> Bodi1 </h1>  
         <h1> bodi2 </h1>

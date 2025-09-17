@@ -1,0 +1,87 @@
+/* ---DEFAULTS--- */
+    :root{ --drawer-width: 25vw; }  /* take Desktop's default for width */
+/**/
+
+
+/* ---------- Drawer container ---------- */
+    .side_menu
+    {
+        position : fixed ;              /*stays put while scrolling*/
+        background: #2b282c;
+        top: 0 ;
+        left: 0 ;
+        height: 100vh ;                 /* full viewport height */
+        width : var(--drawer-width);
+        
+        /* ask chat what all these below mean later (7 lines) */
+        border-right: 1px solid rgba(255,255,255,0.08);
+        box-shadow: 2px 0 20px rgba(0,0,0,0.35);
+        z-index: 1000;
+
+        /* Start hidden, off-canvas to the left */
+            transform: translateX(-100%);
+            transition: transform 250ms ease;
+            will-change: transform ;         /* smoother animation hint */
+            padding: 16px 20px ;
+    }
+/**/
+/* When open, slide into view */
+    .side_menu.open 
+    {
+    transform: translateX(0);
+    }
+/**/
+
+
+/* ---------- Backdrop (dim background) ---------- */
+    .backdrop
+    {
+        position:fixed ;
+        inset: 0;                     /* top:0 right:0 bottom:0 left:0 */
+        background: rgba(0,0,0,0.5);
+        z-index: 900;                 /* behind the drawer */
+        opacity: 0;
+        pointer-events: none;         /* clicks pass through when hidden */
+        transition: opacity 200ms ease;
+    }
+    .backdrop.show
+    {
+        opacity: 1;
+        pointer-events: auto;
+    }
+/**/
+
+
+/* ---------- Close button (X) ---------- */
+    .side_menu-close-button
+    {
+        background: transparent ;
+        border: none ;
+        color : rgb(209, 233, 52);
+        font-size: 28px ;
+        line-height: 1;
+        cursor: pointer;
+        padding: 8px ;
+        margin: -4px 0 12px -4px;     /* tuck into the corner a bit */
+    }
+/**/
+
+
+
+
+
+
+/* PC SPECIFIC 💻*/
+    @media (min-width: 769px) 
+    {
+        :root { --drawer-width: 25vw; }
+    }
+/**/
+
+
+/* MOBILE SPECIFIC 📳 */
+    @media (max-width:768px) 
+    {
+        :root { --drawer-width: 50vw; }
+    }
+/**/

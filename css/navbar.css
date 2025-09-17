@@ -31,7 +31,7 @@
         justify-content: flex-start;
         align-items: center;                /* ensures vertical centering */
         background-color: #1b191c;
-        padding: 10px 20px;                 /* top&bottom=10   left&right=20 */
+        padding: 10px 15px;                 /* top&bottom=10   left&right=20 */
         position: relative;                 /* lets us absolutely position children */
     }
 /**/
@@ -104,7 +104,7 @@
     {
         .navbar 
         {
-            padding: 15px 35px;  
+            padding: 15px 20px;  
             /* top/bottom = 20px, left/right = 40px */
         }
 
