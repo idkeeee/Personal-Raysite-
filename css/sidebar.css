@@ -74,7 +74,7 @@
 /* PC SPECIFIC 💻*/
     @media (min-width: 769px) 
     {
-        :root { --drawer-width: 25vw; }
+        :root { --drawer-width: 35vw; }
     }
 /**/
 
