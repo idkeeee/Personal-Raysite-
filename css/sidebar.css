@@ -13,6 +13,12 @@
         height: 100vh ;                 /* full viewport height */
         width : var(--drawer-width);
         
+        
+        border-radius: 0 12px 12px 0px;
+        /* top-left=0, top-right=12px, bottom-right=12px, bottom-left=0 */
+
+
+
         /* ask chat what all these below mean later (7 lines) */
         border-right: 1px solid rgba(255,255,255,0.08);
         box-shadow: 2px 0 20px rgba(0,0,0,0.35);
