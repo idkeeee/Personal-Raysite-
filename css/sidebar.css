@@ -6,15 +6,15 @@
 /* ---------- Drawer container ---------- */
     .side_menu
     {
-        position : fixed ;              /*stays put while scrolling*/
+        position : fixed ;                  /*stays put while scrolling*/
         background: #2b282c;
         top: 0 ;
         left: 0 ;
-        height: 100vh ;                 /* full viewport height */
+        height: 100vh ;                     /* full viewport height */
         width : var(--drawer-width);
         
-        
-        border-radius: 0 12px 12px 0px;
+
+        border-radius: 0 12px 12px 0px;     /*rounded edge*/
         /* top-left=0, top-right=12px, bottom-right=12px, bottom-left=0 */
 
 
@@ -43,11 +43,11 @@
     .backdrop
     {
         position:fixed ;
-        inset: 0;                     /* top:0 right:0 bottom:0 left:0 */
+        inset: 0;                           /* top:0 right:0 bottom:0 left:0 */
         background: rgba(0,0,0,0.5);
-        z-index: 900;                 /* behind the drawer */
+        z-index: 900;                       /* behind the drawer */
         opacity: 0;
-        pointer-events: none;         /* clicks pass through when hidden */
+        pointer-events: none;               /* clicks pass through when hidden */
         transition: opacity 200ms ease;
     }
     .backdrop.show

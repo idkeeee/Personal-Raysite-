@@ -1,0 +1,92 @@
+/* (probably)-IMPORTANT note : in this css, desktop settings are made to default, then we added some mobile settings overide */
+
+
+/* ------ Grid that stacks right → then down ------ */
+    .card-grid
+    {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(25vw, 1fr));
+        gap: 16px;                /* space between boxes */
+        padding: 16px;
+        box-sizing: border-box;
+    }
+    /* override some rules for mobile: single column */
+    @media (max-width: 768px) 
+    {
+        .card-grid 
+        { 
+            grid-template-columns: 1fr;     
+        }  
+    }
+    /**/
+/**/
+
+
+
+
+
+/* ------ The card itself (NEON) ------ */
+    .cards
+    {
+        width: 25vw;              /* 1/4 of screen width on PC */
+        aspect-ratio: 2 / 1;      /* height = 1/2 of width on PC */
+        border-radius: 16px;      /* rounded corners look nicer with neon */
+        position: relative;
+        box-sizing: border-box;
+        cursor: pointer;        
+        
+        
+        /* Neon border trick:
+        - First background layer fills the padding-box (inside the border)
+        - Second layer paints the border-box (outside) with a gradient */
+        border: 3px solid transparent;
+        background:
+        linear-gradient(#2b282c, #2b282c) padding-box,                              /* card fill */
+        linear-gradient(90deg, #ff8a00, #ff00e6, #62e1ff) border-box;               /* neon frame */
+        
+        /* Outer glow */
+        box-shadow:
+            0 0 12px rgba(255, 0, 230, 0.35),
+            0 0 28px rgba(255, 138, 0, 0.25);
+        transition: transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    /* Subtle interactive feel without real click logic yet */
+        .card:hover 
+        {
+            transform: translateY(-2px);
+            box-shadow:
+                0 0 16px rgba(255, 0, 230, 0.45),
+                0 0 36px rgba(255, 138, 0, 0.35);
+        }
+    /**/
+
+    /* Mobile override rules */
+        @media (max-width: 768px) 
+        {
+            .card 
+            {
+                width: 100vw;
+                height: 50vh;           /* override aspect-ratio for mobile */
+                aspect-ratio: auto;     /* cancel desktop aspect control */
+                border-radius: 0;       /* optional: edge-to-edge on phones */
+            }
+        }
+    /**/
+/**/
+
+
+
+
+
+/* ------ Styling Content inside card ------ */
+    .card_contents
+    {
+        height: 100%;
+        width: 100%;
+        padding: 16px;
+        color: inherit;
+        display: block;   /* default, don’t force flex */
+        box-sizing: border-box;
+    }
+/**/
