@@ -60,7 +60,7 @@
         position: absolute;   /* ignore flexbox spacing */
         left: 50%;            /* move to middle horizontally */
         transform: translateX(-50%); /* shift back by half its width */
-        font-family: "Cyberfont", sans-serif; /* optional: use your font */
+        font-family: "Cyberfont", sans-serif; /* use cyberpunk font */
         color: rgb(209, 233, 52);   /* matches your body text color */
         pointer-events: none;
         white-space: nowrap;
@@ -83,11 +83,6 @@
             display: none; /* Hide links on mobile */
             width: 100%;
             text-align: center;
-        }
-
-        .nav-links li 
-        {
-            margin: 15px 0;
         }
 
         .nav-links.active 
