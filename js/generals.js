@@ -2,7 +2,7 @@
     function toggleMenu()
     {
         const menu = document.getElementById('sideMenu');
-        const backdrop = document.getElementById('backdrop') ;
+        const backdrop = document.getElementById('menuBackdrop') ;
 
         const will_open = !menu.classList.contains('open') ;
 
