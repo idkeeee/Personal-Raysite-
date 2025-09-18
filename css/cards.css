@@ -5,7 +5,7 @@
     .card-grid
     {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(4, 1fr));  /* make as many columns as fit; each column is at least ~23vw */
+        grid-template-columns: repeat(4, 1fr);  /* make as many columns as fit; each column is at least ~23vw */
         gap: 16px;                /* space between boxes */
         padding: 16px;
         box-sizing: border-box;
