@@ -39,7 +39,7 @@
         /* Neon border trick:
         - First background layer fills the padding-box (inside the border)
         - Second layer paints the border-box (outside) with a gradient */
-        border: 3px solid transparent;
+        border: 2px solid transparent;
         background:
         linear-gradient(#2b282c, #2b282c) padding-box,                              /* card fill */
         linear-gradient(90deg, #ff8a00, #ff00e6, #62e1ff) border-box;               /* neon frame */
