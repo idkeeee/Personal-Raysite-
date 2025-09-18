@@ -5,7 +5,7 @@
     .card-grid
     {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(25vw, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(23vw, 1fr));  /* make as many columns as fit; each column is at least ~23vw */
         gap: 16px;                /* space between boxes */
         padding: 16px;
         box-sizing: border-box;
@@ -28,11 +28,9 @@
 /* ------ The card itself (NEON) ------ */
     .cards
     {
-        width: 25vw;              /* 1/4 of screen width on PC */
+        width: 100%;              /* 1/4 of screen width on PC */
         aspect-ratio: 2 / 1;      /* height = 1/2 of width on PC */
         border-radius: 21px;      /* rounded corners look nicer with neon */
-        position: relative;
-        box-sizing: border-box;
         cursor: pointer;        
         
         
@@ -64,12 +62,12 @@
     /* Mobile override rules */
         @media (max-width: 768px) 
         {
-            .card 
+            .cards
             {
-                width: 100vw;
-                height: 50vh;           /* override aspect-ratio for mobile */
+                width: 100%;
+                height: 50%;           /* override aspect-ratio for mobile */
                 aspect-ratio: auto;     /* cancel desktop aspect control */
-                border-radius: 0;       /* optional: edge-to-edge on phones */
+                border-radius: 12px;       /* optional: edge-to-edge on phones */
             }
         }
     /**/
@@ -86,7 +84,6 @@
         width: 100%;
         padding: 16px;
         color: inherit;
-        display: block;   /* default, don’t force flex */
         box-sizing: border-box;
     }
 /**/
