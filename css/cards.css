@@ -30,7 +30,7 @@
     {
         width: 25vw;              /* 1/4 of screen width on PC */
         aspect-ratio: 2 / 1;      /* height = 1/2 of width on PC */
-        border-radius: 16px;      /* rounded corners look nicer with neon */
+        border-radius: 21px;      /* rounded corners look nicer with neon */
         position: relative;
         box-sizing: border-box;
         cursor: pointer;        
