@@ -28,8 +28,9 @@
 /* ------ The card itself (NEON) ------ */
     .cards
     {
+        position: relative;       /* so overlay and text can position inside */
         width: 100%;              /* 1/4 of screen width on PC */
-        aspect-ratio: 2 / 1;      /* height = 1/2 of width on PC */
+        aspect-ratio: 20 / 13;      /* height = 1/2 of width on PC */
         border-radius: 21px;      /* rounded corners look nicer with neon */
         cursor: pointer;        
         overflow:hidden;
@@ -125,11 +126,15 @@
 /* Image behaves, doesn’t stretch text */
     .card_contents img
     {
+        position: absolute;
+        inset: 0 ;                          /* top:0 right:0 bottom:0 left:0 */
         width:100%;
         height:100%;
-        object-fit:cover;                 /* <- key: crop instead of distort */
+        object-fit:cover;                   /* <- key: crop instead of distort */
         display:block;
-        border-radius:12px;               /* nice rounded image corners */
+        border-radius:12px;                 /* nice rounded image corners */
+        object-fit: cover;                  /* fill area without distortion */
+        z-index: 0 ;                        /* stay behind overlay + text */
     }
 /**/
 
@@ -141,8 +146,16 @@
 /* Title styling */
     .card_contents h1
     {
-        margin:0;
-        font-size:clamp(18px,1.6vw,28px);
-        line-height:1.2;
+        position: absolute;
+        bottom: 0;                               /* stick to bottom */
+        left: 0;
+        right: 0;
+        margin: 0;
+        font-size: clamp(16px, 1.5vw, 22px);
+
+        background: rgba(0, 0, 0, 0.55);       /* semi-transparent dark bg */
+        color: rgb(226, 231, 192);             /* your site’s text color */
+        text-align: center;
+        z-index: 1;                              /* above the image */
     }
 /**/
