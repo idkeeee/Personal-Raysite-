@@ -11,13 +11,12 @@
         box-sizing: border-box;
         align-items: start;
     }
-    /* override some rules for mobile: single column */
-    @media (max-width: 768px) 
+    /* override some rules for other platforms ig: single column */
+    @media (max-width:1280px){ .card-grid{ grid-template-columns:repeat(3,1fr);} }
+    @media (max-width:1024px){ .card-grid{ grid-template-columns:repeat(2,1fr);} }
+    @media (max-width:768px)    /*Mobile, I think 📱*/
     {
-        .card-grid 
-        { 
-            grid-template-columns: 1fr;     
-        }  
+        .card-grid{ grid-template-columns:1fr; }
     }
     /**/
 /**/
@@ -33,7 +32,8 @@
         aspect-ratio: 2 / 1;      /* height = 1/2 of width on PC */
         border-radius: 21px;      /* rounded corners look nicer with neon */
         cursor: pointer;        
-        
+        overflow:hidden;
+
         
         /* Neon border trick:
         - First background layer fills the padding-box (inside the border)
@@ -51,7 +51,7 @@
     }
 
     /* Subtle interactive feel without real click logic yet */
-        .card:hover 
+        .cards:hover 
         {
             transform: translateY(-2px);
             box-shadow:
@@ -88,6 +88,8 @@
                     aspect-ratio: auto;  /* stop using width-based height */
                     height: 50vh;        /* half the phone’s screen height */
                     border-radius: 12px;
+
+                    .cards{ aspect-ratio:auto; height:50vh; border-radius:12px; }
                 }
             }
         /**/
@@ -108,5 +110,37 @@
         padding: 16px;
         color: inherit;
         box-sizing: border-box;
+        display:grid;
+        grid-template-rows:minmax(0,1fr) auto;  /* image grows, title auto height */
+        gap:12px;
+    }
+/**/
+
+
+
+
+
+/* Image behaves, doesn’t stretch text */
+    .card_contents img
+    {
+        width:100%;
+        height:100%;
+        object-fit:cover;                 /* <- key: crop instead of distort */
+        display:block;
+        border-radius:12px;               /* nice rounded image corners */
+    }
+/**/
+
+
+
+
+
+
+/* Title styling */
+    .card_contents h1
+    {
+        margin:0;
+        font-size:clamp(18px,1.6vw,28px);
+        line-height:1.2;
     }
 /**/
