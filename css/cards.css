@@ -113,6 +113,8 @@
         display:grid;
         grid-template-rows:minmax(0,1fr) auto;  /* image grows, title auto height */
         gap:12px;
+
+        justify-content: center;
     }
 /**/
 
