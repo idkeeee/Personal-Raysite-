@@ -153,7 +153,7 @@
         margin: 0;
         font-size: clamp(16px, 1.5vw, 22px);
 
-        background: rgba(0, 0, 0, 0.55);       /* semi-transparent dark bg */
+        background: rgba(0, 0, 0, 0.45);       /* semi-transparent dark bg */
         color: rgb(226, 231, 192);             /* your site’s text color */
         text-align: center;
         z-index: 1;                              /* above the image */
