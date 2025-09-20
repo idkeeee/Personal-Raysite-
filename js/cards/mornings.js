@@ -25,7 +25,8 @@ function saveTasks() {
 }
 
 // ---- rendering ----
-function render() {
+function render() 
+{
   taskBody.innerHTML = '';
 
   tasks.forEach((t, idx) => {
@@ -36,6 +37,7 @@ function render() {
     tdNo.textContent = String(idx + 1);
     tdNo.style.opacity = 0.85;
     tr.appendChild(tdNo);
+
 
     // Task column (editable input)
     const tdTask = document.createElement('td');
@@ -48,18 +50,30 @@ function render() {
     tdTask.appendChild(input);
     tr.appendChild(tdTask);
 
+
     // Status column (placeholder for later)
     const tdStatus = document.createElement('td');
     tdStatus.style.opacity = 0.7;
     tdStatus.textContent = '—'; // we’ll add icons later
     tr.appendChild(tdStatus);
 
+
+    // Delete button floats (not in a td)
+    const btn = document.createElement('button');
+    btn.className = 'delete-btn';
+    btn.textContent = '–';
+    btn.title = 'Delete task';
+    btn.dataset.id = String(t.id);
+    tr.appendChild(btn);
+
+
     taskBody.appendChild(tr);
   });
 }
 
 // ---- interactions ----
-function addTask() {
+function addTask() 
+{
   const nextId = tasks.length ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
   tasks.push({ id: nextId, text: '' });
   saveTasks();
@@ -69,7 +83,8 @@ function addTask() {
   if (lastInput) lastInput.focus();
 }
 
-function onTaskEdit(e) {
+function onTaskEdit(e) 
+{
   if (!(e.target instanceof HTMLInputElement)) return;
   if (!e.target.classList.contains('task-input')) return;
 
