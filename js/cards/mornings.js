@@ -61,7 +61,7 @@ function render()
     // Delete button floats (not in a td)
     const btn = document.createElement('button');
     btn.className = 'delete-btn';
-    btn.textContent = '–';
+    btn.textContent = '-';
     btn.title = 'Delete task';
     btn.dataset.id = String(t.id);
     tr.appendChild(btn);
