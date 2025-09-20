@@ -1,0 +1,72 @@
+/* Container to keep table centered and neat */
+    .task-table-container 
+    {
+        margin: 32px auto;
+        max-width: 900px;
+        padding: 16px;
+    }
+/**/
+
+
+
+/* Base table styling */
+    .task-table 
+    {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: #2b282c;
+        color: rgb(226, 231, 192);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+/**/
+
+
+
+/* Header row */
+    .task-table th 
+    {
+        background-color: #1b191c;
+        text-align: left;
+        padding: 12px;
+        font-size: 18px;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    }
+/**/
+
+
+
+/* Regular rows */
+    .task-table td 
+    {
+        padding: 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+/**/
+
+
+
+/* Footer with button */
+    .task-table tfoot td 
+    {
+        text-align: center;
+        padding: 16px;
+    }
+
+    .add-task-btn 
+    {
+        background: linear-gradient(90deg, #ff8a00, #ff00e6, #62e1ff);
+        color: #fff;
+        font-weight: bold;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: transform 0.15s ease;
+    }
+
+    .add-task-btn:hover 
+    {
+        transform: scale(1.05);
+    }
+/**/
