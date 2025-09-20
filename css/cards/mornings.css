@@ -1,4 +1,4 @@
-/* i have no idea what these are so misc : */
+/* i have no idea what these are so... misc : */
     .task-table-container { margin: 32px auto; max-width: 900px; padding: 16px; }
     .task-table { width: 100%; border-collapse: collapse; background: #2b282c; color: rgb(226,231,192); border-radius: 8px; overflow: hidden; }
     .task-table th { background:#1b191c; text-align:left; padding:12px; font-size:18px; border-bottom:2px solid rgba(255,255,255,.1); }
