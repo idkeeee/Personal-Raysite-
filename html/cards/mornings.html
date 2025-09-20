@@ -35,21 +35,21 @@
 
         <!-- Task Table -->
          <section class="task-table-container">
-            <table class="task-table">
+            <table class="task-table" id="taskTable">
                 <thead>
                 <tr>
-                    <th>NO</th>
+                    <th style="width:80px">NO</th>
                     <th>Task</th>
-                    <th>Status</th>
+                    <th style="width:160px">Status</th>
                 </tr>
                 </thead>
-                <tbody>
-                <!-- Empty rows for now, tasks will be added later -->
+                <tbody id="taskBody">
+                <!-- rows get rendered here -->
                 </tbody>
                 <tfoot>
                 <tr>
-                    <td colspan="3">
-                    <button class="add-task-btn">+ Add Task</button>
+                    <td colspan="3" style="text-align:center">
+                    <button class="add-task-btn" id="addTaskBtn">+ Add Task</button>
                     </td>
                 </tr>
                 </tfoot>
@@ -57,8 +57,7 @@
         </section>
 
 
-
-
+        <script src="js/mornings.js"></script>
         <script src="js/generals.js"></script>
         <script src="js/navbar.js"></script>
     </body>

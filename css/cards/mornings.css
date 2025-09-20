@@ -1,3 +1,32 @@
+/* i have no idea what these are so misc : */
+    .task-table-container { margin: 32px auto; max-width: 900px; padding: 16px; }
+    .task-table { width: 100%; border-collapse: collapse; background: #2b282c; color: rgb(226,231,192); border-radius: 8px; overflow: hidden; }
+    .task-table th { background:#1b191c; text-align:left; padding:12px; font-size:18px; border-bottom:2px solid rgba(255,255,255,.1); }
+    .task-table td { padding:12px; border-bottom:1px solid rgba(255,255,255,.08); }
+
+    .add-task-btn { background: linear-gradient(90deg,#ff8a00,#ff00e6,#62e1ff); color:#fff; font-weight:bold; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; transition:transform .15s ease; }
+    .add-task-btn:hover { transform: scale(1.05); }
+/**/
+
+
+
+/* editable cell look */
+    .task-input 
+    {
+    display: block;
+    width: 100%;
+    min-height: 28px;
+    padding: 6px 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px;
+    outline: none;
+    }
+    .task-input:focus { border-color: rgba(255,255,255,0.35); }
+/**/
+
+
+
 /* Container to keep table centered and neat */
     .task-table-container 
     {
