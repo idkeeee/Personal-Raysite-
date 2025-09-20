@@ -72,7 +72,7 @@ function render()
 }
 
 // ---- interactions ----
-function addTask() 
+function addTask()          // ➕ 
 {
   const nextId = tasks.length ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
   tasks.push({ id: nextId, text: '' });
@@ -83,7 +83,7 @@ function addTask()
   if (lastInput) lastInput.focus();
 }
 
-function onTaskEdit(e) 
+function onTaskEdit(e)      // ⌨️
 {
   if (!(e.target instanceof HTMLInputElement)) return;
   if (!e.target.classList.contains('task-input')) return;
@@ -95,6 +95,18 @@ function onTaskEdit(e)
     saveTasks();
   }
 }
+
+function onDeleteClick(e)   // 💥
+{
+  const btn = e.target.closest('.delete-btn');
+  if (!btn) return;
+  const id = Number(btn.dataset.id);
+  tasks = tasks.filter(t => t.id !== id);
+  saveTasks();
+  render(); // re-number happens automatically
+}
+
+taskBody.addEventListener('click', onDeleteClick);
 
 // ---- init ----
 loadTasks();

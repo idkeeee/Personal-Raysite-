@@ -36,6 +36,7 @@
         margin: 32px auto;
         max-width: 900px;
         padding: 16px;
+        padding-right: 72px;   /* ← space for the floating delete buttons */
     }
 /**/
 
@@ -50,7 +51,7 @@
         background-color: #2b282c;
         color: rgb(226, 231, 192);
         border-radius: 8px;
-        overflow: hidden;
+        overflow: visible;
         font-weight: bold;           /* thicker font */
         font-size: 18px; 
     }
