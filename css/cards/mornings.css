@@ -13,14 +13,17 @@
 /* editable cell look */
     .task-input 
     {
-    display: block;
-    width: 100%;
-    min-height: 28px;
-    padding: 6px 8px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 6px;
-    outline: none;
+        display: block;
+        width: 100%;
+        min-height: 28px;
+        padding: 6px 8px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 6px;
+        outline: none;
+        color: white;                 /* white text inside inputs */
+        font-size: 16px;
+        font-weight: 600;
     }
     .task-input:focus { border-color: rgba(255,255,255,0.35); }
 /**/
@@ -42,11 +45,14 @@
     .task-table 
     {
         width: 100%;
-        border-collapse: collapse;
+        border-collapse: collapse;      /* ensures single borders, no double lines */
+        background: #2b282c;
         background-color: #2b282c;
         color: rgb(226, 231, 192);
         border-radius: 8px;
         overflow: hidden;
+        font-weight: bold;           /* thicker font */
+        font-size: 18px; 
     }
 /**/
 
@@ -58,8 +64,9 @@
         background-color: #1b191c;
         text-align: left;
         padding: 12px;
-        font-size: 18px;
-        border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        font-size: 21px;
+        font-weight: 700;                                /* extra bold */
+        border: 1px solid rgba(255, 255, 255, 0.3);    /* thin white lines */
     }
 /**/
 
@@ -69,7 +76,7 @@
     .task-table td 
     {
         padding: 12px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     }
 /**/
 
