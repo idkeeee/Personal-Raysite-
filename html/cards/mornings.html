@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <!-- Make all relative links resolve from your repo root 
+         ya gotta do this one cuz... git stuff idk... -->
+        <base href="https://idkeeee.github.io/Personal-Raysite-/">
+
+        <title> 🔥 </title>  
+        <link rel="stylesheet" href="css/navbar.css?v=3">
+        <link rel="stylesheet" href="css/sidebar.css?v=3">
+        <link rel="stylesheet" href="css/general_styles.css?v=3">
+        <link rel="stylesheet" href="css/cards.css?v=3">
+    </head>
+
+    <body>
+        <!-- Navbar ⬆️ -->
+         <nav class="navbar">
+            <div class="hamburger" onclick="toggleMenu()">&#9776;</div>
+            <div class="ray_title"> <!-- the title is in navbar.css --></div>                 <!-- title -->
+        </nav>
+
+        <!-- Sidebar  ⬅️ -->
+         <aside class="side_menu" id="sideMenu" aria-hidden="true">
+            <button class="side_menu-close-button" aria-label="Close" onclick="toggleMenu()">x</button> <!-- close button -->
+        </aside>
+        <div class="backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>   <!-- darkens page when sidemenu opens , in generals.js -->
+
+
+
+
+        <p>Content here</p>
+        <!-- PUT CONTENT HERE -->
+
+
+
+
+        <script src="js/generals.js"></script>
+        <script src="js/navbar.js"></script>
+    </body>
+
+</html>
