@@ -1,45 +1,75 @@
-// js/mornings.js
-// Simple task table with localStorage persistence (per device/browser)
+// ---- Supabase config ----
+const SUPABASE_URL = "https://ntlsmrzpatcultvsrpll.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
+const LIST_SLUG = "ray-mornings";
 
-const STORAGE_KEY = 'morningTasks_v1';
+// REST helper
+async function sbFetch(path, options = {}) {
+  const headers = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    ...options.headers,
+  };
+  const res = await fetch(`${SUPABASE_URL}${path}`, { ...options, headers });
+  if (!res.ok) throw new Error(await res.text());
+  return res;
+}
 
+// ---- DOM ----
+const STORAGE_FALLBACK = 'morningTasks_v1'; // offline cache
 const taskBody = document.getElementById('taskBody');
 const addBtn   = document.getElementById('addTaskBtn');
 
-let tasks = []; // [{ id: number, text: string }]
+let tasks = []; // [{id:number, text:string}]
 
-// ---- storage helpers ----
-function loadTasks() 
-{
-  try 
-  {
-    const raw = localStorage.getItem(STORAGE_KEY);
+// ---- remote load/save with local fallback ----
+async function loadTasks() {
+  try {
+    const res = await sbFetch(`/rest/v1/task_lists?slug=eq.${LIST_SLUG}&select=data`);
+    const rows = await res.json();
+    tasks = rows?.[0]?.data ?? [];
+    localStorage.setItem(STORAGE_FALLBACK, JSON.stringify(tasks));
+  } catch (e) {
+    const raw = localStorage.getItem(STORAGE_FALLBACK);
     tasks = raw ? JSON.parse(raw) : [];
-  } catch {
-    tasks = [];
+    console.warn('Using local cache (offline?):', e);
   }
 }
 
-function saveTasks() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+let saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveTasks, 300);
 }
 
-// ---- rendering ----
-function render() 
-{
+async function saveTasks() {
+  try {
+    await sbFetch(`/rest/v1/task_lists?slug=eq.${LIST_SLUG}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({ data: tasks }),
+    });
+    localStorage.setItem(STORAGE_FALLBACK, JSON.stringify(tasks));
+  } catch (e) {
+    localStorage.setItem(STORAGE_FALLBACK, JSON.stringify(tasks));
+    console.warn('Save failed (offline?):', e);
+  }
+}
+
+// ---- render ----
+function render() {
   taskBody.innerHTML = '';
 
   tasks.forEach((t, idx) => {
     const tr = document.createElement('tr');
+    tr.style.position = 'relative';
 
-    // NO column (1-based index)
+    // NO
     const tdNo = document.createElement('td');
     tdNo.textContent = String(idx + 1);
-    tdNo.style.opacity = 0.85;
     tr.appendChild(tdNo);
 
-
-    // Task column (editable input)
+    // Task input
     const tdTask = document.createElement('td');
     const input = document.createElement('input');
     input.type = 'text';
@@ -50,67 +80,64 @@ function render()
     tdTask.appendChild(input);
     tr.appendChild(tdTask);
 
-
-    // Status column (placeholder for later)
+    // Status (placeholder)
     const tdStatus = document.createElement('td');
-    tdStatus.style.opacity = 0.7;
-    tdStatus.textContent = '—'; // we’ll add icons later
+    tdStatus.textContent = '—';
+    tdStatus.style.opacity = 0.75;
     tr.appendChild(tdStatus);
 
-
-    // Delete button floats (not in a td)
+    // Floating delete button
     const btn = document.createElement('button');
     btn.className = 'delete-btn';
-    btn.textContent = '-';
+    btn.textContent = '–';
     btn.title = 'Delete task';
     btn.dataset.id = String(t.id);
     tr.appendChild(btn);
-
 
     taskBody.appendChild(tr);
   });
 }
 
 // ---- interactions ----
-function addTask()          // ➕ 
-{
+function addTask() 
+{                 // ➕
   const nextId = tasks.length ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
   tasks.push({ id: nextId, text: '' });
-  saveTasks();
   render();
-  // focus the new input
+  scheduleSave();
   const lastInput = taskBody.querySelector('tr:last-child .task-input');
   if (lastInput) lastInput.focus();
 }
 
-function onTaskEdit(e)      // ⌨️
-{
+function onTaskEdit(e) 
+{            // ⌨️
   if (!(e.target instanceof HTMLInputElement)) return;
   if (!e.target.classList.contains('task-input')) return;
-
   const id = Number(e.target.dataset.id);
   const t = tasks.find(x => x.id === id);
   if (t) {
     t.text = e.target.value;
-    saveTasks();
+    scheduleSave();
   }
 }
 
-function onDeleteClick(e)   // 💥
-{
+function onDeleteClick(e) 
+{         // 💥
   const btn = e.target.closest('.delete-btn');
   if (!btn) return;
   const id = Number(btn.dataset.id);
   tasks = tasks.filter(t => t.id !== id);
-  saveTasks();
-  render(); // re-number happens automatically
+  render();
+  scheduleSave();
 }
 
-taskBody.addEventListener('click', onDeleteClick);
-
-// ---- init ----
-loadTasks();
-render();
+// ---- init (await load THEN render) ----
+(async function init() 
+{
+  await loadTasks();
+  render();
+})();
 
 addBtn.addEventListener('click', addTask);
 taskBody.addEventListener('input', onTaskEdit);
+taskBody.addEventListener('click', onDeleteClick);
