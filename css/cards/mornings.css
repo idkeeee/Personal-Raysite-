@@ -184,14 +184,12 @@
             display: none;
         }
 
-        /* 2 & 3) Give Task more room, shrink Status */
+        /* 2 & 3) Give Task more room, remove Status */
         /* Override inline width="160px" on the Status <th> */
         .task-table thead th:nth-child(3),
         .task-table tbody td:nth-child(3) 
         {
-            width: 88px !important;      /* narrower Status */
-            white-space: nowrap;
-            text-align: right;
+            display: none;
         }
         /* Task column flexes to fill remaining width */
 
@@ -208,13 +206,13 @@
         .delete-btn 
         {
             right: 8px;                  /* was -48px (outside); now inside */
-            width: 28px;
-            height: 28px;
-            font-size: 16px;
-            border-radius: 6px;
         }
 
         /* Since we pulled the button inside, reduce the desktop extra padding */
         .task-table-container { padding-right: 16px; }
+
+
+        /* Add breathing room for the button so it doesn’t overlap the input */
+        .task-table tbody td:nth-child(2) { padding-right: 48px; }
     }
 /**/
