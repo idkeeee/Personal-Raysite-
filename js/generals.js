@@ -30,7 +30,10 @@
 //
 
 
-//  HOME BUTTON WHEN SCROLLING UP ON PHONE
+
+
+
+//  HOME BUTTON WHEN SCROLLING UP ON PHONE  🏡
     // js/home-button.js
     document.addEventListener("DOMContentLoaded", () => {
     // Inject button once per page
@@ -44,67 +47,75 @@
         window.location.href = "index.html";
     });
 
-    // Swipe detection
+    // --- Sensitivity config ---
+    const UP_SHOW_PX = 60;   // swipe up distance to show
+    const DOWN_HIDE_PX = 24; // swipe down distance to hide (more sensitive)
+
+    // --- State ---
     let touchStartY = 0;
-    let startedNearBottom = false; // to avoid accidental hides from normal scrolling
+    let lastY = 0;
+    let startedNearBottom = false;
+    let gestureConsumed = false; // prevents double-trigger between move/end
 
     function isPointInside(el, x, y) {
-        const r = el.getBoundingClientRect();
-        return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    const r = el.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
     }
 
-    window.addEventListener(
-        "touchstart",
-        (e) => {
-        if (e.touches.length !== 1) return;
-        const t = e.touches[0];
-        touchStartY = t.clientY;
+    window.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    touchStartY = lastY = t.clientY;
+    gestureConsumed = false;
 
-        // Consider the swipe “near bottom” if:
-        // - it starts within ~100px of the bottom, or
-        // - it starts on the button itself when visible
-        const fromViewportBottom = window.innerHeight - touchStartY;
-        startedNearBottom =
-            fromViewportBottom < 100 ||
-            (homeBtn.classList.contains("show") &&
-            isPointInside(homeBtn, t.clientX, t.clientY));
-        },
-        { passive: true }
-    );
+    const fromBottom = window.innerHeight - touchStartY;
+    startedNearBottom =
+        fromBottom < 120 || // a bit more lenient
+        (homeBtn.classList.contains("show") &&
+        isPointInside(homeBtn, t.clientX, t.clientY));
+    }, { passive: true });
 
-    window.addEventListener(
-        "touchend",
-        (e) => {
-        if (e.changedTouches.length !== 1) return;
-        const t = e.changedTouches[0];
-        const dy = t.clientY - touchStartY; // + = down, - = up
-        const UP_THRESHOLD = -80;  // swipe up at least 80px
-        const DOWN_THRESHOLD = 80; // swipe down at least 80px
+    window.addEventListener("touchmove", (e) => {
+    if (e.touches.length !== 1) return;
+    const y = e.touches[0].clientY;
+    const dy = y - touchStartY; // + = down, - = up
+    lastY = y;
 
-        // Show on swipe UP (from bottom area), only if currently hidden
-        if (dy <= UP_THRESHOLD && !homeBtn.classList.contains("show")) {
-            homeBtn.classList.add("show");
-            return;
-        }
+    // Show quickly on swipe UP
+    if (!homeBtn.classList.contains("show") && dy <= -UP_SHOW_PX && startedNearBottom && !gestureConsumed) {
+        homeBtn.classList.add("show");
+        gestureConsumed = true;
+        return;
+    }
 
-        // Hide on swipe DOWN (start near bottom or on the button), only if visible
-        if (
-            dy >= DOWN_THRESHOLD &&
-            homeBtn.classList.contains("show") &&
-            startedNearBottom
-        ) {
-            homeBtn.classList.remove("show");
-        }
-        },
-        { passive: true }
-    );
-
-    // Optional: tap anywhere to hide if it's visible
-    window.addEventListener("click", (e) => {
-        if (homeBtn.classList.contains("show") && !homeBtn.contains(e.target)) {
+    // Hide aggressively on any downward move while visible
+    if (homeBtn.classList.contains("show") && dy >= DOWN_HIDE_PX && !gestureConsumed) {
         homeBtn.classList.remove("show");
-        }
-    });
-    });
+        gestureConsumed = true;
+    }
+    }, { passive: true });
+
+    window.addEventListener("touchend", (e) => {
+    if (gestureConsumed || e.changedTouches.length !== 1) return;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+
+    if (!homeBtn.classList.contains("show") && dy <= -UP_SHOW_PX && startedNearBottom) {
+        homeBtn.classList.add("show");
+    } else if (homeBtn.classList.contains("show") && dy >= DOWN_HIDE_PX) {
+        homeBtn.classList.remove("show");
+    }
+    }, { passive: true });
+
+    // Also hide on page scroll down (flicks that move content)
+    let lastScrollY = window.scrollY;
+    window.addEventListener("scroll", () => {
+    const cur = window.scrollY;
+    const delta = cur - lastScrollY; // >0 = scrolling down
+    lastScrollY = cur;
+    if (delta > 6 && homeBtn.classList.contains("show")) {
+        homeBtn.classList.remove("show");
+    }
+    }, { passive: true });
+
 
 //
