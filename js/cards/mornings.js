@@ -120,7 +120,7 @@ function render() {
     tdNo.textContent = String(idx + 1);
     tr.appendChild(tdNo);
 
-    // Task cell (input + delete button)
+    // TASK (now also holds the minus)
     const tdTask = document.createElement('td');
     tdTask.className = 'task-td';
 
@@ -132,6 +132,7 @@ function render() {
     input.dataset.id = String(t.id);
     tdTask.appendChild(input);
 
+    // minus button INSIDE the task cell
     const btn = document.createElement('button');
     btn.className = 'delete-btn';
     btn.textContent = '–';
@@ -141,7 +142,7 @@ function render() {
 
     tr.appendChild(tdTask);
 
-    // Status
+    // STATUS (keep)
     const tdStatus = document.createElement('td');
     tdStatus.textContent = '—';
     tdStatus.style.opacity = 0.75;

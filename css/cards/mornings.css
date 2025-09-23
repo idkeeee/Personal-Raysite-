@@ -334,3 +334,44 @@
 
   .task-table-container { padding-right: 16px; } /* less right gutter on phones */
 }
+
+
+/* Positioning context is the TASK cell */
+.task-td { position: relative; }
+
+/* Desktop: float the minus OUTSIDE the table edge */
+.delete-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  right: -56px;                 /* push outside */
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.5);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2;
+}
+
+/* Give the outside button some breathing room on the right */
+.task-table-container { padding-right: 84px; }  /* was 72px; tweak as you like */
+
+/* Mobile: hide NO & Status, and bring the minus INSIDE */
+@media (max-width: 768px) {
+  .task-table thead th:first-child,
+  .task-table tbody td:first-child { display: none; }  /* hide NO */
+
+  .task-table thead th:nth-child(3),
+  .task-table tbody td:nth-child(3) { display: none; } /* hide Status */
+
+  .delete-btn { right: 8px; }           /* inside cell on phones */
+  .task-td { padding-right: 56px; }     /* space so text doesn't sit under the button */
+  .task-table-container { padding-right: 16px; } /* reduce overall gutter on phones */
+}
