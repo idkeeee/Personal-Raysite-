@@ -63,7 +63,7 @@
     .task-table th 
     {
         background-color: #1b191c;
-        text-align: left;
+        text-align: center;
         padding: 12px;
         font-size: 21px;
         font-weight: 700;                                /* extra bold */
@@ -167,7 +167,7 @@
 
         .task-table 
         {
-            font-size: 14.5px;           /* smaller overall text */
+            font-size: 13px;           /* smaller overall text */
             border-radius: 8px;
         }
 

@@ -139,12 +139,17 @@ function render() {
     tr.appendChild(tdStatus);
 
     // Floating delete button
+    const tdActions = document.createElement('td');
+    tdActions.className = 'td-actions';
+
     const btn = document.createElement('button');
     btn.className = 'delete-btn';
     btn.textContent = '–';
     btn.title = 'Delete task';
     btn.dataset.id = String(t.id);
-    tr.appendChild(btn);
+
+    tdActions.appendChild(btn);
+    tr.appendChild(tdActions);
 
     taskBody.appendChild(tr);
   });
