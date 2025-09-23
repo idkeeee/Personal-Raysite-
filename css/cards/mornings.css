@@ -150,3 +150,71 @@
         transform: translateY(-50%) scale(0.96);
     }
 /**/
+
+
+
+/* ===== Mobile tweaks (phones / portrait) ===== */
+    @media (max-width: 768px) 
+    {
+
+        /* Container & table sizing */
+        .task-table-container 
+        {
+            margin: 16px auto;
+            padding: 8px 12px;           /* less side padding on mobile */
+            max-width: 100%;
+        }
+
+        .task-table 
+        {
+            font-size: 14.5px;           /* smaller overall text */
+            border-radius: 8px;
+        }
+
+        .task-table th,
+        .task-table td 
+        {
+            padding: 10px;               /* tighter cells */
+        }
+
+        /* 1) Drop the numbers column */
+        .task-table thead th:first-child,
+        .task-table tbody td:first-child 
+        {
+            display: none;
+        }
+
+        /* 2 & 3) Give Task more room, shrink Status */
+        /* Override inline width="160px" on the Status <th> */
+        .task-table thead th:nth-child(3),
+        .task-table tbody td:nth-child(3) 
+        {
+            width: 88px !important;      /* narrower Status */
+            white-space: nowrap;
+            text-align: right;
+        }
+        /* Task column flexes to fill remaining width */
+
+        /* 4) Smaller input font + comfy touch targets */
+        .task-input 
+        {
+            font-size: 16px;             /* smaller than desktop */
+            min-height: 24px;
+            padding: 6px 8px;
+        }
+
+        /* Keep delete button but bring it inside the table edge */
+        .task-table tbody tr { position: relative; }
+        .delete-btn 
+        {
+            right: 8px;                  /* was -48px (outside); now inside */
+            width: 28px;
+            height: 28px;
+            font-size: 16px;
+            border-radius: 6px;
+        }
+
+        /* Since we pulled the button inside, reduce the desktop extra padding */
+        .task-table-container { padding-right: 16px; }
+    }
+/**/
