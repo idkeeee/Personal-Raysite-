@@ -28,3 +28,48 @@
         }
     );
 //
+
+
+//  HOME BUTTON WHEN SCROLLING UP ON PHONE
+    // Home Button setup
+        document.addEventListener("DOMContentLoaded", () => 
+        {
+        // Create the button dynamically so you don’t edit every HTML
+        const homeBtn = document.createElement("button");
+        homeBtn.id = "homeBtn";
+        homeBtn.className = "home-btn";
+        homeBtn.textContent = "🏠";
+        document.body.appendChild(homeBtn);
+
+        // Navigate home
+        homeBtn.addEventListener("click", () => 
+            {
+            window.location.href = "index.html";
+        });
+
+        // Swipe detection
+        let touchStartY = 0;
+        window.addEventListener("touchstart", (e) => 
+            {
+            touchStartY = e.touches[0].clientY;
+        });
+
+        window.addEventListener("touchend", (e) => 
+            {
+            const touchEndY = e.changedTouches[0].clientY;
+            const swipeDistance = touchEndY - touchStartY;
+            if (swipeDistance > 80) {
+            homeBtn.classList.add("show");
+            }
+        });
+
+        // Hide if you tap elsewhere
+        window.addEventListener("click", (e) => 
+            {
+            if (!homeBtn.contains(e.target)) {
+            homeBtn.classList.remove("show");
+            }
+        });
+        });
+
+//

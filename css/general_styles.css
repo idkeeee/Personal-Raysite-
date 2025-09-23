@@ -23,3 +23,44 @@ body
     margin: 0;
     font-family: "Arial", sans-serif;
 }
+
+
+
+/* HOME BUTTON WHEN SCROLL UP ON PHONE 🏠 */
+    /* Floating circular Home button */
+        .home-btn 
+        {
+        position: fixed;
+        bottom: -80px;   /* hidden off-screen */
+        left: 50%;
+        transform: translateX(-50%);
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        border: none;
+        background: linear-gradient(135deg, #62e1ff, #ff00e6);
+        color: white;
+        font-size: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,.3);
+        cursor: pointer;
+        transition: bottom 0.3s ease, opacity 0.3s ease;
+        opacity: 0;
+        z-index: 999;
+        }
+
+        /* Visible state */
+        .home-btn.show 
+        {
+        bottom: 32px;
+        opacity: 1;
+        }
+
+        /* Hide on desktop */
+        @media (min-width: 769px) 
+        {
+        .home-btn { display: none !important; }
+        }
+/**/
