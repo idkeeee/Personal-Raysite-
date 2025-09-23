@@ -121,8 +121,9 @@ function render() {
     tdNo.textContent = String(idx + 1);
     tr.appendChild(tdNo);
 
-    // Task input
+    // Task input (now also holds the minus button)
     const tdTask = document.createElement('td');
+    tdTask.className = 'task-td';         // <-- add this
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'task-input';
@@ -130,6 +131,15 @@ function render() {
     input.placeholder = 'Type your task…';
     input.dataset.id = String(t.id);
     tdTask.appendChild(input);
+
+    // Minus button lives inside the task cell
+    const btn = document.createElement('button');
+    btn.className = 'delete-btn';
+    btn.textContent = '–';
+    btn.title = 'Delete task';
+    btn.dataset.id = String(t.id);
+    tdTask.appendChild(btn);
+
     tr.appendChild(tdTask);
 
     // Status (placeholder)
@@ -137,21 +147,6 @@ function render() {
     tdStatus.textContent = '—';
     tdStatus.style.opacity = 0.75;
     tr.appendChild(tdStatus);
-
-    // Floating delete button
-    const tdActions = document.createElement('td');
-    tdActions.className = 'td-actions';
-
-    const btn = document.createElement('button');
-    btn.className = 'delete-btn';
-    btn.textContent = '–';
-    btn.title = 'Delete task';
-    btn.dataset.id = String(t.id);
-
-    tdActions.appendChild(btn);
-    tr.appendChild(tdActions);
-
-    taskBody.appendChild(tr);
   });
 }
 
