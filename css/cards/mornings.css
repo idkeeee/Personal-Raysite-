@@ -112,34 +112,7 @@
 
 /* This part is something about the delete buttons (-) */
     /* Each row becomes a relative container */
-    .task-table tbody tr 
-    {
-        position: relative;
-    }
-
-    /* Delete button floats outside on the right */
-    .delete-btn 
-    {
-        position: absolute;
-        top: 50%;
-        right: -48px;              /* distance outside the table edge */
-        transform: translateY(-50%);
-        
-        width: 36px;
-        height: 36px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        
-        background: transparent;
-        border: 1px solid rgba(255,255,255,0.5);
-        border-radius: 6px;
-        color: white;
-        font-size: 20px;
-        line-height: 1;
-        cursor: pointer;
-        transition: background .15s ease, transform .1s ease, border-color .15s ease;
-    }
+    
     .delete-btn:hover 
     {
         background: rgba(255,255,255,0.12);
@@ -302,3 +275,62 @@
     }
 
 /**/
+
+
+
+
+/* Actions column cells */
+.td-actions { position: relative; width: 0; padding: 0; }
+
+/* Hide the actions TH visually on desktop so the button looks "outside" */
+.task-table th.actions-col 
+{
+  width: 0;
+  background: transparent;
+  border: none;
+}
+
+/* Position the minus relative to its own cell (desktop floats OUTSIDE) */
+.td-actions .delete-btn 
+{
+  position: absolute;
+  top: 50%;
+  right: -48px;         /* outside the table edge */
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.5);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s ease, transform .1s ease, border-color .15s ease;
+  z-index: 2;
+}
+
+/* Mobile: hide NO & Status, keep a narrow actions column, bring button INSIDE */
+@media (max-width: 768px) 
+{
+  .task-table thead th:first-child,
+  .task-table tbody td:first-child { display: none; }     /* hide NO */
+
+  .task-table thead th:nth-child(3),
+  .task-table tbody td:nth-child(3) { display: none; }    /* hide Status */
+
+  .task-table th.actions-col { width: 44px; border: none; }
+  .td-actions { width: 44px; padding: 0 8px 0 0; }
+
+  .td-actions .delete-btn {
+    position: static;       /* inside the cell on phones */
+    transform: none;
+    width: 28px;
+    height: 28px;
+  }
+
+  .task-table-container { padding-right: 16px; } /* less right gutter on phones */
+}
