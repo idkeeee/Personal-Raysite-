@@ -216,3 +216,27 @@
         .task-table tbody td:nth-child(2) { padding-right: 48px; }
     }
 /**/
+
+
+
+/*Fixing smth on mobile*/
+  /* Make Task cell positioning context */
+  .task-td { position: relative; }
+
+  /* Delete button positioning */
+  .delete-btn 
+  {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: -48px;   /* floats outside on desktop */
+    z-index: 2;
+  }
+
+  @media (max-width: 768px) 
+  {
+    .delete-btn { right: 8px; }           /* bring inside on mobile */
+    .task-td { padding-right: 56px; }     /* space so input text doesn’t clash */
+  }
+
+/**/

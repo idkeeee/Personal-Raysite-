@@ -114,16 +114,16 @@ function render() {
 
   tasks.forEach((t, idx) => {
     const tr = document.createElement('tr');
-    tr.style.position = 'relative';
 
     // NO
     const tdNo = document.createElement('td');
     tdNo.textContent = String(idx + 1);
     tr.appendChild(tdNo);
 
-    // Task input (now also holds the minus button)
+    // Task cell (input + delete button)
     const tdTask = document.createElement('td');
-    tdTask.className = 'task-td';         // <-- add this
+    tdTask.className = 'task-td';
+
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'task-input';
@@ -132,7 +132,6 @@ function render() {
     input.dataset.id = String(t.id);
     tdTask.appendChild(input);
 
-    // Minus button lives inside the task cell
     const btn = document.createElement('button');
     btn.className = 'delete-btn';
     btn.textContent = '–';
@@ -142,15 +141,17 @@ function render() {
 
     tr.appendChild(tdTask);
 
-    // Status (placeholder)
+    // Status
     const tdStatus = document.createElement('td');
     tdStatus.textContent = '—';
     tdStatus.style.opacity = 0.75;
     tr.appendChild(tdStatus);
-    taskBody.appendChild(tr);   
 
+    // Append row
+    taskBody.appendChild(tr);
   });
 }
+
 
 // ---- interactions ----
   function addTask() 
@@ -197,3 +198,6 @@ function render() {
   taskBody.addEventListener('input', onTaskEdit);
   taskBody.addEventListener('click', onDeleteClick);
 //
+
+
+
