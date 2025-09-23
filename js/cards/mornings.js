@@ -147,6 +147,8 @@ function render() {
     tdStatus.textContent = '—';
     tdStatus.style.opacity = 0.75;
     tr.appendChild(tdStatus);
+    taskBody.appendChild(tr);   
+
   });
 }
 
