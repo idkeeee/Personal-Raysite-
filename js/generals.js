@@ -31,45 +31,80 @@
 
 
 //  HOME BUTTON WHEN SCROLLING UP ON PHONE
-    // Home Button setup
-        document.addEventListener("DOMContentLoaded", () => 
-        {
-        // Create the button dynamically so you don’t edit every HTML
-        const homeBtn = document.createElement("button");
-        homeBtn.id = "homeBtn";
-        homeBtn.className = "home-btn";
-        homeBtn.textContent = "🏠";
-        document.body.appendChild(homeBtn);
+    // js/home-button.js
+    document.addEventListener("DOMContentLoaded", () => {
+    // Inject button once per page
+    const homeBtn = document.createElement("button");
+    homeBtn.id = "homeBtn";
+    homeBtn.className = "home-btn";
+    homeBtn.textContent = "🏠";
+    document.body.appendChild(homeBtn);
 
-        // Navigate home
-        homeBtn.addEventListener("click", () => 
-            {
-            window.location.href = "index.html";
-        });
+    homeBtn.addEventListener("click", () => {
+        window.location.href = "index.html";
+    });
 
-        // Swipe detection
-        let touchStartY = 0;
-        window.addEventListener("touchstart", (e) => 
-            {
-            touchStartY = e.touches[0].clientY;
-        });
+    // Swipe detection
+    let touchStartY = 0;
+    let startedNearBottom = false; // to avoid accidental hides from normal scrolling
 
-        window.addEventListener("touchend", (e) => 
-            {
-            const touchEndY = e.changedTouches[0].clientY;
-            const swipeDistance = touchEndY - touchStartY;
-            if (swipeDistance > 80) {
+    function isPointInside(el, x, y) {
+        const r = el.getBoundingClientRect();
+        return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    }
+
+    window.addEventListener(
+        "touchstart",
+        (e) => {
+        if (e.touches.length !== 1) return;
+        const t = e.touches[0];
+        touchStartY = t.clientY;
+
+        // Consider the swipe “near bottom” if:
+        // - it starts within ~100px of the bottom, or
+        // - it starts on the button itself when visible
+        const fromViewportBottom = window.innerHeight - touchStartY;
+        startedNearBottom =
+            fromViewportBottom < 100 ||
+            (homeBtn.classList.contains("show") &&
+            isPointInside(homeBtn, t.clientX, t.clientY));
+        },
+        { passive: true }
+    );
+
+    window.addEventListener(
+        "touchend",
+        (e) => {
+        if (e.changedTouches.length !== 1) return;
+        const t = e.changedTouches[0];
+        const dy = t.clientY - touchStartY; // + = down, - = up
+        const UP_THRESHOLD = -80;  // swipe up at least 80px
+        const DOWN_THRESHOLD = 80; // swipe down at least 80px
+
+        // Show on swipe UP (from bottom area), only if currently hidden
+        if (dy <= UP_THRESHOLD && !homeBtn.classList.contains("show")) {
             homeBtn.classList.add("show");
-            }
-        });
+            return;
+        }
 
-        // Hide if you tap elsewhere
-        window.addEventListener("click", (e) => 
-            {
-            if (!homeBtn.contains(e.target)) {
+        // Hide on swipe DOWN (start near bottom or on the button), only if visible
+        if (
+            dy >= DOWN_THRESHOLD &&
+            homeBtn.classList.contains("show") &&
+            startedNearBottom
+        ) {
             homeBtn.classList.remove("show");
-            }
-        });
-        });
+        }
+        },
+        { passive: true }
+    );
+
+    // Optional: tap anywhere to hide if it's visible
+    window.addEventListener("click", (e) => {
+        if (homeBtn.classList.contains("show") && !homeBtn.contains(e.target)) {
+        homeBtn.classList.remove("show");
+        }
+    });
+    });
 
 //
