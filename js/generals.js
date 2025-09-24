@@ -14,7 +14,7 @@
         document.body.style.overflow = will_open ? 'hidden' : '';
 
         // a11y
-        menu.setAttribute('aria-hidden', String(!willOpen));
+        menu.setAttribute('aria-hidden', String(!will_open));
     }
     document.addEventListener // this one is to close on escape
     (
@@ -48,8 +48,8 @@
     });
 
     // --- Sensitivity config ---
-    const UP_SHOW_PX = 60;   // swipe up distance to show
-    const DOWN_HIDE_PX = 24; // swipe down distance to hide (more sensitive)
+    const UP_SHOW_PX = 60;   // swipe up distance to show         // IMPORTANT :  smaller = show easier
+    const DOWN_HIDE_PX = 24; // swipe down distance to hide       // IMPORTANT :  smaller = hide easier
 
     // --- State ---
     let touchStartY = 0;
@@ -117,5 +117,6 @@
     }
     }, { passive: true });
 
+    });
 
 //
