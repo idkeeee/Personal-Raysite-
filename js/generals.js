@@ -48,89 +48,92 @@
     });
 
     // --- Sensitivity config ---
-    const UP_SHOW_PX = 48;   // swipe up distance to show         // IMPORTANT :  smaller = show easier
-    const DOWN_HIDE_PX = 20; // swipe down distance to hide       // IMPORTANT :  smaller = hide easier
+    const UP_SHOW_PX = 40;   // swipe up distance to show         // IMPORTANT :  smaller = show easier
+    const UP_SHOW_VEL = 0.6;          // px/ms minimum upward speed (fast flick)
+    const DOWN_HIDE_PX = 28; // swipe down distance to hide       // IMPORTANT :  smaller = hide easier
     const SCROLL_HIDE_COOLDOWN_MS = 400; // ignore scroll-hide right after showing
 
-    // --- State ---
-    let touchStartY = 0;
-    let startedNearBottom = false;
-    let gestureConsumed = false;
+   // ---- State ----
+    let startY = 0;
+    let startT = 0;
     let isTouching = false;
+    let gestureConsumed = false;
     let lastShowAt = 0;
 
-    function isPointInside(el, x, y) {
-    const r = el.getBoundingClientRect();
-    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    function showHome() {
+    if (!homeBtn.classList.contains("show")) {
+        homeBtn.classList.add("show");
+        lastShowAt = performance.now();
+    }
+    }
+    function hideHome() {
+    if (homeBtn.classList.contains("show")) {
+        homeBtn.classList.remove("show");
+    }
     }
 
-    window.addEventListener("touchstart", (e) => {
-    if (e.touches.length !== 1) return;
+    // Capture swipes anywhere (even on inputs inside the table)
+    document.addEventListener("pointerdown", (e) => {
+    if (e.pointerType !== "touch") return;
     isTouching = true;
-    const t = e.touches[0];
-    touchStartY = t.clientY;
     gestureConsumed = false;
+    startY = e.clientY;
+    startT = performance.now();
+    }, { capture: true, passive: true });
 
-    const fromBottom = window.innerHeight - touchStartY;
-    startedNearBottom =
-        fromBottom < 140 || // slightly more lenient
-        (homeBtn.classList.contains("show") &&
-        isPointInside(homeBtn, t.clientX, t.clientY));
-    }, { passive: true });
+    document.addEventListener("pointermove", (e) => {
+    if (e.pointerType !== "touch" || !isTouching) return;
+    const dy = e.clientY - startY;              // + = down,  - = up
+    const dt = Math.max(1, performance.now() - startT);
+    const upVel = (-dy) / dt;                   // px per ms
 
-    window.addEventListener("touchmove", (e) => {
-    if (e.touches.length !== 1) return;
-    const y = e.touches[0].clientY;
-    const dy = y - touchStartY; // + = down, - = up
-
-    // Show quickly on swipe UP from bottom-ish area
-    if (!homeBtn.classList.contains("show") &&
-        startedNearBottom && dy <= -UP_SHOW_PX && !gestureConsumed) {
-        homeBtn.classList.add("show");
-        lastShowAt = performance.now();      // <-- start cooldown
+    // Show on decent upward swipe (distance OR fast flick)
+    if (!gestureConsumed && !homeBtn.classList.contains("show") &&
+        (dy <= -UP_SHOW_PX || upVel >= UP_SHOW_VEL)) {
+        showHome();
         gestureConsumed = true;
         return;
     }
 
-    // Hide aggressively on small downward move while visible
-    if (homeBtn.classList.contains("show") &&
-        dy >= DOWN_HIDE_PX && !gestureConsumed) {
-        homeBtn.classList.remove("show");
+    // Hide on small downward move while visible
+    if (!gestureConsumed && homeBtn.classList.contains("show") &&
+        dy >= DOWN_HIDE_PX) {
+        hideHome();
         gestureConsumed = true;
     }
-    }, { passive: true });
+    }, { capture: true, passive: true });
 
-    window.addEventListener("touchend", (e) => {
+    document.addEventListener("pointerup", (e) => {
+    if (e.pointerType !== "touch") return;
     isTouching = false;
-    if (gestureConsumed || e.changedTouches.length !== 1) return;
-    const dy = e.changedTouches[0].clientY - touchStartY;
+    if (gestureConsumed) return;
+
+    const dy = e.clientY - startY;
+    const dt = Math.max(1, performance.now() - startT);
+    const upVel = (-dy) / dt;
 
     if (!homeBtn.classList.contains("show") &&
-        startedNearBottom && dy <= -UP_SHOW_PX) {
-        homeBtn.classList.add("show");
-        lastShowAt = performance.now();      // <-- start cooldown
+        (dy <= -UP_SHOW_PX || upVel >= UP_SHOW_VEL)) {
+        showHome();
     } else if (homeBtn.classList.contains("show") &&
                 dy >= DOWN_HIDE_PX) {
-        homeBtn.classList.remove("show");
+        hideHome();
     }
-    }, { passive: true });
+    }, { capture: true, passive: true });
 
-    // Hide on page scroll DOWN, but NOT during touch and NOT right after showing
+    // Don’t let normal page scroll immediately hide it
     let lastScrollY = window.scrollY;
     window.addEventListener("scroll", () => {
     const now = performance.now();
-    if (isTouching) return; // ignore while finger on screen
-    if (now - lastShowAt < SCROLL_HIDE_COOLDOWN_MS) return; // ignore during cooldown
+    if (isTouching) return;                             // ignore while finger down
+    if (now - lastShowAt < SCROLL_HIDE_COOLDOWN_MS) return;
 
     const cur = window.scrollY;
-    const delta = cur - lastScrollY; // >0 = scrolling down
+    const delta = cur - lastScrollY; // >0 = scrolling down (finger swipes up)
     lastScrollY = cur;
 
-    if (delta > 4 && homeBtn.classList.contains("show")) {
-        homeBtn.classList.remove("show");
-    }
+    if (delta > 12) hideHome();                         // needs a bit more scroll to hide
     }, { passive: true });
-
-    });
-
+    
+    }); 
 //
