@@ -24,12 +24,20 @@
 }
 .gym-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.3); }
 
-/* Mobile tweaks: show only 3 cards, 2 columns layout */
-@media (max-width: 768px) {
+/* Mobile tweaks: 1 column layout */
+@media (max-width: 768px) 
+{
   .gym-grid {
-    grid-template-columns: repeat(2, 1fr);   /* 2 across */
+    grid-template-columns: 1fr;   /* one per row */
     gap: 14px;
+    max-width: none;
+    width: 100%;
+    margin: 16px 0;               /* optional: reduce outer margins */
+    padding: 0 12px;              /* small side padding; set to 0 for edge-to-edge */
   }
-  .gym-card:nth-child(4) { display: none; }  /* hide the 4th on phones */
-  .gym-card { border-radius: 12px; }
+  .gym-card {
+    /* keeps them as big squares; remove if you prefer shorter tiles */
+    aspect-ratio: 1 / 1;
+  }
 }
+/**/
