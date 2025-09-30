@@ -1,0 +1,35 @@
+.gym-grid {
+  max-width: 1100px;
+  margin: 24px auto;
+  padding: 12px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr)); /* 4 across on desktop */
+}
+
+/* Square cards */
+.gym-card {
+  aspect-ratio: 1 / 1;                      /* perfect squares */
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2f2b31, #1d1b1f);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 6px 16px rgba(0,0,0,.25) inset;
+  display: grid;
+  place-items: center;
+  color: #E2E7C0;
+  font-weight: 700;
+  letter-spacing: .5px;
+  cursor: pointer;                           /* ready to be clickable */
+  transition: transform .12s ease, border-color .12s ease;
+}
+.gym-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.3); }
+
+/* Mobile tweaks: show only 3 cards, 2 columns layout */
+@media (max-width: 768px) {
+  .gym-grid {
+    grid-template-columns: repeat(2, 1fr);   /* 2 across */
+    gap: 14px;
+  }
+  .gym-card:nth-child(4) { display: none; }  /* hide the 4th on phones */
+  .gym-card { border-radius: 12px; }
+}
