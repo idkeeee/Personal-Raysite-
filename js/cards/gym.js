@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   const overlay = document.getElementById("gymOverlay");
   const overlayBody = document.getElementById("overlayBody");
-  const closeBtn = document.getElementById("overlayClose");
+  const backBtn = document.getElementById("overlayBack");
 
   const contentMap = {
     upper: "<h2>Upper Body</h2><p>Upper body workouts go here.</p>",
@@ -14,11 +14,11 @@ document.addEventListener("DOMContentLoaded", () => {
     card.addEventListener("click", () => {
       const target = card.dataset.target;
       overlayBody.innerHTML = contentMap[target] || "<p>No content yet.</p>";
-      overlay.style.display = "block";
+      overlay.style.display = "flex";
     });
   });
 
-  closeBtn.addEventListener("click", () => {
+  backBtn.addEventListener("click", () => {
     overlay.style.display = "none";
   });
 });

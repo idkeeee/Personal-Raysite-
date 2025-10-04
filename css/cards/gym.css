@@ -58,15 +58,17 @@
 
 /* Overlay background */
     .gym-overlay {
-    position: fixed;
-    top: 56px;              /* leave navbar visible (adjust height if navbar bigger) */
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: #1d1b1f;
-    display: none;
-    z-index: 999;
-    animation: fadeIn 0.25s ease;
+      position: fixed;
+      top: 56px;            /* leave navbar visible */
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #1d1b1f;
+      display: none;
+      z-index: 999;
+      animation: fadeIn 0.25s ease;
+      display: flex;
+      flex-direction: column;
     }
 
     /* Content wrapper */
@@ -78,17 +80,30 @@
     position: relative;
     }
 
-    /* Close button */
-    .overlay-close {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: transparent;
-    border: none;
-    font-size: 28px;
-    color: #E2E7C0;
-    cursor: pointer;
-    }
+    /* Header bar inside overlay */
+      .overlay-header {
+        background: #2b282c;
+        padding: 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+      }
+
+      .overlay-back {
+        background: transparent;
+        border: none;
+        color: #E2E7C0;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      /* Body content */
+      .overlay-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        color: #E2E7C0;
+      }
+    /**/
 
     @keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
