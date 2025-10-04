@@ -42,8 +42,6 @@
             </section>
 
 
-
-
             
             <!-- Overlay plane -->
             <div id="gymOverlay" class="gym-overlay">
@@ -54,6 +52,34 @@
                     <!-- JS injects content here -->
                 </div>
             </div>
+
+
+            
+            <!-- Workout Table -->
+            <section class="workout-table-wrap">
+            <div class="hscroll">
+                <table class="workout-table" id="workoutTable">
+                <thead>
+                    <tr>
+                    <th style="width: 280px;">workout</th>
+                    <th style="width: 280px;">intensity</th>
+                    <th style="width: 280px;">amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- starter row with typebars -->
+                    <tr>
+                    <td><input class="cell-input" placeholder="Bench press, squats..." /></td>
+                    <td><input class="cell-input" placeholder="RPE 8, heavy, light..." /></td>
+                    <td><input class="cell-input" placeholder="5x5, 12 reps, 40kg..." /></td>
+                    </tr>
+                </tbody>
+                </table>
+
+                <!-- Full-width bar under the table; scrolls together with the table -->
+                <button class="add-row-btn" type="button">＋ Add row</button>
+            </div>
+            </section>
         </main>
 
 
