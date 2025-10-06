@@ -53,6 +53,7 @@ function renderGymTable(container, slug) {
         <table class="workout-table">
           <thead>
             <tr>
+              <th class="dragcol" style="width:44px"></th>
               <th style="width:280px">workout</th>
               <th style="width:280px">intensity</th>
               <th style="width:280px">amount</th>
@@ -69,23 +70,76 @@ function renderGymTable(container, slug) {
   const addBtn = container.querySelector(".add-row-btn");
 
   function rowHTML(row, idx) {
-    const w = row.workout ?? "";
-    const i = row.intensity ?? "";
-    const a = row.amount ?? "";
-    return `
-      <tr data-idx="${idx}">
-        <td><input class="cell-input" data-field="workout"  value="${escapeHtml(w)}"  placeholder="Bench press, squats..." /></td>
-        <td><input class="cell-input" data-field="intensity" value="${escapeHtml(i)}"  placeholder="RPE 8, heavy, light..." /></td>
-        <td><input class="cell-input" data-field="amount"    value="${escapeHtml(a)}"  placeholder="5x5, 12 reps, 40kg..." /></td>
-      </tr>
-    `;
-  }
+  const w = row.workout ?? "";
+  const i = row.intensity ?? "";
+  const a = row.amount ?? "";
+  return `
+    <tr data-idx="${idx}">
+      <td class="dragcol"><span class="drag-handle" title="Drag">≡</span></td>
+      <td><input class="cell-input" data-field="workout"  value="${escapeHtml(w)}"  placeholder="Bench press, squats..." /></td>
+      <td><input class="cell-input" data-field="intensity" value="${escapeHtml(i)}"  placeholder="2s up, 5s down / RPE..." /></td>
+      <td><input class="cell-input" data-field="amount"    value="${escapeHtml(a)}"  placeholder="5x5, 12 reps, 40kg..." /></td>
+    </tr>
+  `;
+  } 
 
   function renderBody() {
     tbody.innerHTML = S.rows.map(rowHTML).join("");
   }
 
   renderBody();
+
+
+  // --- Drag & drop reordering (via handle) ---
+  let draggingTr = null;
+
+  function refreshRowIndices() {
+    [...tbody.children].forEach((tr, i) => tr.dataset.idx = String(i));
+  }
+
+  tbody.addEventListener("pointerdown", (e) => {
+    const handle = e.target.closest(".drag-handle");
+    if (!handle) return;
+    draggingTr = handle.closest("tr");
+    if (!draggingTr) return;
+    tbody.classList.add("dragging");
+    handle.setPointerCapture?.(e.pointerId);
+    e.preventDefault(); // stop text selection
+  });
+
+  tbody.addEventListener("pointerenter", (e) => {
+    if (!draggingTr) return;
+    const overTr = e.target.closest("tr");
+    if (!overTr || overTr === draggingTr) return;
+
+    const rows = [...tbody.children];
+    const from = rows.indexOf(draggingTr);
+    const to   = rows.indexOf(overTr);
+    if (from < 0 || to < 0) return;
+
+    // Move in the DOM
+    if (from < to) tbody.insertBefore(draggingTr, overTr.nextSibling);
+    else           tbody.insertBefore(draggingTr, overTr);
+
+    // Move in data
+    const item = S.rows.splice(from, 1)[0];
+    S.rows.splice(to, 0, item);
+
+    refreshRowIndices();
+    scheduleSave(slug);
+  });
+
+  function endDrag(e) {
+    if (!draggingTr) return;
+    draggingTr.releasePointerCapture?.(e.pointerId);
+    draggingTr = null;
+    tbody.classList.remove("dragging");
+  }
+  tbody.addEventListener("pointerup", endDrag);
+  tbody.addEventListener("pointercancel", endDrag);
+  tbody.addEventListener("mouseleave", endDrag);
+
+
 
   // edit handler
   tbody.addEventListener("input", (e) => {
