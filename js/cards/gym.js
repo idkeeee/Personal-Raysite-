@@ -90,45 +90,78 @@ function renderGymTable(container, slug) {
   renderBody();
 
 
-  // --- Drag & drop reordering (via handle) ---
-  let draggingTr = null;
+  // --- Drag & drop reordering (robust pointermove version) ---
+    let draggingTr = null;
+    let fromIndex = -1;
 
-  function refreshRowIndices() {
-    [...tbody.children].forEach((tr, i) => tr.dataset.idx = String(i));
-  }
+    function refreshRowIndices() {
+      [...tbody.children].forEach((tr, i) => (tr.dataset.idx = String(i)));
+    }
 
-  tbody.addEventListener("pointerdown", (e) => {
-    const handle = e.target.closest(".drag-handle");
-    if (!handle) return;
-    draggingTr = handle.closest("tr");
-    if (!draggingTr) return;
-    tbody.classList.add("dragging");
-    handle.setPointerCapture?.(e.pointerId);
-    e.preventDefault(); // stop text selection
-  });
+    // start dragging when pressing the handle
+    tbody.addEventListener("pointerdown", (e) => {
+      const handle = e.target.closest(".drag-handle");
+      if (!handle) return;
 
-  tbody.addEventListener("pointerenter", (e) => {
-    if (!draggingTr) return;
-    const overTr = e.target.closest("tr");
-    if (!overTr || overTr === draggingTr) return;
+      draggingTr = handle.closest("tr");
+      if (!draggingTr) return;
 
-    const rows = [...tbody.children];
-    const from = rows.indexOf(draggingTr);
-    const to   = rows.indexOf(overTr);
-    if (from < 0 || to < 0) return;
+      // prevent page from scrolling while dragging (mobile)
+      handle.setPointerCapture?.(e.pointerId);
+      e.preventDefault();
 
-    // Move in the DOM
-    if (from < to) tbody.insertBefore(draggingTr, overTr.nextSibling);
-    else           tbody.insertBefore(draggingTr, overTr);
+      const rows = [...tbody.children];
+      fromIndex = rows.indexOf(draggingTr);
 
-    // Move in data
-    const item = S.rows.splice(from, 1)[0];
-    S.rows.splice(to, 0, item);
+      draggingTr.classList.add("is-dragging");
+      tbody.classList.add("dragging");
 
-    refreshRowIndices();
-    scheduleSave(slug);
-  });
+      // move with pointer
+      const onMove = (ev) => {
+        const y = ev.clientY;
 
+        // find the row whose midpoint is just below the pointer
+        const all = [...tbody.querySelectorAll("tr")].filter((tr) => tr !== draggingTr);
+        let target = null;
+        for (const tr of all) {
+          const r = tr.getBoundingClientRect();
+          const mid = r.top + r.height / 2;
+          if (y < mid) { target = tr; break; }
+        }
+
+        if (target) {
+          tbody.insertBefore(draggingTr, target);
+        } else {
+          tbody.appendChild(draggingTr);
+        }
+
+        // mirror the move in the data array
+        const rowsDom = [...tbody.children];
+        const toIndex = rowsDom.indexOf(draggingTr);
+        if (toIndex !== fromIndex && toIndex >= 0 && fromIndex >= 0) {
+          const moved = S.rows.splice(fromIndex, 1)[0];
+          S.rows.splice(toIndex, 0, moved);
+          fromIndex = toIndex;
+          scheduleSave(slug);
+          refreshRowIndices();
+        }
+      };
+
+      const end = (ev) => {
+        draggingTr?.releasePointerCapture?.(ev.pointerId);
+        window.removeEventListener("pointermove", onMove, { capture: true });
+        window.removeEventListener("pointerup", end, { capture: true });
+        window.removeEventListener("pointercancel", end, { capture: true });
+        tbody.classList.remove("dragging");
+        draggingTr?.classList.remove("is-dragging");
+        draggingTr = null;
+        fromIndex = -1;
+      };
+
+      window.addEventListener("pointermove", onMove, { capture: true, passive: false });
+      window.addEventListener("pointerup", end, { capture: true });
+      window.addEventListener("pointercancel", end, { capture: true });
+    });
   function endDrag(e) {
     if (!draggingTr) return;
     draggingTr.releasePointerCapture?.(e.pointerId);
