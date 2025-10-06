@@ -1,6 +1,6 @@
 // ---------- Supabase helpers (reuse from mornings if you already have them) ----------
 const SUPABASE_URL = "https://ntlsmrzpatcultvsrpll.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_ANON_KEY_HERE"; // same as mornings.js
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g"; // same as mornings.js
 
 async function sbFetch(path, options = {}) {
   const headers = {
