@@ -90,54 +90,57 @@ function renderGymTable(container, slug) {
   renderBody();
 
 
-  // --- Drag & drop reordering (robust pointermove version) ---
+
+    
+    // --- Drag & drop with long-press on touch, immediate on mouse ---
     let draggingTr = null;
     let fromIndex = -1;
+    let pressTimer = null;
+    let pressStartY = 0;
+    let pressStartX = 0;
+    const PRESS_MS = 220;        // hold time to start drag on touch
+    const MOVE_TOL = 8;          // px tolerance before cancelling press
+
+    const scroller = container.querySelector(".hscroll");
 
     function refreshRowIndices() {
       [...tbody.children].forEach((tr, i) => (tr.dataset.idx = String(i)));
     }
 
-    // start dragging when pressing the handle
-    tbody.addEventListener("pointerdown", (e) => {
-      const handle = e.target.closest(".drag-handle");
-      if (!handle) return;
+    function beginDrag(e, handle) {
 
+      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+      
       draggingTr = handle.closest("tr");
       if (!draggingTr) return;
 
-      // prevent page from scrolling while dragging (mobile)
+      // lock scroll while dragging
+      scroller.classList.add("drag-lock");
+      tbody.classList.add("dragging");
+      draggingTr.classList.add("is-dragging");
+
       handle.setPointerCapture?.(e.pointerId);
       e.preventDefault();
 
       const rows = [...tbody.children];
       fromIndex = rows.indexOf(draggingTr);
 
-      draggingTr.classList.add("is-dragging");
-      tbody.classList.add("dragging");
-
-      // move with pointer
       const onMove = (ev) => {
         const y = ev.clientY;
 
-        // find the row whose midpoint is just below the pointer
-        const all = [...tbody.querySelectorAll("tr")].filter((tr) => tr !== draggingTr);
+        // find target row by midpoint
+        const others = [...tbody.querySelectorAll("tr")].filter(tr => tr !== draggingTr);
         let target = null;
-        for (const tr of all) {
+        for (const tr of others) {
           const r = tr.getBoundingClientRect();
           const mid = r.top + r.height / 2;
           if (y < mid) { target = tr; break; }
         }
+        if (target) tbody.insertBefore(draggingTr, target); else tbody.appendChild(draggingTr);
 
-        if (target) {
-          tbody.insertBefore(draggingTr, target);
-        } else {
-          tbody.appendChild(draggingTr);
-        }
-
-        // mirror the move in the data array
-        const rowsDom = [...tbody.children];
-        const toIndex = rowsDom.indexOf(draggingTr);
+        // mirror in data
+        const domRows = [...tbody.children];
+        const toIndex = domRows.indexOf(draggingTr);
         if (toIndex !== fromIndex && toIndex >= 0 && fromIndex >= 0) {
           const moved = S.rows.splice(fromIndex, 1)[0];
           S.rows.splice(toIndex, 0, moved);
@@ -152,6 +155,7 @@ function renderGymTable(container, slug) {
         window.removeEventListener("pointermove", onMove, { capture: true });
         window.removeEventListener("pointerup", end, { capture: true });
         window.removeEventListener("pointercancel", end, { capture: true });
+        scroller.classList.remove("drag-lock");
         tbody.classList.remove("dragging");
         draggingTr?.classList.remove("is-dragging");
         draggingTr = null;
@@ -161,16 +165,47 @@ function renderGymTable(container, slug) {
       window.addEventListener("pointermove", onMove, { capture: true, passive: false });
       window.addEventListener("pointerup", end, { capture: true });
       window.addEventListener("pointercancel", end, { capture: true });
-    });
-  function endDrag(e) {
-    if (!draggingTr) return;
-    draggingTr.releasePointerCapture?.(e.pointerId);
-    draggingTr = null;
-    tbody.classList.remove("dragging");
-  }
-  tbody.addEventListener("pointerup", endDrag);
-  tbody.addEventListener("pointercancel", endDrag);
-  tbody.addEventListener("mouseleave", endDrag);
+    }
+
+  // start: long-press on touch, immediate on mouse
+  tbody.addEventListener("pointerdown", (e) => {
+    const handle = e.target.closest(".drag-handle");
+    if (!handle) return;
+
+    pressStartY = e.clientY;
+    pressStartX = e.clientX;
+
+    // Desktop mouse: start immediately
+    if (e.pointerType !== "touch") {
+      beginDrag(e, handle);
+      return;
+    }
+
+    // Touch: start only after hold
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => beginDrag(e, handle), PRESS_MS);
+    handle.setPointerCapture?.(e.pointerId);
+  });
+
+  tbody.addEventListener("pointermove", (e) => {
+    if (pressTimer) {
+      const dx = Math.abs(e.clientX - pressStartX);
+      const dy = Math.abs(e.clientY - pressStartY);
+      // if user scrolls or moves too much before the hold finishes, cancel
+      if (dx > MOVE_TOL || dy > MOVE_TOL) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    }
+  });
+
+tbody.addEventListener("pointerup", () => {
+  if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+});
+tbody.addEventListener("pointercancel", () => {
+  if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+});
+
 
 
 
@@ -240,61 +275,5 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  backBtn.addEventListener("click", () => (overlay.style.display = "none"));
-});
-
-
-document.addEventListener("DOMContentLoaded", () => {
-  const overlay = document.getElementById("gymOverlay");
-  const overlayBody = document.getElementById("overlayBody");
-  const backBtn = document.getElementById("overlayBack");
-
-  // template for the workout table (title is dynamic)
-  const workoutTable = (title) => `
-    <h2 class="overlay-title">${title}</h2>
-    <section class="workout-table-wrap">
-      <div class="hscroll">
-        <table class="workout-table">
-          <thead>
-            <tr>
-              <th style="width:280px">workout</th>
-              <th style="width:280px">intensity</th>
-              <th style="width:280px">amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><input class="cell-input" placeholder="Bench press, squats..." /></td>
-              <td><input class="cell-input" placeholder="RPE 8, heavy, light..." /></td>
-              <td><input class="cell-input" placeholder="5x5, 12 reps, 40kg..." /></td>
-            </tr>
-          </tbody>
-        </table>
-        <button class="add-row-btn" type="button">＋ Add row</button>
-      </div>
-    </section>
-  `;
-
-  // What to show per card
-  const contentMap = {
-    upper: workoutTable("Upper Body"),
-    core: workoutTable("Core Body"),
-    lower: workoutTable("Lower Body"),
-    readme: `
-      <h2 class="overlay-title">READ.ME.</h2>
-      <p>Notes and instructions go here.</p>
-    `
-  };
-
-  // open overlay with content
-  document.querySelectorAll(".gym-card").forEach(card => {
-    card.addEventListener("click", () => {
-      const target = card.dataset.target;     // "upper" | "core" | "lower" | "readme"
-      overlayBody.innerHTML = contentMap[target] || "<p>No content yet.</p>";
-      overlay.style.display = "flex";
-    });
-  });
-
-  // back button
   backBtn.addEventListener("click", () => (overlay.style.display = "none"));
 });

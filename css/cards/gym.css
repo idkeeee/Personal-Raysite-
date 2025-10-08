@@ -307,3 +307,12 @@
 
 /* while dragging, avoid selecting text */
 tbody.dragging, tbody.dragging * { user-select: none !important; }
+
+
+/* stop the scroll container from stealing the gesture while dragging */
+.hscroll.drag-lock { touch-action: none; overscroll-behavior: contain; }
+
+.drag-handle { touch-action: none; -webkit-user-select: none; user-select: none; }
+
+tr.is-dragging { opacity: .85; filter: brightness(1.05); }
+tbody.dragging, tbody.dragging * { user-select: none !important; -webkit-user-select: none !important; }
