@@ -58,6 +58,7 @@
 
 /* Overlay background */
     .gym-overlay {
+      display: none !important;
       position: fixed;
       top: 56px;            /* leave navbar visible */
       left: 0;

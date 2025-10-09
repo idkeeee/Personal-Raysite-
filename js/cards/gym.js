@@ -283,30 +283,38 @@ document.addEventListener("DOMContentLoaded", () => {
   const overlayBody = document.getElementById("overlayBody");
   const backBtn = document.getElementById("overlayBack");
 
-  // Only these three show a table
-  const targets = {
-    upper: "gym-upper",
-    core:  "gym-core",
-    lower: "gym-lower",
-  };
+  // ⛑️ defensive: start closed every time we load this page
+  overlay.style.display = "none";
+  overlayBody.innerHTML = "";
+
+  const targets = { upper: "gym-upper", core: "gym-core", lower: "gym-lower" };
 
   document.querySelectorAll(".gym-card").forEach(card => {
     card.addEventListener("click", async () => {
       const tag = card.dataset.target;
       const slug = targets[tag];
 
-      overlay.style.display = "flex";
-
       if (!slug) {
         overlayBody.innerHTML = `<h2 class="overlay-title">READ.ME.</h2><p>Notes and instructions go here.</p>`;
+        overlay.style.display = "flex";
         return;
       }
 
-      // load data then render table
-      await loadGym(slug);
-      renderGymTable(overlayBody, slug);
+      try {
+        await loadGym(slug);
+        overlay.style.display = "flex";        // ✅ only open on click
+        renderGymTable(overlayBody, slug);
+      } catch (err) {
+        overlay.style.display = "flex";
+        overlayBody.innerHTML = `
+          <h2 class="overlay-title">${slugLabel(slug)}</h2>
+          <p style="color:#f88">Load failed: ${escapeHtml(err.message)}</p>`;
+      }
     });
   });
 
-  backBtn.addEventListener("click", () => (overlay.style.display = "none"));
+  backBtn.addEventListener("click", () => {
+    overlay.style.display = "none";            // ✅ close when Back is tapped
+    overlayBody.innerHTML = "";                // optional: clear content
+  });
 });
