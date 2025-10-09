@@ -103,6 +103,11 @@ function renderGymTable(container, slug) {
 
     const scroller = container.querySelector(".hscroll");
 
+    let ghostEl = null;
+    let ghostOffsetY = 0;
+    let ghostLeft = 0;
+    let ghostWidth = 0;
+
     function refreshRowIndices() {
       [...tbody.children].forEach((tr, i) => (tr.dataset.idx = String(i)));
     }

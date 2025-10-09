@@ -316,3 +316,18 @@ tbody.dragging, tbody.dragging * { user-select: none !important; }
 
 tr.is-dragging { opacity: .85; filter: brightness(1.05); }
 tbody.dragging, tbody.dragging * { user-select: none !important; -webkit-user-select: none !important; }
+
+
+/* floating preview while dragging */
+.drag-ghost {
+  position: fixed;          /* follow the finger relative to the viewport */
+  left: 0;                  /* JS sets exact left/width each drag */
+  top: 0;                   /* JS updates top on move */
+  width: 100%;
+  pointer-events: none;     /* never capture taps */
+  opacity: 0.85;
+  transform: translateZ(0); /* GPU hint */
+  box-shadow: 0 10px 24px rgba(0,0,0,.35);
+  backdrop-filter: saturate(1.1);
+  z-index: 9999;
+}
