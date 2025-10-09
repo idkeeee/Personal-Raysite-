@@ -113,9 +113,9 @@ function renderGymTable(container, slug) {
     }
 
     function beginDrag(e, handle) {
-
+      // kill any pending long-press timer
       if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
-      
+
       draggingTr = handle.closest("tr");
       if (!draggingTr) return;
 
@@ -124,6 +124,23 @@ function renderGymTable(container, slug) {
       tbody.classList.add("dragging");
       draggingTr.classList.add("is-dragging");
 
+      // compute ghost geometry from the row’s rect
+      const r = draggingTr.getBoundingClientRect();
+      ghostOffsetY = e.clientY - r.top;         // keep finger’s relative offset
+      ghostLeft = r.left;                       // viewport left
+      ghostWidth = r.width;
+
+      // build ghost (clone of the row)
+      ghostEl = draggingTr.cloneNode(true);
+      ghostEl.classList.add("drag-ghost");
+      ghostEl.style.left = `${ghostLeft}px`;
+      ghostEl.style.width = `${ghostWidth}px`;
+      ghostEl.style.top = `${(e.clientY - ghostOffsetY)}px`;
+      document.body.appendChild(ghostEl);
+
+      // hide the real row but keep layout
+      draggingTr.style.visibility = "hidden";
+
       handle.setPointerCapture?.(e.pointerId);
       e.preventDefault();
 
@@ -131,17 +148,22 @@ function renderGymTable(container, slug) {
       fromIndex = rows.indexOf(draggingTr);
 
       const onMove = (ev) => {
+        // move the ghost to follow the finger
+        ghostEl.style.top = `${(ev.clientY - ghostOffsetY)}px`;
+
         const y = ev.clientY;
 
         // find target row by midpoint
         const others = [...tbody.querySelectorAll("tr")].filter(tr => tr !== draggingTr);
         let target = null;
         for (const tr of others) {
-          const r = tr.getBoundingClientRect();
-          const mid = r.top + r.height / 2;
+          const rr = tr.getBoundingClientRect();
+          const mid = rr.top + rr.height / 2;
           if (y < mid) { target = tr; break; }
         }
-        if (target) tbody.insertBefore(draggingTr, target); else tbody.appendChild(draggingTr);
+
+        if (target) tbody.insertBefore(draggingTr, target);
+        else        tbody.appendChild(draggingTr);
 
         // mirror in data
         const domRows = [...tbody.children];
@@ -160,9 +182,15 @@ function renderGymTable(container, slug) {
         window.removeEventListener("pointermove", onMove, { capture: true });
         window.removeEventListener("pointerup", end, { capture: true });
         window.removeEventListener("pointercancel", end, { capture: true });
+
         scroller.classList.remove("drag-lock");
         tbody.classList.remove("dragging");
-        draggingTr?.classList.remove("is-dragging");
+        draggingTr.classList.remove("is-dragging");
+
+        // restore real row, remove ghost
+        draggingTr.style.visibility = "";
+        if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+
         draggingTr = null;
         fromIndex = -1;
       };
