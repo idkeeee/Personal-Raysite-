@@ -162,7 +162,7 @@ function renderGymTable(container, slug) {
           if (y < mid) { target = tr; break; }
         }
 
-        if (target) tbody.insertBefore(draggingTr, target);
+        if (target) tbody.insertBefore(draggingTr, target)
         else        tbody.appendChild(draggingTr);
 
         // mirror in data
@@ -282,6 +282,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const overlay = document.getElementById("gymOverlay");
   const overlayBody = document.getElementById("overlayBody");
   const backBtn = document.getElementById("overlayBack");
+
+
+   if (!overlay || !overlayBody || !backBtn) {
+    console.error("GYM overlay markup missing (gymOverlay/overlayBody/overlayBack).");
+    return;
+  }
 
   // ⛑️ defensive: start closed every time we load this page
   overlay.style.display = "none";

@@ -57,18 +57,17 @@
 
 
 /* Overlay background */
+    /* Overlay background */
     .gym-overlay {
-      display: none !important;
       position: fixed;
       top: 56px;            /* leave navbar visible */
       left: 0;
       right: 0;
       bottom: 0;
       background: #1d1b1f;
-      display: none;
       z-index: 999;
+      display: none;        /* hidden by default; JS sets to flex */
       animation: fadeIn 0.25s ease;
-      display: flex;
       flex-direction: column;
     }
 

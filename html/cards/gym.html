@@ -44,14 +44,24 @@
 
 
                 <!-- Full-width bar under the table; scrolls together with the table -->
-                <button class="add-row-btn" type="button">＋ Add row</button>
-            </div>
-            </section>
         </main>
 
 
 
+        <!-- Slide-up overlay -->
+        <div id="gymOverlay" class="gym-overlay" aria-hidden="true">
+        <header class="overlay-header">
+            <button id="overlayBack" class="overlay-back" type="button">← Back</button>
+        </header>
 
+        <div class="overlay-content">
+            <div id="overlayBody" class="overlay-body">
+            <!-- JS will render the table here -->
+            </div>
+            <!-- Full-width bar under the table; scrolls together with the table -->
+            <!-- This gets inserted by JS when needed, but keeping structure here is fine -->
+        </div>
+        </div>
 
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         <script src="js/cards/gym.js"></script>
