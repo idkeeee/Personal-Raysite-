@@ -1,11 +1,21 @@
-// ---------- Supabase helpers (reuse from mornings if you already have them) ----------
-const SUPABASE_URL = "https://ntlsmrzpatcultvsrpll.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g"; // same as mornings.js
+/* ===========================
+   GYM page logic (overlay + tables)
+   - Upper/Core/Lower: 3 columns (workout | intensity | amount)
+   - READ.ME.: 1 column (message)
+   - Per-row Delete, Add row, Drag-to-reorder (mouse + touch long-press)
+   - Supabase save/load (same table as before: gym_logs { slug, data })
+   =========================== */
+
+/* ---- Supabase helpers (reuse your existing values) ----
+   If you already define these elsewhere, you may delete this block
+   or let the existing globals (window.SUPABASE_URL/ANON) override. */
+const SUPABASE_URL  = window.SUPABASE_URL  ?? "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_ANON = window.SUPABASE_ANON ?? "YOUR-ANON-KEY";
 
 async function sbFetch(path, options = {}) {
   const headers = {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    apikey: SUPABASE_ANON,
+    Authorization: `Bearer ${SUPABASE_ANON}`,
     ...options.headers,
   };
   const res = await fetch(`${SUPABASE_URL}${path}`, { ...options, headers });
@@ -13,13 +23,15 @@ async function sbFetch(path, options = {}) {
   return res;
 }
 
-// ---------- per-section state ----------
+/* ---- Per-section state (4 slugs) ---- */
 const gymState = {
-  "gym-upper": { rows: [], saveTimer: null },
-  "gym-core":  { rows: [], saveTimer: null },
-  "gym-lower": { rows: [], saveTimer: null },
+  "gym-upper":  { rows: [], saveTimer: null },
+  "gym-core":   { rows: [], saveTimer: null },
+  "gym-lower":  { rows: [], saveTimer: null },
+  "gym-readme": { rows: [], saveTimer: null }, // single-column
 };
 
+/* ---- Data I/O ---- */
 async function loadGym(slug) {
   const res = await sbFetch(`/rest/v1/gym_logs?slug=eq.${slug}&select=data`);
   const rows = (await res.json())?.[0]?.data ?? [];
@@ -42,22 +54,27 @@ async function saveGym(slug) {
   });
 }
 
-// ---------- render into the overlay ----------
+/* ---- Render into overlay ---- */
 function renderGymTable(container, slug) {
   const S = gymState[slug];
+  const READMODE = isReadmeSlug(slug);
 
   container.innerHTML = `
     <h2 class="overlay-title">${slugLabel(slug)}</h2>
     <section class="workout-table-wrap">
       <div class="hscroll">
-        <table class="workout-table">
+        <table class="workout-table ${READMODE ? "readme" : ""}">
           <thead>
             <tr>
               <th class="dragcol" style="width:44px"></th>
-              <th style="width:280px">workout</th>
-              <th style="width:280px">intensity</th>
-              <th style="width:280px">amount</th>
-              <th class="thin">Del</th>  <!-- NEW -->
+              ${READMODE
+                ? `<th style="width:100%">message</th>`
+                : `
+                  <th style="width:280px">workout</th>
+                  <th style="width:280px">intensity</th>
+                  <th style="width:280px">amount</th>
+                `}
+              <th class="thin">Del</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -67,187 +84,53 @@ function renderGymTable(container, slug) {
     </section>
   `;
 
-  const tbody = container.querySelector("tbody");
+  const tbody  = container.querySelector("tbody");
   const addBtn = container.querySelector(".add-row-btn");
 
-  function rowHTML(row, idx) 
-  {
-    const w = row.workout ?? "";
-    const i = row.intensity ?? "";
-    const a = row.amount ?? "";
-    return `
-      <tr data-idx="${idx}">
-        <td class="dragcol"><span class="drag-handle" title="Drag">≡</span></td>
-        <td><input class="cell-input" data-field="workout"  value="${escapeHtml(w)}"  placeholder="Bench press, squats..." /></td>
-        <td><input class="cell-input" data-field="intensity" value="${escapeHtml(i)}"  placeholder="2s up, 5s down / RPE..." /></td>
-        <td><input class="cell-input" data-field="amount"    value="${escapeHtml(a)}"  placeholder="5x5, 12 reps, 40kg..." /></td>
-        <td class="thin">
-          <button class="row-del" type="button" aria-label="Delete row">✕</button>
-        </td>
-      </tr>
-    `;
-  } 
+  /* -- row HTML (dual-mode) -- */
+  function rowHTML(row, idx) {
+    if (READMODE) {
+      const m = row.message ?? "";
+      return `
+        <tr data-idx="${idx}">
+          <td class="dragcol"><span class="drag-handle" title="Drag">≡</span></td>
+          <td>
+            <input class="cell-input" data-field="message"
+                   value="${escapeHtml(m)}"
+                   placeholder="Type a note…"/>
+          </td>
+          <td class="thin">
+            <button class="row-del" type="button" aria-label="Delete row">✕</button>
+          </td>
+        </tr>`;
+    } else {
+      const w = row.workout ?? "";
+      const i = row.intensity ?? "";
+      const a = row.amount ?? "";
+      return `
+        <tr data-idx="${idx}">
+          <td class="dragcol"><span class="drag-handle" title="Drag">≡</span></td>
+          <td><input class="cell-input" data-field="workout"   value="${escapeHtml(w)}" placeholder="Bench press, squats..." /></td>
+          <td><input class="cell-input" data-field="intensity" value="${escapeHtml(i)}" placeholder="2s up, 5s down / RPE..." /></td>
+          <td><input class="cell-input" data-field="amount"    value="${escapeHtml(a)}" placeholder="5×5, 12 reps, 40kg..." /></td>
+          <td class="thin">
+            <button class="row-del" type="button" aria-label="Delete row">✕</button>
+          </td>
+        </tr>`;
+    }
+  }
 
   function renderBody() {
     tbody.innerHTML = S.rows.map(rowHTML).join("");
   }
 
+  // initial draw (ensure at least one row)
+  if (!Array.isArray(S.rows) || S.rows.length === 0) {
+    S.rows = [ READMODE ? { message: "" } : { workout: "", intensity: "", amount: "" } ];
+  }
   renderBody();
 
-
-
-    
-    // --- Drag & drop with long-press on touch, immediate on mouse ---
-    let draggingTr = null;
-    let fromIndex = -1;
-    let pressTimer = null;
-    let pressStartY = 0;
-    let pressStartX = 0;
-    const PRESS_MS = 220;        // hold time to start drag on touch
-    const MOVE_TOL = 8;          // px tolerance before cancelling press
-
-    const scroller = container.querySelector(".hscroll");
-
-    let ghostEl = null;
-    let ghostOffsetY = 0;
-    let ghostLeft = 0;
-    let ghostWidth = 0;
-
-    function refreshRowIndices() {
-      [...tbody.children].forEach((tr, i) => (tr.dataset.idx = String(i)));
-    }
-
-    function beginDrag(e, handle) {
-      // kill any pending long-press timer
-      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
-
-      draggingTr = handle.closest("tr");
-      if (!draggingTr) return;
-
-      // lock scroll while dragging
-      scroller.classList.add("drag-lock");
-      tbody.classList.add("dragging");
-      draggingTr.classList.add("is-dragging");
-
-      // compute ghost geometry from the row’s rect
-      const r = draggingTr.getBoundingClientRect();
-      ghostOffsetY = e.clientY - r.top;         // keep finger’s relative offset
-      ghostLeft = r.left;                       // viewport left
-      ghostWidth = r.width;
-
-      // build ghost (clone of the row)
-      ghostEl = draggingTr.cloneNode(true);
-      ghostEl.classList.add("drag-ghost");
-      ghostEl.style.left = `${ghostLeft}px`;
-      ghostEl.style.width = `${ghostWidth}px`;
-      ghostEl.style.top = `${(e.clientY - ghostOffsetY)}px`;
-      document.body.appendChild(ghostEl);
-
-      // hide the real row but keep layout
-      draggingTr.style.visibility = "hidden";
-
-      handle.setPointerCapture?.(e.pointerId);
-      e.preventDefault();
-
-      const rows = [...tbody.children];
-      fromIndex = rows.indexOf(draggingTr);
-
-      const onMove = (ev) => {
-        // move the ghost to follow the finger
-        ghostEl.style.top = `${(ev.clientY - ghostOffsetY)}px`;
-
-        const y = ev.clientY;
-
-        // find target row by midpoint
-        const others = [...tbody.querySelectorAll("tr")].filter(tr => tr !== draggingTr);
-        let target = null;
-        for (const tr of others) {
-          const rr = tr.getBoundingClientRect();
-          const mid = rr.top + rr.height / 2;
-          if (y < mid) { target = tr; break; }
-        }
-
-        if (target) tbody.insertBefore(draggingTr, target)
-        else        tbody.appendChild(draggingTr);
-
-        // mirror in data
-        const domRows = [...tbody.children];
-        const toIndex = domRows.indexOf(draggingTr);
-        if (toIndex !== fromIndex && toIndex >= 0 && fromIndex >= 0) {
-          const moved = S.rows.splice(fromIndex, 1)[0];
-          S.rows.splice(toIndex, 0, moved);
-          fromIndex = toIndex;
-          scheduleSave(slug);
-          refreshRowIndices();
-        }
-      };
-
-      const end = (ev) => {
-        draggingTr?.releasePointerCapture?.(ev.pointerId);
-        window.removeEventListener("pointermove", onMove, { capture: true });
-        window.removeEventListener("pointerup", end, { capture: true });
-        window.removeEventListener("pointercancel", end, { capture: true });
-
-        scroller.classList.remove("drag-lock");
-        tbody.classList.remove("dragging");
-        draggingTr.classList.remove("is-dragging");
-
-        // restore real row, remove ghost
-        draggingTr.style.visibility = "";
-        if (ghostEl) { ghostEl.remove(); ghostEl = null; }
-
-        draggingTr = null;
-        fromIndex = -1;
-      };
-
-      window.addEventListener("pointermove", onMove, { capture: true, passive: false });
-      window.addEventListener("pointerup", end, { capture: true });
-      window.addEventListener("pointercancel", end, { capture: true });
-    }
-
-  // start: long-press on touch, immediate on mouse
-  tbody.addEventListener("pointerdown", (e) => {
-    const handle = e.target.closest(".drag-handle");
-    if (!handle) return;
-
-    pressStartY = e.clientY;
-    pressStartX = e.clientX;
-
-    // Desktop mouse: start immediately
-    if (e.pointerType !== "touch") {
-      beginDrag(e, handle);
-      return;
-    }
-
-    // Touch: start only after hold
-    clearTimeout(pressTimer);
-    pressTimer = setTimeout(() => beginDrag(e, handle), PRESS_MS);
-    handle.setPointerCapture?.(e.pointerId);
-  });
-
-  tbody.addEventListener("pointermove", (e) => {
-    if (pressTimer) {
-      const dx = Math.abs(e.clientX - pressStartX);
-      const dy = Math.abs(e.clientY - pressStartY);
-      // if user scrolls or moves too much before the hold finishes, cancel
-      if (dx > MOVE_TOL || dy > MOVE_TOL) {
-        clearTimeout(pressTimer);
-        pressTimer = null;
-      }
-    }
-  });
-
-tbody.addEventListener("pointerup", () => {
-  if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
-});
-tbody.addEventListener("pointercancel", () => {
-  if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
-});
-
-
-
-
-  // edit handler
+  /* -- Input edits -> state + save -- */
   tbody.addEventListener("input", (e) => {
     const input = e.target.closest(".cell-input");
     if (!input) return;
@@ -258,84 +141,168 @@ tbody.addEventListener("pointercancel", () => {
     scheduleSave(slug);
   });
 
-
-  // delete a row (works for Upper/Core/Lower because it uses current slug/state)
-  tbody.addEventListener("click", (e) => 
-  {
+  /* -- Delete (event delegation) -- */
+  tbody.addEventListener("click", (e) => {
     const btn = e.target.closest(".row-del");
     if (!btn) return;
-
     const tr = btn.closest("tr");
     const idx = Number(tr.dataset.idx);
-
     S.rows.splice(idx, 1);
-
-    // keep at least one empty row if you like (optional)
     if (S.rows.length === 0) {
-      S.rows.push({ workout: "", intensity: "", amount: "" });
+      S.rows.push(READMODE ? { message: "" } : { workout: "", intensity: "", amount: "" });
     }
-
-    renderBody();       // re-draw the tbody
-    scheduleSave(slug); // persist to Supabase (debounced)
-  });
-
-
-  // add row (we’ll make delete later if you want)
-  addBtn.addEventListener("click", () => {
-    S.rows.push({ workout: "", intensity: "", amount: "" });
     renderBody();
     scheduleSave(slug);
-    // focus the first cell of the new row
-    const last = tbody.querySelector('tr:last-child input[data-field="workout"]');
-    if (last) last.focus();
   });
+
+  /* -- Add row -- */
+  addBtn.addEventListener("click", () => {
+    S.rows.push(READMODE ? { message: "" } : { workout: "", intensity: "", amount: "" });
+    renderBody();
+    scheduleSave(slug);
+    const sel = READMODE ? 'tr:last-child input[data-field="message"]'
+                         : 'tr:last-child input[data-field="workout"]';
+    const last = tbody.querySelector(sel);
+    last?.focus();
+  });
+
+  /* -- Drag & drop (long-press on touch) -- */
+  let draggingTr = null;
+  let pressTimer = null;
+  let pressStartY = 0, pressStartX = 0;
+  const PRESS_MS = 220, MOVE_TOL = 8;
+  const scroller = container.querySelector(".hscroll");
+
+  function beginDrag(e, handle) {
+    draggingTr = handle.closest("tr");
+    const rr = draggingTr.getBoundingClientRect();
+
+    const ghostEl = document.createElement("div");
+    ghostEl.className = "drag-ghost";
+    ghostEl.style.position = "fixed";
+    ghostEl.style.left = `${rr.left}px`;
+    ghostEl.style.top = `${rr.top}px`;
+    ghostEl.style.width = `${rr.width}px`;
+    ghostEl.style.height = `${rr.height}px`;
+    ghostEl.style.pointerEvents = "none";
+    ghostEl.style.opacity = "0.9";
+    ghostEl.style.background = "rgba(32,32,36,.92)";
+    ghostEl.style.borderRadius = "10px";
+    ghostEl.style.boxShadow = "0 10px 26px rgba(0,0,0,.45)";
+    ghostEl.style.padding = "6px 10px";
+    ghostEl.textContent = (draggingTr.querySelector('input')?.value || `Row ${Number(draggingTr.dataset.idx) + 1}`);
+    document.body.appendChild(ghostEl);
+
+    draggingTr.style.visibility = "hidden";
+    handle.setPointerCapture?.(e.pointerId);
+    e.preventDefault();
+
+    const rows = [...tbody.children];
+    let fromIndex = rows.indexOf(draggingTr);
+
+    const onMove = (ev) => {
+      ghostEl.style.top = `${ev.clientY - rr.height/2}px`;
+
+      // insert before first row with midpoint below cursor
+      const others = [...tbody.querySelectorAll("tr")].filter(tr => tr !== draggingTr);
+      let target = null;
+      for (const tr of others) {
+        const r = tr.getBoundingClientRect();
+        const mid = r.top + r.height/2;
+        if (ev.clientY < mid) { target = tr; break; }
+      }
+      if (target) tbody.insertBefore(draggingTr, target);
+      else        tbody.appendChild(draggingTr);
+    };
+
+    const onUp = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      ghostEl.remove();
+      draggingTr.style.visibility = "";
+      draggingTr = null;
+
+      // commit new order to S.rows based on DOM order
+      const newOrder = [];
+      tbody.querySelectorAll("tr").forEach(tr => {
+        newOrder.push(S.rows[Number(tr.dataset.idx)]);
+      });
+      S.rows = newOrder;
+      renderBody();        // reindex data-idx
+      scheduleSave(slug);
+    };
+
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  }
+
+  tbody.addEventListener("pointerdown", (e) => {
+    const handle = e.target.closest(".drag-handle");
+    if (!handle) return;
+
+    pressStartY = e.clientY;
+    pressStartX = e.clientX;
+
+    if (e.pointerType !== "touch") { beginDrag(e, handle); return; }
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => beginDrag(e, handle), PRESS_MS);
+    handle.setPointerCapture?.(e.pointerId);
+  });
+
+  tbody.addEventListener("pointermove", (e) => {
+    if (!pressTimer) return;
+    const dx = Math.abs(e.clientX - pressStartX);
+    const dy = Math.abs(e.clientY - pressStartY);
+    if (dx > MOVE_TOL || dy > MOVE_TOL) { clearTimeout(pressTimer); pressTimer = null; }
+  });
+
+  ["pointerup","pointercancel","lostpointercapture"].forEach(ev =>
+    tbody.addEventListener(ev, () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } })
+  );
 }
 
+/* ---- Helpers ---- */
+function isReadmeSlug(slug) {
+  return slug === "gym-readme" || slug === "readme";
+}
 function slugLabel(slug) {
-  if (slug === "gym-upper") return "Upper Body";
-  if (slug === "gym-core")  return "Core Body";
-  if (slug === "gym-lower") return "Lower Body";
+  if (slug === "gym-upper")  return "Upper Body";
+  if (slug === "gym-core")   return "Core Body";
+  if (slug === "gym-lower")  return "Lower Body";
+  if (slug === "gym-readme") return "READ.ME.";
   return slug;
 }
-
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) =>
     ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])
   );
 }
 
-// ---------- hook into your overlay opening ----------
+/* ---- Boot ---- */
 document.addEventListener("DOMContentLoaded", () => {
-  const overlay = document.getElementById("gymOverlay");
-  const overlayBody = document.getElementById("overlayBody");
-  const backBtn = document.getElementById("overlayBack");
+  const overlay    = document.getElementById("gymOverlay");
+  const overlayBody= document.getElementById("overlayBody");
+  const backBtn    = document.getElementById("overlayBack");
 
-
-   if (!overlay || !overlayBody || !backBtn) {
+  if (!overlay || !overlayBody || !backBtn) {
     console.error("GYM overlay markup missing (gymOverlay/overlayBody/overlayBack).");
     return;
   }
 
-  // ⛑️ defensive: start closed every time we load this page
   overlay.style.display = "none";
   overlayBody.innerHTML = "";
 
-  const targets = { upper: "gym-upper", core: "gym-core", lower: "gym-lower" };
+  const targets = { upper: "gym-upper", core: "gym-core", lower: "gym-lower", readme: "gym-readme" };
 
   document.querySelectorAll(".gym-card").forEach(card => {
     card.addEventListener("click", async () => {
-      const tag = card.dataset.target;
+      const tag  = card.dataset.target;
       const slug = targets[tag];
-
-      if (!slug) {
-        overlayBody.innerHTML = `<h2 class="overlay-title">READ.ME.</h2><p>Notes and instructions go here.</p>`;
-        overlay.style.display = "flex";
-        return;
-      }
+      if (!slug) return;
 
       try {
         await loadGym(slug);
-        overlay.style.display = "flex";        // ✅ only open on click
+        overlay.style.display = "flex";
         renderGymTable(overlayBody, slug);
       } catch (err) {
         overlay.style.display = "flex";
@@ -347,7 +314,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   backBtn.addEventListener("click", () => {
-    overlay.style.display = "none";            // ✅ close when Back is tapped
-    overlayBody.innerHTML = "";                // optional: clear content
+    overlay.style.display = "none";
+    overlayBody.innerHTML = "";
   });
 });

@@ -349,3 +349,17 @@ tbody.dragging, tbody.dragging * { user-select: none !important; -webkit-user-se
 }
 .row-del:hover { background: rgba(255,255,255,0.08); opacity: 1; }
 .row-del:active { transform: scale(0.96); }
+
+
+/* Single-column readme table */
+.workout-table.readme td:nth-child(2),
+.workout-table.readme th:nth-child(2) {
+  width: 100%;
+}
+
+.workout-table.readme .cell-input {
+  width: 100%;
+}
+
+/* Keep thin columns narrow */
+.workout-table .thin { width: 44px; text-align: center; }
