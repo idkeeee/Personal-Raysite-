@@ -331,3 +331,21 @@ tbody.dragging, tbody.dragging * { user-select: none !important; -webkit-user-se
   backdrop-filter: saturate(1.1);
   z-index: 9999;
 }
+
+
+
+.gym-table .thin,
+.workout-table .thin { width: 44px; text-align: center; }
+
+.row-del {
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: transparent;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font: inherit;
+  line-height: 1;
+  opacity: 0.9;
+}
+.row-del:hover { background: rgba(255,255,255,0.08); opacity: 1; }
+.row-del:active { transform: scale(0.96); }

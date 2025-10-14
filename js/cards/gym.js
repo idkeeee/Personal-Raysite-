@@ -57,6 +57,7 @@ function renderGymTable(container, slug) {
               <th style="width:280px">workout</th>
               <th style="width:280px">intensity</th>
               <th style="width:280px">amount</th>
+              <th class="thin">Del</th>  <!-- NEW -->
             </tr>
           </thead>
           <tbody></tbody>
@@ -69,18 +70,22 @@ function renderGymTable(container, slug) {
   const tbody = container.querySelector("tbody");
   const addBtn = container.querySelector(".add-row-btn");
 
-  function rowHTML(row, idx) {
-  const w = row.workout ?? "";
-  const i = row.intensity ?? "";
-  const a = row.amount ?? "";
-  return `
-    <tr data-idx="${idx}">
-      <td class="dragcol"><span class="drag-handle" title="Drag">≡</span></td>
-      <td><input class="cell-input" data-field="workout"  value="${escapeHtml(w)}"  placeholder="Bench press, squats..." /></td>
-      <td><input class="cell-input" data-field="intensity" value="${escapeHtml(i)}"  placeholder="2s up, 5s down / RPE..." /></td>
-      <td><input class="cell-input" data-field="amount"    value="${escapeHtml(a)}"  placeholder="5x5, 12 reps, 40kg..." /></td>
-    </tr>
-  `;
+  function rowHTML(row, idx) 
+  {
+    const w = row.workout ?? "";
+    const i = row.intensity ?? "";
+    const a = row.amount ?? "";
+    return `
+      <tr data-idx="${idx}">
+        <td class="dragcol"><span class="drag-handle" title="Drag">≡</span></td>
+        <td><input class="cell-input" data-field="workout"  value="${escapeHtml(w)}"  placeholder="Bench press, squats..." /></td>
+        <td><input class="cell-input" data-field="intensity" value="${escapeHtml(i)}"  placeholder="2s up, 5s down / RPE..." /></td>
+        <td><input class="cell-input" data-field="amount"    value="${escapeHtml(a)}"  placeholder="5x5, 12 reps, 40kg..." /></td>
+        <td class="thin">
+          <button class="row-del" type="button" aria-label="Delete row">✕</button>
+        </td>
+      </tr>
+    `;
   } 
 
   function renderBody() {
@@ -252,6 +257,28 @@ tbody.addEventListener("pointercancel", () => {
     S.rows[idx] = { ...S.rows[idx], [field]: input.value };
     scheduleSave(slug);
   });
+
+
+  // delete a row (works for Upper/Core/Lower because it uses current slug/state)
+  tbody.addEventListener("click", (e) => 
+  {
+    const btn = e.target.closest(".row-del");
+    if (!btn) return;
+
+    const tr = btn.closest("tr");
+    const idx = Number(tr.dataset.idx);
+
+    S.rows.splice(idx, 1);
+
+    // keep at least one empty row if you like (optional)
+    if (S.rows.length === 0) {
+      S.rows.push({ workout: "", intensity: "", amount: "" });
+    }
+
+    renderBody();       // re-draw the tbody
+    scheduleSave(slug); // persist to Supabase (debounced)
+  });
+
 
   // add row (we’ll make delete later if you want)
   addBtn.addEventListener("click", () => {
