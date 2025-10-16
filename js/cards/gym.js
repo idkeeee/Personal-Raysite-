@@ -14,8 +14,8 @@ const SUPABASE_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXV
 
 async function sbFetch(path, options = {}) {
   const headers = {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    apikey: SUPABASE_ANON,
+    Authorization: `Bearer ${SUPABASE_ANON}`,
     Accept: "application/json",
     ...options.headers,
   };
@@ -113,27 +113,10 @@ const gymState = {
   "gym-readme": { rows: [], saveTimer: null }, // single-column
 };
 
-/* ---- Data I/O ---- */
-async function loadGym(slug) {
-  const res = await sbFetch(`/rest/v1/gym_logs?slug=eq.${slug}&select=data`);
-  const rows = (await res.json())?.[0]?.data ?? [];
-  gymState[slug].rows = rows;
-  return rows;
-}
-
 function scheduleSave(slug) {
   const S = gymState[slug];
   clearTimeout(S.saveTimer);
   S.saveTimer = setTimeout(() => saveGym(slug), 300);
-}
-
-async function saveGym(slug) {
-  const S = gymState[slug];
-  await sbFetch(`/rest/v1/gym_logs?slug=eq.${slug}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-    body: JSON.stringify({ data: S.rows }),
-  });
 }
 
 /* ---- Render into overlay ---- */
