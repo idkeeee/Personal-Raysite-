@@ -9,8 +9,8 @@
 /* ---- Supabase helpers (reuse your existing values) ----
    If you already define these elsewhere, you may delete this block
    or let the existing globals (window.SUPABASE_URL/ANON) override. */
-const SUPABASE_URL  = window.SUPABASE_URL  ?? "https://YOUR-PROJECT.supabase.co";
-const SUPABASE_ANON = window.SUPABASE_ANON ?? "YOUR-ANON-KEY";
+const SUPABASE_URL  = window.SUPABASE_URL  ?? "https://ntlsmrzpatcultvsrpll.supabase.co";
+const SUPABASE_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
 
 async function sbFetch(path, options = {}) {
   const headers = {
