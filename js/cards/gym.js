@@ -48,6 +48,63 @@ async function sbFetch(path, options = {}) {
   }
 }
 
+
+// ---------- local mirror helpers ----------
+function cacheKey(slug) { return `gym:${slug}`; }
+
+function saveLocal(slug, rows) {
+  try { localStorage.setItem(cacheKey(slug), JSON.stringify(rows)); } catch {}
+}
+
+function loadLocal(slug) {
+  try {
+    const s = localStorage.getItem(cacheKey(slug));
+    return s ? JSON.parse(s) : null;
+  } catch { return null; }
+}
+
+// ---------- Data I/O (replace your load/save) ----------
+async function loadGym(slug) {
+  try {
+    const res = await sbFetch(`/rest/v1/gym_logs?slug=eq.${encodeURIComponent(slug)}&select=data`);
+    const rows = (await res.json())?.[0]?.data ?? [];
+    gymState[slug].rows = rows;
+    saveLocal(slug, rows);               // keep a mirror
+    return rows;
+  } catch (err) {
+    // Fallback to local cache so UI still opens
+    const cached = loadLocal(slug);
+    if (cached) {
+      console.warn("Using cached data for", slug, err);
+      gymState[slug].rows = cached;
+      // Surface the error non-blocking in console, not the UI
+      return cached;
+    }
+    // No cache — rethrow so the UI shows the error
+    throw err;
+  }
+}
+
+async function saveGym(slug) {
+  const S = gymState[slug];
+  const body = JSON.stringify({ data: S.rows });
+  try {
+    await sbFetch(`/rest/v1/gym_logs?slug=eq.${encodeURIComponent(slug)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      body,
+    });
+    saveLocal(slug, S.rows);            // update mirror on success
+  } catch (err) {
+    console.error("Save failed:", err);
+    // Optional: queue for retry later if you want
+    throw err;
+  }
+}
+
+
+
+
 /* ---- Per-section state (4 slugs) ---- */
 const gymState = {
   "gym-upper":  { rows: [], saveTimer: null },
@@ -343,59 +400,3 @@ document.addEventListener("DOMContentLoaded", () => {
     overlayBody.innerHTML = "";
   });
 });
-
-
-
-
-// ---------- local mirror helpers ----------
-function cacheKey(slug) { return `gym:${slug}`; }
-
-function saveLocal(slug, rows) {
-  try { localStorage.setItem(cacheKey(slug), JSON.stringify(rows)); } catch {}
-}
-
-function loadLocal(slug) {
-  try {
-    const s = localStorage.getItem(cacheKey(slug));
-    return s ? JSON.parse(s) : null;
-  } catch { return null; }
-}
-
-// ---------- Data I/O (replace your load/save) ----------
-async function loadGym(slug) {
-  try {
-    const res = await sbFetch(`/rest/v1/gym_logs?slug=eq.${encodeURIComponent(slug)}&select=data`);
-    const rows = (await res.json())?.[0]?.data ?? [];
-    gymState[slug].rows = rows;
-    saveLocal(slug, rows);               // keep a mirror
-    return rows;
-  } catch (err) {
-    // Fallback to local cache so UI still opens
-    const cached = loadLocal(slug);
-    if (cached) {
-      console.warn("Using cached data for", slug, err);
-      gymState[slug].rows = cached;
-      // Surface the error non-blocking in console, not the UI
-      return cached;
-    }
-    // No cache — rethrow so the UI shows the error
-    throw err;
-  }
-}
-
-async function saveGym(slug) {
-  const S = gymState[slug];
-  const body = JSON.stringify({ data: S.rows });
-  try {
-    await sbFetch(`/rest/v1/gym_logs?slug=eq.${encodeURIComponent(slug)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-      body,
-    });
-    saveLocal(slug, S.rows);            // update mirror on success
-  } catch (err) {
-    console.error("Save failed:", err);
-    // Optional: queue for retry later if you want
-    throw err;
-  }
-}
