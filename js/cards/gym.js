@@ -14,13 +14,38 @@ const SUPABASE_ANON = window.SUPABASE_ANON ?? "YOUR-ANON-KEY";
 
 async function sbFetch(path, options = {}) {
   const headers = {
-    apikey: SUPABASE_ANON,
-    Authorization: `Bearer ${SUPABASE_ANON}`,
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    Accept: "application/json",
     ...options.headers,
   };
-  const res = await fetch(`${SUPABASE_URL}${path}`, { ...options, headers });
-  if (!res.ok) throw new Error(await res.text());
-  return res;
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}${path}`, {
+      ...options,
+      mode: "cors",
+      headers,
+    });
+
+    if (!res.ok) {
+      // Try to extract a meaningful message
+      let msg = "";
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        try { msg = (await res.json())?.message || ""; } catch {}
+      }
+      if (!msg) {
+        try { msg = await res.text(); } catch {}
+      }
+      throw new Error(msg || `${res.status} ${res.statusText}`);
+    }
+
+    return res;
+  } catch (e) {
+    // Network, adblock, DNS, etc.
+    console.error("Supabase fetch error:", e);
+    throw new Error(e?.message || "Network error");
+  }
 }
 
 /* ---- Per-section state (4 slugs) ---- */
@@ -318,3 +343,59 @@ document.addEventListener("DOMContentLoaded", () => {
     overlayBody.innerHTML = "";
   });
 });
+
+
+
+
+// ---------- local mirror helpers ----------
+function cacheKey(slug) { return `gym:${slug}`; }
+
+function saveLocal(slug, rows) {
+  try { localStorage.setItem(cacheKey(slug), JSON.stringify(rows)); } catch {}
+}
+
+function loadLocal(slug) {
+  try {
+    const s = localStorage.getItem(cacheKey(slug));
+    return s ? JSON.parse(s) : null;
+  } catch { return null; }
+}
+
+// ---------- Data I/O (replace your load/save) ----------
+async function loadGym(slug) {
+  try {
+    const res = await sbFetch(`/rest/v1/gym_logs?slug=eq.${encodeURIComponent(slug)}&select=data`);
+    const rows = (await res.json())?.[0]?.data ?? [];
+    gymState[slug].rows = rows;
+    saveLocal(slug, rows);               // keep a mirror
+    return rows;
+  } catch (err) {
+    // Fallback to local cache so UI still opens
+    const cached = loadLocal(slug);
+    if (cached) {
+      console.warn("Using cached data for", slug, err);
+      gymState[slug].rows = cached;
+      // Surface the error non-blocking in console, not the UI
+      return cached;
+    }
+    // No cache — rethrow so the UI shows the error
+    throw err;
+  }
+}
+
+async function saveGym(slug) {
+  const S = gymState[slug];
+  const body = JSON.stringify({ data: S.rows });
+  try {
+    await sbFetch(`/rest/v1/gym_logs?slug=eq.${encodeURIComponent(slug)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      body,
+    });
+    saveLocal(slug, S.rows);            // update mirror on success
+  } catch (err) {
+    console.error("Save failed:", err);
+    // Optional: queue for retry later if you want
+    throw err;
+  }
+}
