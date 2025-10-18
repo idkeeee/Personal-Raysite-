@@ -247,6 +247,9 @@ taskBody.addEventListener("pointermove", (e) => {
 );
 
 function startDrag(e, tr, handle) {
+   // prevent iOS selection / keyboard while dragging
+  window.getSelection?.().removeAllRanges?.();
+  document.activeElement?.blur?.();
   draggingTr = tr;
 
   ghostEl = makeGhost(tr);
