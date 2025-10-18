@@ -1,0 +1,62 @@
+.todo-wrap{
+  --panel:#1b1a1d; --ink:#e6e7c0; --sub:#9fe96a; --line:#2f2d33;
+  --accent:#ffd66b; --danger:#ff6b6b;
+  display:grid; gap:18px; grid-template-columns: 1fr; max-width:1100px;
+  margin:20px auto; padding:0 16px 24px;
+}
+
+.todo-card{ background:var(--panel); color:var(--ink); border-radius:16px;
+  box-shadow:0 10px 40px rgba(0,0,0,.35); overflow:hidden; }
+.todo-card header{ display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px; border-bottom:1px solid var(--line); }
+.todo-card h2{ margin:0; font-size:20px; }
+
+.add-btn{
+  border:1px solid #555; background:transparent; color:var(--ink);
+  padding:8px 12px; border-radius:10px; cursor:pointer;
+}
+.add-btn:hover{ background:#27252b; }
+
+.table-wrap{ overflow:auto; }
+.todo-table{ width:100%; border-collapse:collapse; }
+.todo-table thead th{ position:sticky; top:0; background:#212025; }
+.todo-table th, .todo-table td{
+  padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:middle;
+}
+.todo-table .thin{ width:56px; text-align:center; }
+
+.task-input{
+  width:100%; padding:8px 10px; background:#232126; border:1px solid #3b3940;
+  border-radius:10px; color:var(--sub); font-weight:800; outline:none;
+}
+
+.drag-handle{ cursor:grab; user-select:none; opacity:.85; }
+.drag-handle:active{ cursor:grabbing; }
+
+.days-pill{
+  display:inline-block; min-width:42px; padding:6px 8px; border-radius:999px;
+  background:#2a2930; border:1px solid #3b3940; font-weight:800;
+}
+
+.btn{
+  border:1px solid #555; background:transparent; color:var(--ink);
+  padding:6px 10px; border-radius:10px; cursor:pointer;
+}
+.btn:hover{ background:#27252b; }
+.btn.danger{ border-color:#ff9a9a80; }
+.btn.danger:hover{ background:#3a2527; }
+.btn.ok{ border-color:#8fffcd80; }
+.btn.ok:hover{ background:#23332b; }
+
+.drag-ghost{
+  position:fixed; pointer-events:none; opacity:.92; background:#232126;
+  border:1px dashed #555; border-radius:12px; padding:8px 10px;
+  box-shadow:0 10px 26px rgba(0,0,0,.45); z-index:9999;
+}
+
+/* iOS long-press niceties while dragging */
+.drag-lock, .drag-lock *{
+  -webkit-user-select: none !important; user-select: none !important;
+  -webkit-touch-callout: none !important; touch-action: none !important;
+}
+.drag-lock .task-input{ pointer-events:none; }
