@@ -14,7 +14,7 @@
         <link rel="stylesheet" href="css/sidebar.css?v=3">
         <link rel="stylesheet" href="css/general_styles.css?v=3">
         <link rel="stylesheet" href="css/cards.css?v=3">
-        <link rel="stylesheet" href="css/cards/gym.css?v=4">
+        <link rel="stylesheet" href="css/cards/spin_the_wheel.css?v=4">
     </head>
 
     <body>
@@ -32,7 +32,36 @@
 
 
 
-        <!-- Main code HERE -->
+        <section class="wheel-wrap">
+            <div class="wheel-panel">
+                <div class="wheel-stage">
+                <canvas id="wheelCanvas" width="520" height="520"></canvas>
+                <!-- pointer -->
+                <div class="wheel-pointer" aria-hidden="true"></div>
+                <!-- center spin button -->
+                <button id="spinBtn" class="spin-btn" type="button">SPIN</button>
+                </div>
+
+                <div class="result" id="wheelResult" aria-live="polite"></div>
+            </div>
+
+            <aside class="wheel-editor">
+                <h2>Entries</h2>
+                <form id="addForm" class="add-form">
+                <input id="addInput" type="text" placeholder="Type an entry…" />
+                <button class="add-btn" type="submit">＋ Add</button>
+                </form>
+
+                <ul id="itemList" class="item-list"><!-- rows populate here --></ul>
+
+                <div class="editor-actions">
+                <button id="shuffleBtn" type="button" class="ghost">Shuffle</button>
+                <button id="clearBtn"   type="button" class="danger">Clear All</button>
+                </div>
+                <p class="hint">Items are saved automatically to this device.</p>
+            </aside>
+            </section>
+
 
 
 
