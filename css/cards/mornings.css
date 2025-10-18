@@ -375,3 +375,11 @@
   .task-td { padding-right: 56px; }     /* space so text doesn't sit under the button */
   .task-table-container { padding-right: 16px; } /* reduce overall gutter on phones */
 }
+
+
+
+.drag-handle { cursor: grab; opacity: .85; }
+.drag-handle:active { cursor: grabbing; }
+
+/* While dragging, lock scroll (JS toggles this class) */
+.drag-lock, .drag-lock body { overscroll-behavior: none; touch-action: none; }
