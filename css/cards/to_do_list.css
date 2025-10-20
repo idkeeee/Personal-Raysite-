@@ -60,3 +60,26 @@
   -webkit-touch-callout: none !important; touch-action: none !important;
 }
 .drag-lock .task-input{ pointer-events:none; }
+
+
+/* Allow task inputs to expand and wrap inside table */
+.task-input {
+  width: 100%;    /* Ensure input stretches to available space */
+  white-space: nowrap; /* Prevent input from wrapping */
+  overflow: hidden; /* Hide overflowing text */
+  text-overflow: ellipsis; /* Show "..." when text is too long */
+  word-wrap: break-word; /* Make sure long words break correctly */
+}
+
+.todo-table td {
+  width: auto;  /* Allow columns to grow depending on content */
+  word-wrap: break-word;  /* Ensure long task names break within the cell */
+}
+
+/* Adjust input fields for smaller screens (flexible text display) */
+@media (max-width: 768px) {
+  .task-input {
+    font-size: 14px;  /* Smaller text on mobile */
+    min-width: 120px; /* Ensure minimum width */
+  }
+}
