@@ -83,3 +83,53 @@
     min-width: 120px; /* Ensure minimum width */
   }
 }
+
+/* Let the task cell flex wider */
+.todo-table td:nth-child(2) {
+  width: 100%;
+}
+
+/* Make the whole row use flex-like spacing */
+.todo-table tr {
+  display: grid;
+  grid-template-columns: 36px 1fr 60px 52px 52px; /* handle | task | days | ⚡ | ✕ */
+  align-items: center;
+}
+
+/* Wider task inputs — show more text before ellipsis */
+.task-input {
+  width: 100%;
+  min-width: 160px;
+  font-size: 15px;
+  padding: 8px 12px;
+  background: #232126;
+  border: 1px solid #3b3940;
+  border-radius: 10px;
+  color: var(--sub);
+  font-weight: 800;
+  outline: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Make pills & buttons a bit tighter so task text gets more space */
+.days-pill {
+  padding: 5px 6px;
+  font-size: 14px;
+  min-width: 38px;
+}
+.btn {
+  padding: 5px 8px;
+}
+
+/* On mobile, stretch the task input even more */
+@media (max-width: 768px) {
+  .todo-table tr {
+    grid-template-columns: 32px 1fr 50px 46px 46px;
+  }
+  .task-input {
+    font-size: 14px;
+    min-width: 200px; /* show more text before cutoff */
+  }
+}
