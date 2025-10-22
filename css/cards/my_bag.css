@@ -1,0 +1,46 @@
+.bag-wrap{
+  --panel:#1b1a1d; --ink:#e6e7c0; --line:#2f2d33; --glow:#9fe96a; --off:#3a3840;
+  max-width:1100px; margin:20px auto; padding:0 16px 24px;
+}
+.bag-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.bag-head h2{ margin:0; font-size:22px; color:var(--ink); }
+
+.bag-grid{
+  display:grid; gap:12px;
+  /* iPhone: 2 columns; ensure 3 rows are visible without scrolling much */
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (min-width: 900px){
+  /* desktop: nice dense grid */
+  .bag-grid{ grid-template-columns: repeat(6, minmax(120px,1fr)); }
+}
+
+.bag-tile{
+  user-select:none; cursor:pointer; text-align:center;
+  background:var(--panel); color:var(--ink);
+  border:1px solid var(--off); border-radius:16px;
+  padding:18px 10px; min-height:110px;
+  display:flex; align-items:center; justify-content:center;
+  transition: box-shadow .2s ease, border-color .2s ease, transform .08s ease;
+  box-shadow: 0 10px 28px rgba(0,0,0,.25);
+  word-break: break-word;
+}
+.bag-tile:active{ transform: scale(.98); }
+
+.bag-tile.active{
+  border-color: color-mix(in oklab, var(--glow) 85%, #fff 15%);
+  box-shadow: 0 0 0 2px #000 inset, 0 0 22px 4px color-mix(in oklab, var(--glow) 60%, #fff 40%);
+}
+
+.bag-add{
+  border:1px dashed #5a5860;
+  color:#cfd0b3;
+}
+.bag-add:hover{ background:#232126; }
+
+.bag-name{
+  display:block; font-weight:800; font-size:16px; line-height:1.2;
+}
+
+/* small helper text */
+.bag-hint{ opacity:.65; font-size:12px; margin-top:10px; }
