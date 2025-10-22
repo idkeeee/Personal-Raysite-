@@ -44,3 +44,42 @@
 
 /* small helper text */
 .bag-hint{ opacity:.65; font-size:12px; margin-top:10px; }
+
+
+/* ===== Modal (shared site look) ===== */
+.bag-modal {
+  position: fixed; inset: 0; display: none; place-items: center;
+  background: rgba(0,0,0,.45); z-index: 1000;
+}
+.bag-modal.open { display: grid; }
+
+.bag-modal .dialog {
+  width: min(92vw, 420px);
+  background: #1b1a1d; color: #e6e7c0; border: 1px solid #2f2d33;
+  border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.55);
+  padding: 16px;
+}
+.dialog h3 { margin: 0 0 10px; font-size: 18px; }
+
+.dialog .field { display: grid; gap: 8px; margin: 10px 0 14px; }
+.dialog input[type="text"]{
+  width: 100%; padding: 10px 12px; border-radius: 12px;
+  background:#232126; border:1px solid #3b3940; color:#e6e7c0; font-weight:800;
+  outline: none;
+}
+
+.dialog .actions { display: flex; gap: 10px; justify-content: flex-end; }
+.dialog .btn {
+  border:1px solid #555; background: transparent; color:#e6e7c0;
+  padding: 8px 12px; border-radius: 10px; cursor: pointer;
+}
+.dialog .btn:hover { background:#27252b; }
+.dialog .btn.primary { border-color:#9fe96a80; }
+.dialog .btn.danger  { border-color:#ff9a9a80; color:#ffd3d3; }
+
+body.modal-open { overflow: hidden; }
+
+/* prevent text-selection during long-press */
+.bag-tile, .bag-tile *{
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
