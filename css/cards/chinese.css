@@ -153,17 +153,20 @@
 .zh-card { position: relative; }
 
 /* the curtain itself (doesn't eat clicks except the handle) */
-.peek-curtain{
+.peek-curtain {
   position: absolute;
-  top: 0; bottom: 0; left: 0;
-  width: 0;                       /* JS controls width */
-  background:
-    linear-gradient(90deg, rgba(18,18,20,.92), rgba(18,18,20,.88) 30%, rgba(18,18,20,.0));
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0;                       /* controlled by JS */
+  background: #121214;            /* fully opaque solid color */
   border-top-left-radius: 16px;
   border-bottom-left-radius: 16px;
-  pointer-events: none;           /* allow clicks through */
+  pointer-events: none;           /* lets clicks through, only handle is draggable */
   z-index: 3;
+  transition: width 0.1s ease-out;
 }
+
 
 /* the draggable handle (is the only interactive part) */
 .peek-handle{
