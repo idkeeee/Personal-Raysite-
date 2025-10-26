@@ -132,3 +132,18 @@
 
 /* just to keep the icon sized nicely like the other pills */
 #btnVoice { font-size: 16px; line-height: 1; }
+
+
+/* big voice prompt */
+.zh-card .voice {
+  display: grid; place-items: center; width: 100%;
+}
+.zh-card .big-voice {
+  font-size: clamp(56px, 10vw, 110px);
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  filter: drop-shadow(0 6px 20px rgba(0,0,0,.4));
+  transition: transform .06s ease;
+}
+.zh-card .big-voice:active { transform: scale(.96); }

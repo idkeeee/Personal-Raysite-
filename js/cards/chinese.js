@@ -130,8 +130,10 @@ function subscribeRealtime(){
 /* ===== helpers ===== */
 function enabledModes(){
   const pool = ["hanzi","pinyin","yisi"].filter(m => selected.has(m));
+  if (voiceEnabled) pool.push("voice");
   return pool.length ? pool : ["hanzi"]; // never empty
 }
+
 function pickPromptRandom(){
   const pool = enabledModes();
   currentPrompt = pool[Math.floor(Math.random()*pool.length)];
@@ -145,16 +147,33 @@ function renderCard(){
     if (selected.has("pinyin")) parts.push(`<div class="pinyin">${escapeHtml(w.pinyin)}</div>`);
     if (selected.has("yisi"))   parts.push(`<div class="yisi">${escapeHtml(w.yisi)}</div>`);
   } else {
-    // single prompt only
-    const key = currentPrompt;
-    const cls = key;
-    const val = w[key];
-    parts.push(`<div class="${cls}">${escapeHtml(val ?? "—")}</div>`);
+    if (currentPrompt === "voice") {
+      parts.push(`
+        <div class="voice" aria-label="Tap to hear a random word">
+          <span class="big-voice" id="bigVoice">🔊</span>
+        </div>
+      `);
+    } else {
+      const key = currentPrompt;
+      parts.push(`<div class="${key}">${escapeHtml(w[key] ?? "—")}</div>`);
+    }
   }
 
   cardEl.innerHTML = parts.length
     ? `<div class="zh-lines">${parts.join("")}</div>`
     : `<div class="yisi" style="opacity:.6">Select Hanzi / Pinyin / Yìsi to display</div>`;
+
+  // Hook up the big speaker (only in voice prompt mode)
+  if (!revealAll && currentPrompt === "voice") {
+    const btn = document.getElementById("bigVoice");
+    btn?.addEventListener("click", () => {
+      if (!words.length) return;
+      // pick a random word, lock it as the current, then speak it
+      index = Math.floor(Math.random() * words.length);
+      const ww = words[index];
+      speakChinese(ww.hanzi);
+    });
+  }
 }
 function renderDict(){
   dictList.innerHTML = "";
