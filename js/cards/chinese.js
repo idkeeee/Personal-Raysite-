@@ -1,4 +1,4 @@
-/* ===== Supabase (reuse your global creds if present) ===== */
+/* ===== Supabase ===== */
 const SB_URL  = window.SUPABASE_URL  ?? "https://ntlsmrzpatcultvsrpll.supabase.co";
 const SB_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
 const sb = window.supabase.createClient(SB_URL, SB_ANON);
@@ -23,7 +23,13 @@ const SAMPLE_WORDS = [
 let words = readLocal() || [...SAMPLE_WORDS];
 let index = 0;
 let lastVersion = 0;
-const selected = new Set(["hanzi","pinyin","yisi"]); // multi-select on
+
+/* multi-select toggles define the pool */
+const selected = new Set(["hanzi","pinyin","yisi"]);
+
+/* training presentation state */
+let revealAll = false;              // false = show one field; true = show all selected
+let currentPrompt = "hanzi";        // which single field is showing when revealAll=false
 
 /* DOM */
 const cardEl    = document.getElementById("zhCard");
@@ -35,6 +41,8 @@ const inPinyin  = document.getElementById("inPinyin");
 const inYisi    = document.getElementById("inYisi");
 const mSave     = document.getElementById("mSave");
 const mCancel   = document.getElementById("mCancel");
+const dictSection = document.querySelector(".zh-dict");
+const toggleDictBtn = document.getElementById("toggleDictBtn");
 
 /* ===== Remote I/O ===== */
 async function loadRemote(){
@@ -77,19 +85,35 @@ function subscribeRealtime(){
   window.addEventListener("beforeunload", () => sb.removeChannel(ch));
 }
 
-/* ===== Renderers ===== */
+/* ===== helpers ===== */
+function enabledModes(){
+  const pool = ["hanzi","pinyin","yisi"].filter(m => selected.has(m));
+  return pool.length ? pool : ["hanzi"]; // never empty
+}
+function pickPromptRandom(){
+  const pool = enabledModes();
+  currentPrompt = pool[Math.floor(Math.random()*pool.length)];
+}
 function renderCard(){
   const w = words[index] ?? {hanzi:"—", pinyin:"—", yisi:"—"};
   const parts = [];
-  if (selected.has("hanzi"))  parts.push(`<div class="hanzi">${escapeHtml(w.hanzi)}</div>`);
-  if (selected.has("pinyin")) parts.push(`<div class="pinyin">${escapeHtml(w.pinyin)}</div>`);
-  if (selected.has("yisi"))   parts.push(`<div class="yisi">${escapeHtml(w.yisi)}</div>`);
+
+  if (revealAll) {
+    if (selected.has("hanzi"))  parts.push(`<div class="hanzi">${escapeHtml(w.hanzi)}</div>`);
+    if (selected.has("pinyin")) parts.push(`<div class="pinyin">${escapeHtml(w.pinyin)}</div>`);
+    if (selected.has("yisi"))   parts.push(`<div class="yisi">${escapeHtml(w.yisi)}</div>`);
+  } else {
+    // single prompt only
+    const key = currentPrompt;
+    const cls = key;
+    const val = w[key];
+    parts.push(`<div class="${cls}">${escapeHtml(val ?? "—")}</div>`);
+  }
 
   cardEl.innerHTML = parts.length
     ? `<div class="zh-lines">${parts.join("")}</div>`
     : `<div class="yisi" style="opacity:.6">Select Hanzi / Pinyin / Yìsi to display</div>`;
 }
-
 function renderDict(){
   dictList.innerHTML = "";
   words.forEach((w, i) => {
@@ -104,36 +128,60 @@ function renderDict(){
       <button class="zh-btn ghost" data-i="${i}">View</button>
       <button class="zh-btn" data-edit="${i}">Edit</button>
     `;
-    li.querySelector('[data-i]').addEventListener("click", () => { index = i; renderCard(); scrollIntoViewCard(); });
+    li.querySelector('[data-i]').addEventListener("click", () => {
+      index = i; revealAll = false; pickPromptRandom(); renderCard(); scrollIntoViewCard();
+    });
     li.querySelector('[data-edit]').addEventListener("click", () => openAddModal("edit", i));
     dictList.appendChild(li);
   });
 }
 
-/* ===== Controls (placeholders) ===== */
+/* ===== controls ===== */
 document.getElementById("btnPrev").addEventListener("click", () => {
   if (!words.length) return;
   index = (index - 1 + words.length) % words.length;
+  revealAll = false;        // arrive hidden
+  pickPromptRandom();       // choose one of enabled modes
   renderCard();
 });
 document.getElementById("btnNext").addEventListener("click", () => {
   if (!words.length) return;
   index = (index + 1) % words.length;
+  revealAll = false;
+  pickPromptRandom();
   renderCard();
 });
-document.getElementById("btnReveal").addEventListener("click", () => flashCard());
+document.getElementById("btnReveal").addEventListener("click", () => {
+  revealAll = true;
+  renderCard();
+});
 document.getElementById("btnShuffle").addEventListener("click", () => {
   shuffle(words);
   index = 0;
+  revealAll = false;
+  pickPromptRandom();
   renderCard(); renderDict(); scheduleSave();
 });
 
-/* ===== Toggles (multi-select) ===== */
+/* hide/show dictionary */
+toggleDictBtn.addEventListener("click", () => {
+  dictSection.classList.toggle("hidden");
+  toggleDictBtn.textContent = dictSection.classList.contains("hidden") ? "Show" : "Hide";
+});
+
+/* ===== toggles (multi-select pool) ===== */
 document.querySelectorAll(".zh-toggle").forEach(btn => {
   const m = btn.dataset.mode;
   btn.addEventListener("click", () => {
     if (selected.has(m)) selected.delete(m); else selected.add(m);
     btn.classList.toggle("active", selected.has(m));
+    // if pool changed and we are in prompt-only mode, ensure prompt is valid
+    if (!revealAll) {
+      const pool = enabledModes();
+      if (!pool.includes(currentPrompt)) {
+        pickPromptRandom();
+      }
+    }
     renderCard();
   });
 });
@@ -167,8 +215,7 @@ function saveWord(mode, idx=null){
   const hanzi  = inHanzi.value.trim();
   const pinyin = inPinyin.value.trim();
   const yisi   = inYisi.value.trim();
-  // strict validation: all three required
-  if (!hanzi || !pinyin || !yisi) { pulseInputs(); return; }
+  if (!hanzi || !pinyin || !yisi) { pulseInputs(); return; } // strict require all
 
   if (mode === "create") {
     words.push({ hanzi, pinyin, yisi });
@@ -177,6 +224,8 @@ function saveWord(mode, idx=null){
     words[idx] = { hanzi, pinyin, yisi };
     index = idx;
   }
+  revealAll = false;        // after add/edit, go to prompt mode
+  pickPromptRandom();
   renderCard(); renderDict();
   scheduleSave();
   closeModal();
@@ -185,7 +234,6 @@ function saveWord(mode, idx=null){
 /* ===== visuals/helpers ===== */
 function flashCard(){
   cardEl.style.transition = "background-color .25s";
-  const old = cardEl.style.backgroundColor;
   cardEl.style.backgroundColor = "#242327";
   setTimeout(()=> { cardEl.style.backgroundColor = ""; }, 180);
 }
@@ -203,6 +251,7 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<"
 /* ===== boot ===== */
 (async function init(){
   try { await loadRemote(); } catch(e){ console.warn("zh load failed, using local:", e.message); }
+  pickPromptRandom();     // choose an initial single field to show
   renderCard();
   renderDict();
   subscribeRealtime();
