@@ -147,3 +147,46 @@
   transition: transform .06s ease;
 }
 .zh-card .big-voice:active { transform: scale(.96); }
+
+
+/* card becomes positioning context */
+.zh-card { position: relative; }
+
+/* the curtain itself (doesn't eat clicks except the handle) */
+.peek-curtain{
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 0;                       /* JS controls width */
+  background:
+    linear-gradient(90deg, rgba(18,18,20,.92), rgba(18,18,20,.88) 30%, rgba(18,18,20,.0));
+  border-top-left-radius: 16px;
+  border-bottom-left-radius: 16px;
+  pointer-events: none;           /* allow clicks through */
+  z-index: 3;
+}
+
+/* the draggable handle (is the only interactive part) */
+.peek-handle{
+  position: absolute; top: 6px; bottom: 6px; right: -10px;
+  width: 18px; border-radius: 10px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid #3b3940;
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+  cursor: ew-resize;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: auto;           /* handle is clickable/draggable */
+  z-index: 4;
+}
+.peek-handle:after{
+  content:"";
+  width: 6px; height: 22px;
+  border-left: 2px solid rgba(230,231,192,.8);
+  border-right: 2px solid rgba(230,231,192,.8);
+  border-radius: 2px;
+  opacity: .7;
+}
+
+@media (max-width: 640px){
+  .peek-handle{ right: -12px; width: 22px; }
+  .peek-handle:after{ height: 26px; }
+}

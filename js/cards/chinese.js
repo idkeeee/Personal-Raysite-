@@ -127,6 +127,67 @@ function subscribeRealtime(){
   window.addEventListener("beforeunload", () => sb.removeChannel(ch));
 }
 
+
+/* ===== Curtain (drag-to-cover) ===== */
+const CURTAIN_KEY = "zh.curtain.pct";   // 0..1 persisted
+let curtainPct = Number(localStorage.getItem(CURTAIN_KEY) || 0); // default 0 = no cover
+
+function ensureCurtain(){
+  // create once
+  let curtain = cardEl.querySelector(".peek-curtain");
+  if (!curtain){
+    curtain = document.createElement("div");
+    curtain.className = "peek-curtain";
+    const handle = document.createElement("div");
+    handle.className = "peek-handle";
+    curtain.appendChild(handle);
+    cardEl.appendChild(curtain);
+
+    // drag logic (pointer events)
+    let startX=0, startW=0;
+    const onDown = (e)=>{
+      startX = e.clientX;
+      startW = curtain.getBoundingClientRect().width;
+      handle.setPointerCapture?.(e.pointerId);
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp, { once:true });
+    };
+    const onMove = (e)=>{
+      const dx = e.clientX - startX;
+      const cardRect = cardEl.getBoundingClientRect();
+      let w = Math.max(0, Math.min(cardRect.width, startW + dx));
+      curtain.style.width = `${w}px`;
+      curtainPct = cardRect.width ? (w / cardRect.width) : 0;
+    };
+    const onUp = ()=>{
+      window.removeEventListener("pointermove", onMove);
+      localStorage.setItem(CURTAIN_KEY, String(curtainPct));
+    };
+    handle.addEventListener("pointerdown", onDown);
+
+    // double-click handle to reset
+    handle.addEventListener("dblclick", ()=> {
+      curtainPct = 0; curtain.style.width = "0px";
+      localStorage.setItem(CURTAIN_KEY, "0");
+    });
+  }
+
+  // apply persisted width
+  const rect = cardEl.getBoundingClientRect();
+  curtain.style.width = `${Math.max(0, Math.min(rect.width, rect.width * curtainPct))}px`;
+}
+
+// keep width consistent on resize
+window.addEventListener("resize", ()=>{
+  if (!cardEl) return;
+  const curtain = cardEl.querySelector(".peek-curtain");
+  if (!curtain) return;
+  const rect = cardEl.getBoundingClientRect();
+  curtain.style.width = `${Math.max(0, Math.min(rect.width, rect.width * curtainPct))}px`;
+});
+
+
+
 /* ===== helpers ===== */
 function enabledModes(){
   const pool = ["hanzi","pinyin","yisi"].filter(m => selected.has(m));
@@ -159,21 +220,24 @@ function renderCard(){
     }
   }
 
-  cardEl.innerHTML = parts.length
+    cardEl.innerHTML = parts.length
     ? `<div class="zh-lines">${parts.join("")}</div>`
     : `<div class="yisi" style="opacity:.6">Select Hanzi / Pinyin / Yìsi to display</div>`;
 
-  // Hook up the big speaker (only in voice prompt mode)
+  // add/refresh the curtain overlay
+  ensureCurtain();
+
+  // re-hook voice button in voice-prompt mode (if you still use that path)
   if (!revealAll && currentPrompt === "voice") {
     const btn = document.getElementById("bigVoice");
     btn?.addEventListener("click", () => {
       if (!words.length) return;
-      // pick a random word, lock it as the current, then speak it
       index = Math.floor(Math.random() * words.length);
       const ww = words[index];
       speakChinese(ww.hanzi);
     });
   }
+
 }
 function renderDict(){
   dictList.innerHTML = "";
