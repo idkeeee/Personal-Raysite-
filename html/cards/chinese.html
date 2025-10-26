@@ -32,25 +32,53 @@
 
 
 
-
+        <!-- Main CODE AREA -->
         <section class="zh-wrap">
             <header class="zh-head">
                 <h2>Chinese Trainer</h2>
                 <div class="zh-mode">
                 <button class="zh-toggle active" data-mode="hanzi">Hanzi</button>
-                <button class="zh-toggle" data-mode="pinyin">Pinyin</button>
-                <button class="zh-toggle" data-mode="yisi">Yìsi</button>
+                <button class="zh-toggle active" data-mode="pinyin">Pinyin</button>
+                <button class="zh-toggle active" data-mode="yisi">Yìsi</button>
                 </div>
             </header>
 
-            <div class="zh-card" id="zhCard" aria-live="polite">
-                <!-- JS fills content -->
+            <div class="zh-card" id="zhCard" aria-live="polite"></div>
+
+            <!-- controls row -->
+            <div class="zh-ctrl">
+                <button class="zh-btn ghost" id="btnPrev"   type="button">◀ Prev</button>
+                <button class="zh-btn"       id="btnReveal" type="button">Reveal</button>
+                <button class="zh-btn"       id="btnNext"   type="button">Next ▶</button>
+                <button class="zh-btn ghost" id="btnShuffle"type="button">Shuffle</button>
             </div>
 
+            <!-- full-width add -->
             <div class="zh-actions">
-                <button id="zhAddBtn" class="zh-btn ghost" type="button">＋ Add new word</button>
+                <button id="zhAddBtn" class="zh-btn add-wide" type="button">＋ Add new word</button>
             </div>
+
+            <!-- dictionary -->
+            <section class="zh-dict">
+                <h3>Dictionary list</h3>
+                <ul id="dictList" class="dict-list"><!-- rows injected --></ul>
+            </section>
         </section>
+
+        <!-- tiny modal for add word (no Supabase yet) -->
+        <div class="zh-modal" id="zhModal" hidden>
+        <div class="zh-dialog" role="dialog" aria-modal="true" aria-labelledby="zhModalTitle">
+            <h4 id="zhModalTitle">Add new word</h4>
+            <div class="zh-field"><label>Hanzi</label>  <input id="inHanzi"  type="text" placeholder="你好"/></div>
+            <div class="zh-field"><label>Pinyin</label> <input id="inPinyin" type="text" placeholder="nǐ hǎo"/></div>
+            <div class="zh-field"><label>Yìsi</label>   <input id="inYisi"   type="text" placeholder="hello"/></div>
+            <div class="zh-dialog-actions">
+            <button class="zh-btn ghost"   id="mCancel" type="button">Cancel</button>
+            <button class="zh-btn primary" id="mSave"   type="button">Save</button>
+            </div>
+        </div>
+        </div>
+        <!-- MAIN CODE AREA -->
 
 
 
