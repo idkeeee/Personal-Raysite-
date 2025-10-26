@@ -44,6 +44,48 @@ const mCancel   = document.getElementById("mCancel");
 const dictSection = document.querySelector(".zh-dict");
 const toggleDictBtn = document.getElementById("toggleDictBtn");
 
+/* Voice toggle state */
+let voiceEnabled = false;
+const btnVoice = document.getElementById("btnVoice");
+
+/* Click/tap: always speak Hanzi of current card */
+btnVoice.addEventListener("click", () => {
+  const w = words[index];
+  if (w) speakChinese(w.hanzi);
+});
+
+/* Desktop: right-click to toggle active (glow on/off) */
+btnVoice.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+  voiceEnabled = !voiceEnabled;
+  btnVoice.classList.toggle("active", voiceEnabled);
+});
+
+/* Touch: long-press to toggle active */
+(() => {
+  let t=null, sx=0, sy=0;
+  const PRESS=220, MOV=8;
+  btnVoice.addEventListener("pointerdown", (e) => {
+    if (!('ontouchstart' in window || navigator.maxTouchPoints > 0)) return;
+    sx=e.clientX; sy=e.clientY;
+    clearTimeout(t);
+    t = setTimeout(() => {
+      voiceEnabled = !voiceEnabled;
+      btnVoice.classList.toggle("active", voiceEnabled);
+    }, PRESS);
+    btnVoice.setPointerCapture?.(e.pointerId);
+  });
+  btnVoice.addEventListener("pointermove", (e) => {
+    if (!t) return;
+    if (Math.abs(e.clientX-sx)>MOV || Math.abs(e.clientY-sy)>MOV) { clearTimeout(t); t=null; }
+  });
+  ["pointerup","pointercancel","lostpointercapture"].forEach(ev =>
+    btnVoice.addEventListener(ev, () => { if (t){ clearTimeout(t); t=null; } })
+  );
+})();
+
+
+
 /* ===== Remote I/O ===== */
 async function loadRemote(){
   const { data, error } = await sb.from("zh_words").select("data,version").eq("slug", ZH_SLUG).maybeSingle();
@@ -136,6 +178,32 @@ function renderDict(){
   });
 }
 
+
+/* ===== TTS (Web Speech API) ===== */
+let zhVoice = null;
+function pickZhVoice() {
+  const voices = speechSynthesis.getVoices();
+  zhVoice =
+    voices.find(v => /zh[-_]CN/i.test(v.lang)) ||
+    voices.find(v => /^zh/i.test(v.lang)) ||
+    null;
+}
+if ('speechSynthesis' in window) {
+  pickZhVoice();
+  window.speechSynthesis.onvoiceschanged = pickZhVoice;
+}
+function speakChinese(text) {
+  if (!('speechSynthesis' in window) || !text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = (zhVoice && zhVoice.lang) || 'zh-CN';
+  if (zhVoice) u.voice = zhVoice;
+  u.rate = 0.95;
+  u.pitch = 1.0;
+  speechSynthesis.speak(u);
+}
+
+
 /* ===== controls ===== */
 document.getElementById("btnPrev").addEventListener("click", () => {
   if (!words.length) return;
@@ -170,17 +238,14 @@ toggleDictBtn.addEventListener("click", () => {
 });
 
 /* ===== toggles (multi-select pool) ===== */
-document.querySelectorAll(".zh-toggle").forEach(btn => {
+document.querySelectorAll(".zh-toggle:not(#btnVoice)").forEach(btn => {
   const m = btn.dataset.mode;
   btn.addEventListener("click", () => {
     if (selected.has(m)) selected.delete(m); else selected.add(m);
     btn.classList.toggle("active", selected.has(m));
-    // if pool changed and we are in prompt-only mode, ensure prompt is valid
     if (!revealAll) {
       const pool = enabledModes();
-      if (!pool.includes(currentPrompt)) {
-        pickPromptRandom();
-      }
+      if (!pool.includes(currentPrompt)) pickPromptRandom();
     }
     renderCard();
   });

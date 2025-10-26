@@ -129,3 +129,6 @@
 .zh-dict h3 { display:flex; align-items:center; gap:10px; }
 .zh-dict .dict-toggle { margin-left:auto; padding:6px 10px; font-size:13px; border-radius:10px; }
 .zh-dict.hidden .dict-list { display:none; }
+
+/* just to keep the icon sized nicely like the other pills */
+#btnVoice { font-size: 16px; line-height: 1; }

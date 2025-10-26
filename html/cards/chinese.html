@@ -37,9 +37,10 @@
             <header class="zh-head">
                 <h2>Chinese Trainer</h2>
                 <div class="zh-mode">
-                <button class="zh-toggle active" data-mode="hanzi">Hanzi</button>
-                <button class="zh-toggle active" data-mode="pinyin">Pinyin</button>
-                <button class="zh-toggle active" data-mode="yisi">Yìsi</button>
+                    <button class="zh-toggle active" data-mode="hanzi">Hanzi</button>
+                    <button class="zh-toggle active" data-mode="pinyin">Pinyin</button>
+                    <button class="zh-toggle active" data-mode="yisi">Yìsi</button>
+                    <button class="zh-toggle" id="btnVoice" data-mode="voice" title="Speak (tap); long-press/right-click to toggle">🔊</button>
                 </div>
             </header>
 
@@ -68,18 +69,18 @@
             </section>
         </section>
 
-        <!-- tiny modal for add word (no Supabase yet) -->
+        <!-- tiny modal for add word -->
         <div class="zh-modal" id="zhModal" hidden>
-        <div class="zh-dialog" role="dialog" aria-modal="true" aria-labelledby="zhModalTitle">
-            <h4 id="zhModalTitle">Add new word</h4>
-            <div class="zh-field"><label>Hanzi</label>  <input id="inHanzi"  type="text" placeholder="你好"/></div>
-            <div class="zh-field"><label>Pinyin</label> <input id="inPinyin" type="text" placeholder="nǐ hǎo"/></div>
-            <div class="zh-field"><label>Yìsi</label>   <input id="inYisi"   type="text" placeholder="hello"/></div>
+            <div class="zh-dialog" role="dialog" aria-modal="true" aria-labelledby="zhModalTitle">
+                <h4 id="zhModalTitle">Add new word</h4>
+                <div class="zh-field"><label>Hanzi</label>  <input id="inHanzi"  type="text" placeholder="你好"/></div>
+                <div class="zh-field"><label>Pinyin</label> <input id="inPinyin" type="text" placeholder="nǐ hǎo"/></div>
+                <div class="zh-field"><label>Yìsi</label>   <input id="inYisi"   type="text" placeholder="hello"/></div>
             <div class="zh-dialog-actions">
-            <button class="zh-btn ghost"   id="mCancel" type="button">Cancel</button>
-            <button class="zh-btn primary" id="mSave"   type="button">Save</button>
+                <button class="zh-btn ghost"   id="mCancel" type="button">Cancel</button>
+                <button class="zh-btn primary" id="mSave"   type="button">Save</button>
             </div>
-        </div>
+            </div>
         </div>
         <!-- MAIN CODE AREA -->
 
