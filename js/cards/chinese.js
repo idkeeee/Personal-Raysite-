@@ -1,4 +1,17 @@
-// ===== sample state (Supabase later) =====
+/* ===== Supabase (reuse your global creds if present) ===== */
+const SB_URL  = window.SUPABASE_URL  ?? "https://ntlsmrzpatcultvsrpll.supabase.co";
+const SB_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
+const sb = window.supabase.createClient(SB_URL, SB_ANON);
+
+/* one row holding the array of words */
+const ZH_SLUG = "zh-default";
+
+/* local mirror (offline) */
+const CACHE_KEY = "zh.words.v1";
+const readLocal  = () => { try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch { return null; } };
+const writeLocal = (arr) => { try { localStorage.setItem(CACHE_KEY, JSON.stringify(arr)); } catch {} };
+
+/* sample fallback */
 const SAMPLE_WORDS = [
   { hanzi: "你好", pinyin: "nǐ hǎo",     yisi: "hello" },
   { hanzi: "学习", pinyin: "xuéxí",      yisi: "to study" },
@@ -6,13 +19,13 @@ const SAMPLE_WORDS = [
   { hanzi: "谢谢", pinyin: "xièxie",     yisi: "thank you" },
 ];
 
-let words = [...SAMPLE_WORDS];
+/* state */
+let words = readLocal() || [...SAMPLE_WORDS];
 let index = 0;
+let lastVersion = 0;
+const selected = new Set(["hanzi","pinyin","yisi"]); // multi-select on
 
-// multi-select modes
-const selected = new Set(["hanzi","pinyin","yisi"]); // start with all on
-
-// DOM
+/* DOM */
 const cardEl    = document.getElementById("zhCard");
 const dictList  = document.getElementById("dictList");
 const addBtn    = document.getElementById("zhAddBtn");
@@ -23,7 +36,48 @@ const inYisi    = document.getElementById("inYisi");
 const mSave     = document.getElementById("mSave");
 const mCancel   = document.getElementById("mCancel");
 
-// ===== renderers =====
+/* ===== Remote I/O ===== */
+async function loadRemote(){
+  const { data, error } = await sb.from("zh_words").select("data,version").eq("slug", ZH_SLUG).maybeSingle();
+  if (error && error.code !== "PGRST116") throw error; // not-found is ok
+  if (data?.data && Array.isArray(data.data)) {
+    words = data.data;
+    lastVersion = data.version ?? 0;
+    writeLocal(words);
+  }
+}
+
+let saveTimer=null;
+function scheduleSave(){ clearTimeout(saveTimer); saveTimer = setTimeout(saveRemote, 250); }
+async function saveRemote(){
+  lastVersion = Date.now();
+  const { error } = await sb.from("zh_words").upsert(
+    { slug: ZH_SLUG, data: words, version: lastVersion, updated_at: new Date().toISOString() },
+    { onConflict: "slug" }
+  );
+  if (!error) writeLocal(words);
+}
+
+function subscribeRealtime(){
+  const ch = sb
+    .channel("zh-rt")
+    .on("postgres_changes",
+      { event:"*", schema:"public", table:"zh_words", filter:`slug=eq.${ZH_SLUG}` },
+      (payload) => {
+        const row = payload.new || payload.old;
+        const v = row?.version ?? 0;
+        if (v && v <= lastVersion) return;  // ignore our own latest
+        const arr = Array.isArray(row?.data) ? row.data : [];
+        words = arr;
+        writeLocal(words);
+        index = Math.min(index, Math.max(0, words.length - 1));
+        renderCard(); renderDict();
+      })
+    .subscribe();
+  window.addEventListener("beforeunload", () => sb.removeChannel(ch));
+}
+
+/* ===== Renderers ===== */
 function renderCard(){
   const w = words[index] ?? {hanzi:"—", pinyin:"—", yisi:"—"};
   const parts = [];
@@ -56,26 +110,25 @@ function renderDict(){
   });
 }
 
-// ===== controls (placeholders) =====
+/* ===== Controls (placeholders) ===== */
 document.getElementById("btnPrev").addEventListener("click", () => {
+  if (!words.length) return;
   index = (index - 1 + words.length) % words.length;
   renderCard();
 });
 document.getElementById("btnNext").addEventListener("click", () => {
+  if (!words.length) return;
   index = (index + 1) % words.length;
   renderCard();
 });
-document.getElementById("btnReveal").addEventListener("click", () => {
-  // placeholder – later we can hide/show lines
-  flashCard();
-});
+document.getElementById("btnReveal").addEventListener("click", () => flashCard());
 document.getElementById("btnShuffle").addEventListener("click", () => {
   shuffle(words);
   index = 0;
-  renderCard(); renderDict();
+  renderCard(); renderDict(); scheduleSave();
 });
 
-// ===== toggles (multi-select) =====
+/* ===== Toggles (multi-select) ===== */
 document.querySelectorAll(".zh-toggle").forEach(btn => {
   const m = btn.dataset.mode;
   btn.addEventListener("click", () => {
@@ -85,7 +138,7 @@ document.querySelectorAll(".zh-toggle").forEach(btn => {
   });
 });
 
-// ===== add/edit modal =====
+/* ===== Add/Edit Modal ===== */
 addBtn.addEventListener("click", () => openAddModal("create"));
 
 function openAddModal(mode, idx=null){
@@ -114,12 +167,9 @@ function saveWord(mode, idx=null){
   const hanzi  = inHanzi.value.trim();
   const pinyin = inPinyin.value.trim();
   const yisi   = inYisi.value.trim();
-  // strict validation: all required
-  if (!hanzi || !pinyin || !yisi) {
-    // no alerts, just a subtle shake/flash feel
-    pulseInputs();
-    return;
-  }
+  // strict validation: all three required
+  if (!hanzi || !pinyin || !yisi) { pulseInputs(); return; }
+
   if (mode === "create") {
     words.push({ hanzi, pinyin, yisi });
     index = words.length - 1;
@@ -128,10 +178,11 @@ function saveWord(mode, idx=null){
     index = idx;
   }
   renderCard(); renderDict();
+  scheduleSave();
   closeModal();
 }
 
-// ===== visuals/helpers =====
+/* ===== visuals/helpers ===== */
 function flashCard(){
   cardEl.style.transition = "background-color .25s";
   const old = cardEl.style.backgroundColor;
@@ -149,6 +200,10 @@ function shuffle(arr){
 function scrollIntoViewCard(){ cardEl.scrollIntoView({behavior:"smooth", block:"center"}); }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
-// ===== boot =====
-renderCard();
-renderDict();
+/* ===== boot ===== */
+(async function init(){
+  try { await loadRemote(); } catch(e){ console.warn("zh load failed, using local:", e.message); }
+  renderCard();
+  renderDict();
+  subscribeRealtime();
+})();
