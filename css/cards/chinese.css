@@ -193,3 +193,8 @@
   .peek-handle{ right: -12px; width: 22px; }
   .peek-handle:after{ height: 26px; }
 }
+
+
+/* you likely already have .mini; this just ensures grid has two button columns */
+.dict-item { grid-template-columns: 1fr auto auto; }
+.dict-item .mini { padding: 6px 10px; font-size: 13px; border-radius: 10px; }

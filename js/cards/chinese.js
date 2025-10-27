@@ -244,22 +244,44 @@ function renderDict(){
   words.forEach((w, i) => {
     const li = document.createElement("li");
     li.className = "dict-item";
+    li.dataset.idx = i;
     li.innerHTML = `
       <div>
         <div class="dict-hanzi">${escapeHtml(w.hanzi)}</div>
         <div class="dict-pinyin">${escapeHtml(w.pinyin)}</div>
         <div class="dict-yisi">${escapeHtml(w.yisi)}</div>
       </div>
-      <button class="zh-btn ghost" data-i="${i}">View</button>
-      <button class="zh-btn" data-edit="${i}">Edit</button>
+      <button class="zh-btn mini" data-edit="${i}">Edit</button>
+      <button class="zh-btn ghost mini" data-del="${i}">Delete</button>
     `;
-    li.querySelector('[data-i]').addEventListener("click", () => {
-      index = i; revealAll = false; pickPromptRandom(); renderCard(); scrollIntoViewCard();
-    });
-    li.querySelector('[data-edit]').addEventListener("click", () => openAddModal("edit", i));
     dictList.appendChild(li);
   });
 }
+
+// uses event delegation so buttons work after every re-render
+dictList.addEventListener("click", (e) => {
+  const editBtn = e.target.closest("[data-edit]");
+  const delBtn  = e.target.closest("[data-del]");
+  if (!editBtn && !delBtn) return;
+
+  if (editBtn) {
+    const i = Number(editBtn.dataset.edit);
+    openAddModal("edit", i);              // opens modal prefilled
+    return;
+  }
+
+  if (delBtn) {
+    const i = Number(delBtn.dataset.del);
+    // adjust the current index so the card view remains valid
+    if (i < index) index--;
+    words.splice(i, 1);
+    if (index >= words.length) index = Math.max(0, words.length - 1);
+
+    renderCard();
+    renderDict();
+    scheduleSave();                        // persist to Supabase + localStorage
+  }
+});
 
 
 /* ===== TTS (Web Speech API) ===== */
