@@ -1,4 +1,4 @@
-/* wakeup.html -> cards + slide-up editor, Supabase v2 client */
+/* wakeup.html -> cards + slide-up editor, Supabase v2 client (title-only cards) */
 
 const SUPABASE_URL  = window.SUPABASE_URL  ?? "https://ntlsmrzpatcultvsrpll.supabase.co";
 const SUPABASE_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
@@ -53,10 +53,6 @@ function ensureScaffold() {
           el('input', { type: 'text', id: 'cardTitle', placeholder: 'e.g., Wake Up' })
         ]),
         el('div', {}, [
-          el('div', { className: 'label', textContent: 'Image URL' }),
-          el('input', { type: 'text', id: 'cardImage', placeholder: 'https://...' })
-        ]),
-        el('div', {}, [
           el('div', { className: 'label', textContent: 'Content' }),
           el('textarea', { id: 'cardContent', placeholder: 'Write something…' })
         ])
@@ -105,8 +101,8 @@ async function loadCards() {
 async function upsertCard(card) {
   const payload = {
     id: card.id ?? undefined,
-    title: card.title?.trim() || 'Untitled',
-    image_url: (card.image_url || '').trim() || null,
+    title: (card.title || '').trim() || 'Untitled',
+    image_url: null,                 // no images
     content: card.content ?? '',
     sort_order: card.sort_order ?? 0,
     archived: !!card.archived
@@ -139,12 +135,8 @@ function renderCards() {
 
   for (const c of state.cards) {
     const card = el('article', { className: 'cards', 'data-id': c.id });
-    const img = c.image_url
-      ? el('img', { src: c.image_url, alt: c.title })
-      : el('img', { src: 'assets/pics for cards/zyzz.webp', alt: '' }); // fallback
-
     const title = el('h1', { textContent: c.title || 'Untitled' });
-    const contents = el('div', { className: 'card_contents' }, [img, title]);
+    const contents = el('div', { className: 'card_contents' }, [title]);
     card.appendChild(contents);
 
     card.addEventListener('click', () => openSheetForEdit(c.id));
@@ -156,7 +148,6 @@ function renderCards() {
 function openSheetForNew() {
   state.editingId = null;
   $('#cardTitle').value = '';
-  $('#cardImage').value = '';
   $('#cardContent').value = '';
   $('#deleteBtn').style.display = 'none';
   $('.sheet-title').textContent = 'New Card';
@@ -169,7 +160,6 @@ function openSheetForEdit(id) {
 
   state.editingId = id;
   $('#cardTitle').value = card.title || '';
-  $('#cardImage').value = card.image_url || '';
   $('#cardContent').value = card.content || '';
   $('#deleteBtn').style.display = 'inline-block';
   $('.sheet-title').textContent = 'Edit Card';
@@ -191,20 +181,20 @@ function closeSheet() {
 // ------------- Actions -------------
 async function onSave() {
   const title = $('#cardTitle').value;
-  const image_url = $('#cardImage').value;
   const content = $('#cardContent').value;
 
   // optimistic update
   if (state.editingId) {
     const idx = state.cards.findIndex(c => c.id === state.editingId);
     if (idx >= 0) {
-      state.cards[idx] = { ...state.cards[idx], title, image_url, content };
+      state.cards[idx] = { ...state.cards[idx], title, content };
       renderCards();
     }
   } else {
     const tempId = 'temp-' + Math.random().toString(36).slice(2);
     state.cards.unshift({
-      id: tempId, title, image_url, content, sort_order: 0, archived: false, created_at: new Date().toISOString()
+      id: tempId, title, content, image_url: null,
+      sort_order: 0, archived: false, created_at: new Date().toISOString()
     });
     renderCards();
   }
@@ -212,7 +202,7 @@ async function onSave() {
   try {
     const saved = await upsertCard({
       id: state.editingId || undefined,
-      title, image_url, content
+      title, content
     });
 
     // Replace temp with real or refresh record
