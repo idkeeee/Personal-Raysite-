@@ -145,3 +145,65 @@
 
 
 .days-pill { transition: color .2s ease; font-weight: 700; }
+
+
+
+
+
+/*  Game mode dwn here */
+
+/* Always-on quest skin */
+.todo-table{width:100%; border-spacing:0 10px}
+.todo-table thead{opacity:.7}
+.todo-table tr{
+  display:block; background:#121212; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,.25);
+  border-left:6px solid #2b2b2b; position:relative; overflow:hidden;
+}
+.todo-table td, .todo-table th{ display:inline-block; vertical-align:middle; }
+.todo-table td.thin{ width:auto }
+.todo-table td:nth-child(2){ width:55% }   /* task */
+.todo-table td:nth-child(3){ width:20% }   /* days */
+.todo-table td:nth-child(4),
+.todo-table td:nth-child(5){ width:8% }    /* ⚡ ✕ */
+
+.task-input{
+  background:#0f0f0f; border:1px solid #2a2a2a; border-radius:10px; padding:10px 12px; width:100%;
+  color:#e6fbe2; font-weight:600; letter-spacing:.2px;
+}
+
+/* rarity borders */
+.q-common   { border-left-color:#22c55e !important; }   /* green */
+.q-uncommon { border-left-color:#3b82f6 !important; }   /* blue */
+.q-rare     { border-left-color:#a78bfa !important; }   /* purple */
+.q-epic     { border-left-color:#f97316 !important; }   /* orange */
+
+/* faint emblem */
+.todo-table tr::before{
+  content:""; position:absolute; left:10px; top:-20px; width:100px; height:100px; opacity:.08; filter:grayscale(1);
+  background-size:60px 60px; background-repeat:no-repeat; background-position:10px 28px;
+}
+.q-common::before   { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><circle cx="30" cy="30" r="18" fill="%2322c55e"/></svg>'); }
+.q-uncommon::before { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><rect x="12" y="12" width="36" height="36" fill="%233b82f6"/></svg>'); }
+.q-rare::before     { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><polygon points="30,10 50,30 30,50 10,30" fill="%23a78bfa"/></svg>'); }
+.q-epic::before     { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><path d="M30 8 L37 25 L55 25 L40 36 L46 53 L30 42 L14 53 L20 36 L5 25 L23 25 Z" fill="%23f97316"/></svg>'); }
+
+/* days + XP badge + transitions */
+.days-pill{ font-weight:800; transition: color .2s ease; }
+.xp-badge{
+  margin-left:10px; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:700;
+  background:#1a1a1a; border:1px solid #2a2a2a; color:#ffd166;
+}
+
+/* +XP float */
+.xp-float{
+  position:fixed; pointer-events:none; color:#ffd166; font-weight:900; text-shadow:0 2px 10px rgba(0,0,0,.4);
+  animation:xpRise .9s ease-out forwards;
+}
+@keyframes xpRise{ from{ transform:translateY(0); opacity:1 } to{ transform:translateY(-22px); opacity:0 } }
+
+/* drag ghost lock */
+.drag-ghost{
+  position:fixed; left:0; top:0; right:0; height:40px;
+  padding:8px 12px; border-radius:12px; background:#0f0f0f; border:1px solid #2a2a2a; color:#fff;
+  box-shadow:0 10px 20px rgba(0,0,0,.35); pointer-events:none; z-index:9999;
+}

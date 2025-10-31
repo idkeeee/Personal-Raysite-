@@ -1,9 +1,9 @@
-/* ===== Supabase (reuse your project creds if globally defined) ===== */
+/* ===== Supabase ===== */
 const SB_URL  = window.SUPABASE_URL  ?? "https://ntlsmrzpatcultvsrpll.supabase.co";
 const SB_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
 const sb = window.supabase.createClient(SB_URL, SB_ANON);
 
-/* lists → slugs (now includes super-short) */
+/* lists → slugs */
 const SLUGS = {
   "todo-long":   "todo-long",
   "todo-short":  "todo-short",
@@ -84,14 +84,13 @@ const dayDiff = (iso) => {
   if (!iso) return 0;
   const a = new Date(iso);
   const now = new Date();
-  // whole-day diff via UTC midnight
   const utcA   = Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate());
   const utcNow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   return Math.max(0, Math.floor((utcNow - utcA) / 86400000));
 };
 const newRow = (rows) => ({ id: rows.length ? Math.max(...rows.map(r=>r.id))+1 : 1, text: "", last_progress_at: new Date().toISOString() });
 
-// days → color (0d green → 10d red). applied to all except long-term.
+/* days → color (0d green → 10d red). applied to all except long-term. */
 const AGE_LIMIT_DAYS = 10;
 function dayColor(days) {
   const t = Math.max(0, Math.min(days, AGE_LIMIT_DAYS)) / AGE_LIMIT_DAYS; // 0..1
@@ -99,6 +98,30 @@ function dayColor(days) {
   const sat   = 70 + 20 * t;    // 70%→90%
   const light = 62 - 18 * t;    // 62%→44%
   return `color:hsl(${hue}deg, ${sat}%, ${light}%);`;
+}
+
+/* rarity + XP */
+function getRarity(days, slug){
+  if (slug === 'todo-long') return 'neutral';
+  if (days >= 9) return 'epic';
+  if (days >= 6) return 'rare';
+  if (days >= 3) return 'uncommon';
+  return 'common';
+}
+function computeXP(text, days){
+  const base = 10 + Math.min(40, days * 5);
+  const bonus = Math.min(20, Math.floor((text || '').length / 20));
+  return base + bonus;
+}
+function showXpToast(rowEl, text){
+  const r = rowEl.getBoundingClientRect();
+  const t = document.createElement('div');
+  t.className = 'xp-float';
+  t.textContent = text;
+  t.style.left = (r.right - 60) + 'px';
+  t.style.top  = (r.top + 6 + window.scrollY) + 'px';
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 900);
 }
 
 /* ===== render ===== */
@@ -135,8 +158,7 @@ function renderTable(slug){
       r.text = input.value;
       scheduleSave(slug);
     });
-    // Enter → insert new row below
-    input.addEventListener("keydown", (e) => {
+    input.addEventListener("keydown", (e) => {  // Enter → new row
       if (e.key === "Enter") {
         const idx = S.rows.findIndex(x => x.id === r.id);
         S.rows.splice(idx + 1, 0, newRow(S.rows));
@@ -149,7 +171,7 @@ function renderTable(slug){
     tdTask.appendChild(input);
     tr.appendChild(tdTask);
 
-    // days
+    // days (+ color + xp badge)  —— always-on quest skin
     const tdDays = document.createElement("td");
     tdDays.className = "thin";
     const pill = document.createElement("span");
@@ -158,9 +180,22 @@ function renderTable(slug){
     pill.textContent = `${d}d`;
     pill.style = (slug !== 'todo-long') ? dayColor(d) : '';
     tdDays.appendChild(pill);
+
+    // rarity border class
+    const rarity = getRarity(d, slug);
+    ['q-common','q-uncommon','q-rare','q-epic'].forEach(c => tr.classList.remove(c));
+    if (rarity !== 'neutral') tr.classList.add('q-' + rarity);
+
+    // XP badge
+    const xp = computeXP(r.text, d);
+    const xpSpan = document.createElement('span');
+    xpSpan.className = 'xp-badge';
+    xpSpan.textContent = `${xp} XP`;
+    tdDays.appendChild(xpSpan);
+
     tr.appendChild(tdDays);
 
-    // progress (resets days)
+    // progress (resets days + XP toast)
     const tdOk = document.createElement("td");
     tdOk.className = "thin";
     const okBtn = document.createElement("button");
@@ -171,6 +206,7 @@ function renderTable(slug){
       r.last_progress_at = new Date().toISOString();
       pill.textContent = "0d";
       pill.style = (slug !== 'todo-long') ? dayColor(0) : '';
+      showXpToast(tr, `+${computeXP(r.text, 0)} XP`);
       scheduleSave(slug);
     });
     tdOk.appendChild(okBtn);
@@ -196,7 +232,7 @@ function renderTable(slug){
   });
 }
 
-/* ===== drag & drop (long-press + ghost) ===== */
+/* ===== drag & drop ===== */
 const PRESS_MS = 220, MOVE_TOL = 8;
 function wireDrag(slug){
   const S = state[slug];
@@ -207,9 +243,7 @@ function wireDrag(slug){
   let dragging=null, ghost=null;
 
   function startDrag(ev, handle){
-    document.activeElement?.blur?.();
-    window.getSelection?.().removeAllRanges?.();
-
+    document.activeElement?.blur?.(); window.getSelection?.().removeAllRanges?.();
     dragging = handle.closest("tr");
     const rect = dragging.getBoundingClientRect();
 
@@ -245,7 +279,6 @@ function wireDrag(slug){
       dragging.style.visibility = ""; dragging=null;
       document.documentElement.classList.remove("drag-lock");
 
-      // commit order by DOM sequence
       const order = [...tbody.querySelectorAll("tr")].map(tr => Number(tr.dataset.id));
       const map = new Map(S.rows.map(r => [r.id, r]));
       S.rows = order.map(id => map.get(id)).filter(Boolean);
@@ -294,7 +327,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
-  // load + render all lists (long, short, super, school)
   for (const slug of Object.keys(SLUGS)) {
     try { await loadList(slug); } catch(e){ console.warn("load failed", slug, e.message); }
     renderTable(slug);
@@ -307,3 +339,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     for (const slug of Object.keys(SLUGS)) renderTable(slug);
   }, 60*60*1000);
 });
+
+
+
