@@ -104,15 +104,47 @@ async function upsertCard(card) {
   const payload = {
     id: card.id ?? undefined,
     title: (card.title || '').trim() || 'Untitled',
-    image_url: null,                 // unused
+    image_url: null,
     content: card.content ?? '',
     sort_order: card.sort_order ?? 0,
     archived: !!card.archived
   };
-  const { data, error } = await supabase.from('words_cards').upsert(payload).select().single();
+
+  // Try to get the row back; if the server still returns 204, do a follow-up SELECT.
+  const { data, error, status } = await supabase
+    .from('words_cards')
+    .upsert(payload, { defaultToNull: false })
+    .select(); // don't use .single() here
+
   if (error) throw error;
-  return data;
+
+  // Some environments return [] or null on upsert even with .select()
+  let row = Array.isArray(data) ? data[0] : data;
+  if (!row) {
+    // Fallback: re-fetch by title+content latest (or by id if provided)
+    if (payload.id) {
+      const { data: refetch, error: err2 } = await supabase
+        .from('words_cards')
+        .select('*')
+        .eq('id', payload.id)
+        .maybeSingle();
+      if (err2) throw err2;
+      row = refetch ?? payload;
+    } else {
+      const { data: refetch, error: err3 } = await supabase
+        .from('words_cards')
+        .select('*')
+        .eq('title', payload.title)
+        .eq('content', payload.content)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (err3) throw err3;
+      row = (refetch && refetch[0]) || payload;
+    }
+  }
+  return row;
 }
+
 
 async function deleteCard(id) {
   const { error } = await supabase.from('words_cards').delete().eq('id', id);
@@ -185,38 +217,41 @@ async function onSave() {
   const title = $('#cardTitle').value;
   const content = $('#cardContent').value;
 
-  // optimistic update
+  let optimisticIndex = -1;
+  let tempId = null;
+
   if (state.editingId) {
-    const idx = state.cards.findIndex(c => c.id === state.editingId);
-    if (idx >= 0) {
-      state.cards[idx] = { ...state.cards[idx], title, content };
-      renderCards();
-    }
+    optimisticIndex = state.cards.findIndex(c => c.id === state.editingId);
+    if (optimisticIndex >= 0) state.cards[optimisticIndex] = { ...state.cards[optimisticIndex], title, content };
   } else {
-    const tempId = 'temp-' + Math.random().toString(36).slice(2);
+    tempId = 'temp-' + Math.random().toString(36).slice(2);
     state.cards.unshift({
       id: tempId, title, content, image_url: null,
       sort_order: 0, archived: false, created_at: new Date().toISOString()
     });
-    renderCards();
+    optimisticIndex = 0;
   }
+  renderCards();
 
   try {
-    const saved = await upsertCard({
-      id: state.editingId || undefined,
-      title, content
-    });
+    const saved = await upsertCard({ id: state.editingId || undefined, title, content });
 
-    const idx = state.cards.findIndex(c => c.id === (state.editingId || state.cards[0]?.id));
+    // replace the optimistic row (by tempId or by editingId)
+    const idx = tempId
+      ? state.cards.findIndex(c => c.id === tempId)
+      : state.cards.findIndex(c => c.id === state.editingId);
+
     if (idx >= 0) state.cards[idx] = saved;
     closeSheet();
     renderCards();
   } catch (err) {
     console.error('save failed:', err);
-    alert('Save failed: ' + err.message);
-    await loadCards();
+    const msg = (err && (err.message || err.code || String(err))) || 'Unknown error';
+    alert('Save failed: ' + msg);
+    await loadCards(); // resync
   }
 }
+
 
 async function onDelete() {
   if (!state.editingId) return;
