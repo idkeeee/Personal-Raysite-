@@ -8,6 +8,7 @@ const SLUGS = {
   "todo-long":   "todo-long",
   "todo-short":  "todo-short",
   "todo-school": "todo-school",
+  "todo-super":  "todo-super",
 };
 
 /* local cache keys */
@@ -20,6 +21,7 @@ const state = {
   "todo-long":   { rows: [], version: 0, saveTimer: null, el: null },
   "todo-short":  { rows: [], version: 0, saveTimer: null, el: null },
   "todo-school": { rows: [], version: 0, saveTimer: null, el: null },
+  "todo-super":  { rows: [], version: 0, saveTimer: null, el: null },
 };
 
 /* ===== remote load/save ===== */
@@ -90,6 +92,24 @@ const dayDiff = (iso) => {
 };
 const newRow = (rows) => ({ id: rows.length ? Math.max(...rows.map(r=>r.id))+1 : 1, text: "", last_progress_at: new Date().toISOString() });
 
+// === Days → color (except long-term) ===
+const AGE_LIMIT_DAYS = 10; // fully red at 10d
+function computeAgeDays(iso) {
+  const t = Date.now() - new Date(iso).getTime();
+  return Math.max(0, Math.floor(t / 86_400_000));
+}
+/** returns inline CSS color string */
+function dayColor(days) {
+  // 0d → green (120deg), 10d+ → red (0deg)
+  const t = Math.max(0, Math.min(days, AGE_LIMIT_DAYS)) / AGE_LIMIT_DAYS;
+  const hue = 120 - 120 * t;        // 120→0
+  const sat = 70 + 20 * t;          // 70%→90%
+  const light = 62 - 18 * t;        // 62%→44%
+  return `color:hsl(${hue}deg, ${sat}%, ${light}%);`;
+}
+
+
+
 /* ===== render ===== */
 function renderTable(slug){
   const S = state[slug];
@@ -132,7 +152,9 @@ function renderTable(slug){
     tdDays.className = "thin";
     const pill = document.createElement("span");
     pill.className = "days-pill";
-    pill.textContent = `${dayDiff(r.last_progress_at)}d`;
+    const d = dayDiff(r.last_progress_at);
+    pill.textContent = `${d}d`;
+    if (slug !== 'todo-long') pill.style = dayColor(d); else pill.style = '';
     tdDays.appendChild(pill);
     tr.appendChild(tdDays);
 
@@ -146,6 +168,7 @@ function renderTable(slug){
     okBtn.addEventListener("click", () => {
       r.last_progress_at = new Date().toISOString();
       pill.textContent = "0d";
+      pill.style = (slug !== 'todo-long') ? dayColor(0) : '';
       scheduleSave(slug);
     });
     tdOk.appendChild(okBtn);

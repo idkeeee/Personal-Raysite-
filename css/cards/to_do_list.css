@@ -133,3 +133,12 @@
     min-width: 200px; /* show more text before cutoff */
   }
 }
+
+
+
+/* optional: badge look; color still driven by inline style */
+.todo-table td.days {
+  font-weight: 700;
+  padding: 0 10px;
+  border-radius: 8px;
+}
