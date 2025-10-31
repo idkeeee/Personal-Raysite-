@@ -3,7 +3,7 @@ const SB_URL  = window.SUPABASE_URL  ?? "https://ntlsmrzpatcultvsrpll.supabase.c
 const SB_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
 const sb = window.supabase.createClient(SB_URL, SB_ANON);
 
-/* three lists mapped to slugs */
+/* lists → slugs (now includes super-short) */
 const SLUGS = {
   "todo-long":   "todo-long",
   "todo-short":  "todo-short",
@@ -11,12 +11,12 @@ const SLUGS = {
   "todo-super":  "todo-super",
 };
 
-/* local cache keys */
-const cacheKey = (slug) => `todo:${slug}:v1`;
+/* local cache */
+const cacheKey   = (slug) => `todo:${slug}:v1`;
 const readLocal  = (slug) => { try { return JSON.parse(localStorage.getItem(cacheKey(slug))); } catch { return null; } };
 const writeLocal = (slug, data) => { try { localStorage.setItem(cacheKey(slug), JSON.stringify(data)); } catch {} };
 
-/* shape per item: { id:number, text:string, last_progress_at:string(ISO) } */
+/* item shape: { id:number, text:string, last_progress_at: ISOString } */
 const state = {
   "todo-long":   { rows: [], version: 0, saveTimer: null, el: null },
   "todo-short":  { rows: [], version: 0, saveTimer: null, el: null },
@@ -27,14 +27,13 @@ const state = {
 /* ===== remote load/save ===== */
 async function loadList(slug){
   const { data, error } = await sb.from("todo_lists").select("data,version").eq("slug", slug).maybeSingle();
-  if (error && error.code !== "PGRST116") throw error;
+  if (error && error.code !== "PGRST116") throw error; // ignore "no rows"
   const S = state[slug];
   if (data?.data) {
     S.rows = Array.isArray(data.data) ? data.data : (data.data.items ?? []);
     S.version = data.version ?? 0;
     writeLocal(slug, S.rows);
   } else {
-    // fall back to cache
     const cached = readLocal(slug);
     if (cached) S.rows = cached;
     else S.rows = [{ id: 1, text: "", last_progress_at: new Date().toISOString() }];
@@ -57,7 +56,7 @@ async function saveList(slug){
   if (!error) writeLocal(slug, S.rows);
 }
 
-/* realtime (sync across devices) */
+/* realtime cross-tabs/devices */
 function subscribeRealtime(slug){
   const ch = sb
     .channel(`todo-${slug}`)
@@ -67,7 +66,7 @@ function subscribeRealtime(slug){
         const S = state[slug];
         const row = payload.new || payload.old;
         const ver = row?.version ?? 0;
-        if (ver && ver <= S.version) return; // ignore our own latest
+        if (ver && ver <= S.version) return; // ours or older
         const arr = Array.isArray(row?.data) ? row.data : (row?.data?.items ?? []);
         if (Array.isArray(arr)) {
           S.rows = arr;
@@ -85,30 +84,22 @@ const dayDiff = (iso) => {
   if (!iso) return 0;
   const a = new Date(iso);
   const now = new Date();
-  // diff in whole days, ignoring time zone drift by using UTC midnight
-  const utcA  = Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate());
-  const utcNow= Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  // whole-day diff via UTC midnight
+  const utcA   = Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate());
+  const utcNow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   return Math.max(0, Math.floor((utcNow - utcA) / 86400000));
 };
 const newRow = (rows) => ({ id: rows.length ? Math.max(...rows.map(r=>r.id))+1 : 1, text: "", last_progress_at: new Date().toISOString() });
 
-// === Days → color (except long-term) ===
-const AGE_LIMIT_DAYS = 10; // fully red at 10d
-function computeAgeDays(iso) {
-  const t = Date.now() - new Date(iso).getTime();
-  return Math.max(0, Math.floor(t / 86_400_000));
-}
-/** returns inline CSS color string */
+// days → color (0d green → 10d red). applied to all except long-term.
+const AGE_LIMIT_DAYS = 10;
 function dayColor(days) {
-  // 0d → green (120deg), 10d+ → red (0deg)
-  const t = Math.max(0, Math.min(days, AGE_LIMIT_DAYS)) / AGE_LIMIT_DAYS;
-  const hue = 120 - 120 * t;        // 120→0
-  const sat = 70 + 20 * t;          // 70%→90%
-  const light = 62 - 18 * t;        // 62%→44%
+  const t = Math.max(0, Math.min(days, AGE_LIMIT_DAYS)) / AGE_LIMIT_DAYS; // 0..1
+  const hue   = 120 - 120 * t;  // 120→0
+  const sat   = 70 + 20 * t;    // 70%→90%
+  const light = 62 - 18 * t;    // 62%→44%
   return `color:hsl(${hue}deg, ${sat}%, ${light}%);`;
 }
-
-
 
 /* ===== render ===== */
 function renderTable(slug){
@@ -121,7 +112,7 @@ function renderTable(slug){
     S.rows = [ newRow([]) ];
   }
 
-  S.rows.forEach((r, idx) => {
+  S.rows.forEach((r) => {
     const tr = document.createElement("tr");
     tr.dataset.id = String(r.id);
 
@@ -144,6 +135,17 @@ function renderTable(slug){
       r.text = input.value;
       scheduleSave(slug);
     });
+    // Enter → insert new row below
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const idx = S.rows.findIndex(x => x.id === r.id);
+        S.rows.splice(idx + 1, 0, newRow(S.rows));
+        renderTable(slug);
+        scheduleSave(slug);
+        tr.nextElementSibling?.querySelector(".task-input")?.focus();
+        e.preventDefault();
+      }
+    });
     tdTask.appendChild(input);
     tr.appendChild(tdTask);
 
@@ -154,11 +156,11 @@ function renderTable(slug){
     pill.className = "days-pill";
     const d = dayDiff(r.last_progress_at);
     pill.textContent = `${d}d`;
-    if (slug !== 'todo-long') pill.style = dayColor(d); else pill.style = '';
+    pill.style = (slug !== 'todo-long') ? dayColor(d) : '';
     tdDays.appendChild(pill);
     tr.appendChild(tdDays);
 
-    // progress button (reset counter)
+    // progress (resets days)
     const tdOk = document.createElement("td");
     tdOk.className = "thin";
     const okBtn = document.createElement("button");
@@ -243,7 +245,7 @@ function wireDrag(slug){
       dragging.style.visibility = ""; dragging=null;
       document.documentElement.classList.remove("drag-lock");
 
-      // commit order by DOM id sequence
+      // commit order by DOM sequence
       const order = [...tbody.querySelectorAll("tr")].map(tr => Number(tr.dataset.id));
       const map = new Map(S.rows.map(r => [r.id, r]));
       S.rows = order.map(id => map.get(id)).filter(Boolean);
@@ -279,11 +281,10 @@ function wireDrag(slug){
 
 /* ===== boot ===== */
 document.addEventListener("DOMContentLoaded", async () => {
-  // attach containers
+  // attach containers and add-row buttons
   document.querySelectorAll(".todo-card").forEach(card => {
     const slug = card.dataset.slug;
     state[slug].el = card;
-    // add-row button
     card.querySelector(".add-btn").addEventListener("click", () => {
       const S = state[slug];
       S.rows.push(newRow(S.rows));
@@ -293,7 +294,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
-  // load + render all three
+  // load + render all lists (long, short, super, school)
   for (const slug of Object.keys(SLUGS)) {
     try { await loadList(slug); } catch(e){ console.warn("load failed", slug, e.message); }
     renderTable(slug);
@@ -301,8 +302,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     subscribeRealtime(slug);
   }
 
-  // refresh days every midnight without reload
+  // refresh color once an hour (rolls to next day)
   setInterval(() => {
     for (const slug of Object.keys(SLUGS)) renderTable(slug);
-  }, 60*60*1000); // hourly is enough; shows new day when date rolls over
+  }, 60*60*1000);
 });
