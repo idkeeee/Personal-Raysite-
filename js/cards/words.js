@@ -1,4 +1,6 @@
-/* words.html -> title-only cards + slide-up editor, Supabase v2 client (separate table) */
+/* words.html -> title-only cards + slide-up editor, Supabase v2 client (separate table)
+   Now with robust error surfacing + retries + 204-safe upsert + local cache.
+*/
 
 const SUPABASE_URL  = window.SUPABASE_URL  ?? "https://ntlsmrzpatcultvsrpll.supabase.co";
 const SUPABASE_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
@@ -18,6 +20,49 @@ const el = (tag, props = {}, children = []) => {
   }
   return node;
 };
+
+// ------------- Global error surfacing (so iOS/Safari can’t hide it) -------------
+(function () {
+  const pop = (t, m) => console.warn(`[${t}]`, m);
+  window.addEventListener('error', (e) => {
+    const msg = e.error?.stack || e.message || String(e.error || e);
+    pop('window.onerror', msg);
+    alert('Script error: ' + msg);
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const r = e.reason;
+    const msg = (r && (r.stack || r.message)) || String(r);
+    pop('unhandledrejection', msg);
+    alert('Promise error: ' + msg);
+  });
+})();
+
+// ------------- Local cache -------------
+const CACHE_KEY = 'words:cards:v1';
+const readCache  = () => { try { return JSON.parse(localStorage.getItem(CACHE_KEY)) || []; } catch { return []; } };
+const writeCache = (rows) => { try { localStorage.setItem(CACHE_KEY, JSON.stringify(rows)); } catch {} };
+
+// ------------- Retry + error formatting -------------
+function formatSbError(err, ctx = '') {
+  const code = err?.code ? ` [${err.code}]` : '';
+  const details = err?.details ? ` — ${err.details}` : '';
+  const hint = err?.hint ? ` — ${err.hint}` : '';
+  return `${ctx}${code}: ${err?.message || String(err)}${details}${hint}`;
+}
+
+async function withRetry(fn, { tries = 3, baseDelay = 250, ctx = '' } = {}) {
+  let lastErr;
+  for (let i = 0; i < tries; i++) {
+    try { return await fn(); } catch (err) {
+      lastErr = err;
+      // do not retry on “hard” errors
+      const hard = ['42501','PGRST301','PGRST116','23505','22P02']; // perms/RLS/no-row/unique/invalid
+      if (hard.includes(err?.code)) break;
+      await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, i)));
+    }
+  }
+  throw new Error(formatSbError(lastErr, ctx));
+}
 
 function ensureScaffold() {
   // mount grid if missing
@@ -80,10 +125,12 @@ ensureScaffold();
 let state = {
   cards: [],
   editingId: null,
+  channel: null
 };
 
 // ------------- Data -------------
 async function loadCards() {
+  // Remote first
   const { data, error } = await supabase
     .from('words_cards')                    // <-- separate table
     .select('*')
@@ -92,11 +139,15 @@ async function loadCards() {
     .order('created_at', { ascending: true });
 
   if (error) {
-    console.error('loadCards error:', error);
-    renderEmpty(`Failed to load: ${error.message}`);
+    console.warn('loadCards error:', error);
+    // fallback to cache
+    state.cards = readCache();
+    if (!state.cards.length) renderEmpty(`Failed to load: ${error.message}`);
+    else renderCards();
     return;
   }
   state.cards = data || [];
+  writeCache(state.cards);
   renderCards();
 }
 
@@ -110,41 +161,34 @@ async function upsertCard(card) {
     archived: !!card.archived
   };
 
-  // Try to get the row back; if the server still returns 204, do a follow-up SELECT.
-  const { data, error, status } = await supabase
-    .from('words_cards')
-    .upsert(payload, { defaultToNull: false })
-    .select(); // don't use .single() here
+  // Try to get the row back; tolerate empty/204 then refetch
+  const { data, error } = await withRetry(() =>
+    supabase
+      .from('words_cards')
+      .upsert(payload, { defaultToNull: false })
+      .select() // don't .single()
+  , { tries: 3, baseDelay: 200, ctx: 'UPSERT words_cards' });
 
   if (error) throw error;
 
-  // Some environments return [] or null on upsert even with .select()
   let row = Array.isArray(data) ? data[0] : data;
   if (!row) {
-    // Fallback: re-fetch by title+content latest (or by id if provided)
-    if (payload.id) {
-      const { data: refetch, error: err2 } = await supabase
-        .from('words_cards')
-        .select('*')
-        .eq('id', payload.id)
-        .maybeSingle();
-      if (err2) throw err2;
-      row = refetch ?? payload;
-    } else {
-      const { data: refetch, error: err3 } = await supabase
-        .from('words_cards')
-        .select('*')
-        .eq('title', payload.title)
-        .eq('content', payload.content)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      if (err3) throw err3;
-      row = (refetch && refetch[0]) || payload;
-    }
+    // Fallback: re-fetch by id if we have it, else by title+content
+    const ref = payload.id
+      ? supabase.from('words_cards').select('*').eq('id', payload.id).maybeSingle()
+      : supabase.from('words_cards')
+          .select('*')
+          .eq('title', payload.title)
+          .eq('content', payload.content)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+    const { data: refetch, error: err2 } = await ref;
+    if (err2) throw err2;
+    row = (Array.isArray(refetch) ? refetch[0] : refetch) || payload;
   }
   return row;
 }
-
 
 async function deleteCard(id) {
   const { error } = await supabase.from('words_cards').delete().eq('id', id);
@@ -216,6 +260,7 @@ function closeSheet() {
 async function onSave() {
   const title = $('#cardTitle').value;
   const content = $('#cardContent').value;
+  const btn = $('#saveBtn');
 
   let optimisticIndex = -1;
   let tempId = null;
@@ -233,6 +278,7 @@ async function onSave() {
   }
   renderCards();
 
+  btn.disabled = true; const prevText = btn.textContent; btn.textContent = 'Saving…';
   try {
     const saved = await upsertCard({ id: state.editingId || undefined, title, content });
 
@@ -242,16 +288,18 @@ async function onSave() {
       : state.cards.findIndex(c => c.id === state.editingId);
 
     if (idx >= 0) state.cards[idx] = saved;
+    writeCache(state.cards);
     closeSheet();
     renderCards();
   } catch (err) {
     console.error('save failed:', err);
-    const msg = (err && (err.message || err.code || String(err))) || 'Unknown error';
-    alert('Save failed: ' + msg);
+    const offline = (navigator && navigator.onLine === false) ? ' (offline?)' : '';
+    alert('Save failed' + offline + ':\n' + formatSbError(err, 'words_cards'));
     await loadCards(); // resync
+  } finally {
+    btn.disabled = false; btn.textContent = prevText;
   }
 }
-
 
 async function onDelete() {
   if (!state.editingId) return;
@@ -265,28 +313,30 @@ async function onDelete() {
 
   try {
     await deleteCard(id);
+    writeCache(state.cards);
   } catch (err) {
     console.error('delete failed:', err);
-    alert('Delete failed: ' + err.message);
+    alert('Delete failed:\n' + formatSbError(err, 'words_cards'));
     state.cards = prev;
     renderCards();
   }
 }
 
-// ------------- Live changes (optional) -------------
+// ------------- Live changes (dedupe by id) -------------
 function subscribeRealtime() {
   try {
-    supabase
+    if (state.channel) supabase.removeChannel(state.channel);
+    state.channel = supabase
       .channel('words_cards_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'words_cards' }, payload => {
-        if (payload.eventType === 'INSERT') {
-          state.cards.push(payload.new);
-        } else if (payload.eventType === 'UPDATE') {
-          const i = state.cards.findIndex(c => c.id === payload.new.id);
-          if (i >= 0) state.cards[i] = payload.new;
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          const row = payload.new;
+          const i = state.cards.findIndex(c => c.id === row.id);
+          if (i >= 0) state.cards[i] = row; else state.cards.unshift(row);
         } else if (payload.eventType === 'DELETE') {
           state.cards = state.cards.filter(c => c.id !== payload.old.id);
         }
+        writeCache(state.cards);
         renderCards();
       })
       .subscribe();
