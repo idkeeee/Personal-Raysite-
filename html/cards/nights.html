@@ -14,7 +14,7 @@
         <link rel="stylesheet" href="css/sidebar.css?v=3">
         <link rel="stylesheet" href="css/general_styles.css?v=3">
         <link rel="stylesheet" href="css/cards.css?v=3">
-        <link rel="stylesheet" href="css/cards/nights.css?v=4">
+        <link rel="stylesheet" href="css/cards/mornings.css?v=4">
     </head>
 
     <body>
@@ -31,11 +31,35 @@
         <div class="backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>   <!-- darkens page when sidemenu opens , in generals.js -->
 
 
-        <!-- MAIN CODE AREA HERE -->
+
+
+        <!-- Task Table -->
+         <section class="task-table-container">
+            <table class="task-table" id="taskTable">
+                <thead>
+                <tr>
+                    <th style="width:80px">NO</th>
+                    <th>Task</th>
+                    <th style="width:160px">Status</th>
+                    <th class="actions-col"></th> 
+                </tr>
+                </thead>
+                <tbody id="taskBody">
+                <!-- rows get rendered here -->
+                </tbody>
+                <tfoot>
+                <tr>
+                    <td colspan="3" style="text-align:center">
+                    <button class="add-task-btn" id="addTaskBtn">+ Add Task</button>
+                    </td>
+                </tr>
+                </tfoot>
+            </table>
+        </section>
 
 
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="js/cards/nights.js?v=4"></script>
+        <script src="js/cards/mornings.js?v=4"></script>
         <script src="js/generals.js"></script>
         <script src="js/navbar.js"></script>
     </body>
