@@ -1,15 +1,30 @@
-// ---- Supabase config ----
+// ==== Supabase config (same project keys) ====
 const SUPABASE_URL = "https://ntlsmrzpatcultvsrpll.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
 
-const LIST_SLUG = "ray-nights";       // <- nights has its own data
+// ==== Dedicated table for Nights (Option B) ====
+const TABLE = "task_lists_night";     // 👈 different table than mornings
+const STORAGE_FALLBACK = "nightTasks_v1"; // different localStorage key
 
 // Realtime client
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// DOM
+const taskBody = document.getElementById("taskBody");
+const addBtn = document.getElementById("addTaskBtn");
+
+// State
+let tasks = [];               // [{ id:number, text:string }]
+let rowId = null;             // primary key of the single row we store data in
 let lastSeenVersion = 0;
 
-// REST helper
+// ---- Helpers ----
+const readCache  = () => { try { return JSON.parse(localStorage.getItem(STORAGE_FALLBACK)) || []; } catch { return []; } };
+const writeCache = (x) => { try { localStorage.setItem(STORAGE_FALLBACK, JSON.stringify(x)); } catch {} };
+const nowVersion = () => Date.now();
+
+// REST helper (for fine-grained messages on failure)
 async function sbFetch(path, options = {}) {
   const headers = {
     apikey: SUPABASE_ANON_KEY,
@@ -29,98 +44,77 @@ async function sbFetch(path, options = {}) {
   return res;
 }
 
-// Realtime subscription
-function subscribeRealtime() {
-  const channel = sb
-    .channel("tasklists-realtime-nights")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "task_lists", filter: `slug=eq.${LIST_SLUG}` },
-      (payload) => {
-        const row = payload.new || payload.old;
-        const incomingVersion = row?.data?.version ?? 0;
-        if (incomingVersion && incomingVersion <= lastSeenVersion) return; // ignore our own writes
-        loadTasks().then(render);
-      }
-    )
-    .subscribe();
-
-  window.addEventListener("beforeunload", () => sb.removeChannel(channel));
+// Ensure we have exactly one row to store data in
+async function ensureRow() {
+  const r = await sbFetch(`/rest/v1/${TABLE}?select=id,data&limit=1`);
+  const rows = await r.json();
+  if (rows.length) {
+    rowId = rows[0].id;
+    const blob = rows[0].data ?? {};
+    tasks = Array.isArray(blob) ? blob : (blob.payload ?? []);
+    writeCache(tasks);
+    return;
+  }
+  // create empty row once
+  const create = await sbFetch(`/rest/v1/${TABLE}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+    body: JSON.stringify({ data: { payload: [], version: 0 } }),
+  });
+  const created = await create.json();
+  rowId = created[0].id;
+  tasks = [];
+  writeCache(tasks);
 }
 
-// ---- DOM ----
-const STORAGE_FALLBACK = "nightTasks_v1";
-const taskBody = document.getElementById("taskBody");
-const addBtn = document.getElementById("addTaskBtn");
-
-let tasks = []; // [{id:number, text:string}]
-
-// ---- remote load/save with local fallback ----
+// Load tasks (remote with local fallback)
 async function loadTasks() {
   try {
-    const res = await sbFetch(`/rest/v1/task_lists?slug=eq.${LIST_SLUG}&select=data`);
-    const rows = await res.json();
-    const blob = rows?.[0]?.data ?? [];
-    tasks = Array.isArray(blob) ? blob : blob.payload ?? [];
-    localStorage.setItem(STORAGE_FALLBACK, JSON.stringify(tasks));
+    await ensureRow();
   } catch (e) {
-    const raw = localStorage.getItem(STORAGE_FALLBACK);
-    tasks = raw ? JSON.parse(raw) : [];
-    console.warn("Using local cache (offline?):", e);
+    console.warn("Nights load failed; using cache:", e);
+    tasks = readCache();
   }
 }
 
+// Save (PATCH by id). If row wasn’t found for any reason, recreate once.
 let saveTimer = null;
-function scheduleSave() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveTasks, 300);
-}
+function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveTasks, 300); }
 
 async function saveTasks() {
   try {
-    lastSeenVersion = Date.now();
+    if (!rowId) await ensureRow();
+    lastSeenVersion = nowVersion();
     const body = { data: { payload: tasks, version: lastSeenVersion } };
-    await sbFetch(`/rest/v1/task_lists?slug=eq.${LIST_SLUG}`, {
+    const res = await sbFetch(`/rest/v1/${TABLE}?id=eq.${rowId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
       body: JSON.stringify(body),
     });
-    localStorage.setItem(STORAGE_FALLBACK, JSON.stringify(tasks));
+    // 204 OK is expected for PATCH with return=minimal
+    writeCache(tasks);
   } catch (e) {
-    localStorage.setItem(STORAGE_FALLBACK, JSON.stringify(tasks));
-    console.warn("Save failed (offline?):", e);
+    writeCache(tasks);
+    console.warn("Save failed (offline or RLS?):", e);
     alert("Save failed: " + (e?.message || e));
   }
 }
 
-// ========= Drag & Drop state (long-press + ghost) =========
-const PRESS_MS = 220;
-const MOVE_TOL = 8;
-let pressTimer = null;
-let pressStartX = 0, pressStartY = 0;
-let draggingTr = null;
-let ghostEl = null;
-
-function makeGhost(fromRow) {
-  const rect = fromRow.getBoundingClientRect();
-  const g = document.createElement("div");
-  g.style.position = "fixed";
-  g.style.left = `${rect.left}px`;
-  g.style.top = `${rect.top}px`;
-  g.style.width = `${rect.width}px`;
-  g.style.height = `${rect.height}px`;
-  g.style.pointerEvents = "none";
-  g.style.opacity = "0.92";
-  g.style.background = "rgba(32,32,36,0.95)";
-  g.style.borderRadius = "10px";
-  g.style.boxShadow = "0 10px 26px rgba(0,0,0,.45)";
-  g.style.padding = "6px 10px";
-  g.style.zIndex = "9999";
-  g.textContent = fromRow.querySelector(".task-input")?.value || `Row ${fromRow.rowIndex}`;
-  return g;
+// Realtime: listen to all changes on this table (no slug filter)
+function subscribeRealtime() {
+  const ch = sb
+    .channel(`tasklists-realtime-${TABLE}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, (payload) => {
+      const v = payload.new?.data?.version ?? payload.old?.data?.version ?? 0;
+      if (v && v <= lastSeenVersion) return; // ignore our own recent write
+      // pull latest
+      ensureRow().then(render).catch(console.warn);
+    })
+    .subscribe();
+  window.addEventListener("beforeunload", () => sb.removeChannel(ch));
 }
 
-// ========= Render =========
+// ====== Render ======
 function render() {
   taskBody.innerHTML = "";
 
@@ -170,7 +164,7 @@ function render() {
   });
 }
 
-// ========= Interactions =========
+// ====== Interactions ======
 function addTask() {
   const nextId = tasks.length ? Math.max(...tasks.map((t) => t.id)) + 1 : 1;
   tasks.push({ id: nextId, text: "" });
@@ -184,10 +178,7 @@ function onTaskEdit(e) {
   if (!e.target.classList.contains("task-input")) return;
   const id = Number(e.target.dataset.id);
   const t = tasks.find((x) => x.id === id);
-  if (t) {
-    t.text = e.target.value;
-    scheduleSave();
-  }
+  if (t) { t.text = e.target.value; scheduleSave(); }
 }
 
 function onDeleteClick(e) {
@@ -195,25 +186,37 @@ function onDeleteClick(e) {
   if (!btn) return;
   const id = Number(btn.dataset.id);
   tasks = tasks.filter((t) => t.id !== id);
-  render();
-  scheduleSave();
+  render(); scheduleSave();
 }
 
-// ---- Drag handlers (long-press + ghost; drag handle only) ----
+// ====== Drag (long-press for touch) ======
+const PRESS_MS = 220, MOVE_TOL = 8;
+let pressTimer = null, pressStartX = 0, pressStartY = 0, draggingTr = null, ghostEl = null;
+
+function makeGhost(fromRow) {
+  const rect = fromRow.getBoundingClientRect();
+  const g = document.createElement("div");
+  g.style.position = "fixed";
+  g.style.left = `${rect.left}px`;
+  g.style.top = `${rect.top}px`;
+  g.style.width = `${rect.width}px`;
+  g.style.height = `${rect.height}px`;
+  g.style.pointerEvents = "none";
+  g.style.opacity = "0.92";
+  g.style.background = "rgba(32,32,36,0.95)";
+  g.style.borderRadius = "10px";
+  g.style.boxShadow = "0 10px 26px rgba(0,0,0,.45)";
+  g.style.padding = "6px 10px";
+  g.style.zIndex = "9999";
+  g.textContent = fromRow.querySelector(".task-input")?.value || `Row ${fromRow.rowIndex}`;
+  return g;
+}
+
 taskBody.addEventListener("pointerdown", (e) => {
-  const handle = e.target.closest(".drag-handle");
-  if (!handle) return;
-
-  const tr = handle.closest("tr");
-  if (!tr) return;
-
-  pressStartX = e.clientX;
-  pressStartY = e.clientY;
-
-  if (e.pointerType !== "touch") {
-    startDrag(e, tr, handle);
-    return;
-  }
+  const handle = e.target.closest(".drag-handle"); if (!handle) return;
+  const tr = handle.closest("tr"); if (!tr) return;
+  pressStartX = e.clientX; pressStartY = e.clientY;
+  if (e.pointerType !== "touch") { startDrag(e, tr, handle); return; }
   clearTimeout(pressTimer);
   pressTimer = setTimeout(() => startDrag(e, tr, handle), PRESS_MS);
   handle.setPointerCapture?.(e.pointerId);
@@ -223,22 +226,14 @@ taskBody.addEventListener("pointermove", (e) => {
   if (!pressTimer) return;
   const dx = Math.abs(e.clientX - pressStartX);
   const dy = Math.abs(e.clientY - pressStartY);
-  if (dx > MOVE_TOL || dy > MOVE_TOL) {
-    clearTimeout(pressTimer);
-    pressTimer = null;
-  }
+  if (dx > MOVE_TOL || dy > MOVE_TOL) { clearTimeout(pressTimer); pressTimer = null; }
 });
 
-["pointerup", "pointercancel", "lostpointercapture"].forEach((ev) =>
-  taskBody.addEventListener(ev, () => {
-    if (pressTimer) {
-      clearTimeout(pressTimer);
-      pressTimer = null;
-    }
-  })
+["pointerup","pointercancel","lostpointercapture"].forEach(ev =>
+  taskBody.addEventListener(ev, () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } })
 );
 
-function startDrag(e, tr, handle) {
+function startDrag(e, tr) {
   window.getSelection?.().removeAllRanges?.();
   document.activeElement?.blur?.();
   draggingTr = tr;
@@ -252,35 +247,27 @@ function startDrag(e, tr, handle) {
   const onMove = (ev) => {
     const rect = draggingTr.getBoundingClientRect();
     ghostEl.style.top = `${ev.clientY - rect.height / 2}px`;
-
     const others = [...taskBody.querySelectorAll("tr")].filter((x) => x !== draggingTr);
     let target = null;
     for (const row of others) {
       const r = row.getBoundingClientRect();
       const mid = r.top + r.height / 2;
-      if (ev.clientY < mid) {
-        target = row;
-        break;
-      }
+      if (ev.clientY < mid) { target = row; break; }
     }
-    if (target) taskBody.insertBefore(draggingTr, target);
-    else taskBody.appendChild(draggingTr);
+    if (target) taskBody.insertBefore(draggingTr, target); else taskBody.appendChild(draggingTr);
   };
 
   const onUp = () => {
     document.removeEventListener("pointermove", onMove);
     document.removeEventListener("pointerup", onUp);
     ghostEl?.remove(); ghostEl = null;
-    draggingTr.style.visibility = "";
-    draggingTr = null;
+    draggingTr.style.visibility = ""; draggingTr = null;
     document.documentElement.classList.remove("drag-lock");
 
-    const idOrder = [...taskBody.querySelectorAll("tr")].map((row) => Number(row.dataset.id));
+    const order = [...taskBody.querySelectorAll("tr")].map((row) => Number(row.dataset.id));
     const map = new Map(tasks.map((t) => [t.id, t]));
-    tasks = idOrder.map((id) => map.get(id)).filter(Boolean);
-
-    render();
-    scheduleSave();
+    tasks = order.map((id) => map.get(id)).filter(Boolean);
+    render(); scheduleSave();
   };
 
   document.addEventListener("pointermove", onMove);
