@@ -134,7 +134,7 @@ async function loadCards() {
   const { data, error } = await supabase
     .from('words_cards')                    // <-- separate table
     .select('*')
-    .eq('archived', false)
+    .or('archived.is.null,archived.eq.false')
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
 
