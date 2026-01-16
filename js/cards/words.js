@@ -1,4 +1,4 @@
-/* words.html -> title-only cards + slide-up editor, Supabase v2 client (separate table)
+/*  e  words.html -> title-only cards + slide-up editor, Supabase v2 client (separate table)
    Now with robust error surfacing + retries + 204-safe upsert + local cache.
 */
 
