@@ -5,7 +5,11 @@
 const SUPABASE_URL  = window.SUPABASE_URL  ?? "https://ntlsmrzpatcultvsrpll.supabase.co";
 const SUPABASE_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+if (!window.supabase || typeof window.supabase.createClient !== "function") {
+  throw new Error("Supabase SDK did not load. Check the CDN <script> tag in words.html.");
+}
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: { persistSession: false }
 });
 
@@ -131,7 +135,7 @@ let state = {
 // ------------- Data -------------
 async function loadCards() {
   // Remote first
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('words_cards')                    // <-- separate table
     .select('*')
     .or('archived.is.null,archived.eq.false')
@@ -163,7 +167,7 @@ async function upsertCard(card) {
 
   // Try to get the row back; tolerate empty/204 then refetch
   const { data, error } = await withRetry(() =>
-    supabase
+    sb
       .from('words_cards')
       .upsert(payload, { defaultToNull: false })
       .select() // don't .single()
@@ -175,8 +179,8 @@ async function upsertCard(card) {
   if (!row) {
     // Fallback: re-fetch by id if we have it, else by title+content
     const ref = payload.id
-      ? supabase.from('words_cards').select('*').eq('id', payload.id).maybeSingle()
-      : supabase.from('words_cards')
+      ? sb.from('words_cards').select('*').eq('id', payload.id).maybeSingle()
+      : sb.from('words_cards')
           .select('*')
           .eq('title', payload.title)
           .eq('content', payload.content)
@@ -191,7 +195,7 @@ async function upsertCard(card) {
 }
 
 async function deleteCard(id) {
-  const { error } = await supabase.from('words_cards').delete().eq('id', id);
+  const { error } = await sb.from('words_cards').delete().eq('id', id);
   if (error) throw error;
 }
 
@@ -325,8 +329,8 @@ async function onDelete() {
 // ------------- Live changes (dedupe by id) -------------
 function subscribeRealtime() {
   try {
-    if (state.channel) supabase.removeChannel(state.channel);
-    state.channel = supabase
+    if (state.channel) sb.removeChannel(state.channel);
+    state.channel = sb
       .channel('words_cards_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'words_cards' }, payload => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
