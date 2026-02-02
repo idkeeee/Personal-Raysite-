@@ -88,7 +88,13 @@ const dayDiff = (iso) => {
   const utcNow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   return Math.max(0, Math.floor((utcNow - utcA) / 86400000));
 };
-const newRow = (rows) => ({ id: rows.length ? Math.max(...rows.map(r=>r.id))+1 : 1, text: "", last_progress_at: new Date().toISOString() });
+const newRow = (rows) => ({
+  id: rows.length ? Math.max(...rows.map(r => r.id)) + 1 : 1,
+  text: "",
+  details: "",                 // NEW: per-task expandable notes
+  last_progress_at: new Date().toISOString()
+});
+
 
 /* days → color (0d green → 10d red). applied to all except long-term. */
 const AGE_LIMIT_DAYS = 10;
@@ -148,8 +154,15 @@ function renderTable(slug){
     tdHandle.appendChild(handle);
     tr.appendChild(tdHandle);
 
-    // task input
+    // task input + expand details
+    tr.classList.add("task-row");
+
     const tdTask = document.createElement("td");
+
+    // Top line: input + expand button
+    const main = document.createElement("div");
+    main.className = "task-main";
+
     const input = document.createElement("input");
     input.className = "task-input";
     input.value = r.text || "";
@@ -168,7 +181,45 @@ function renderTable(slug){
         e.preventDefault();
       }
     });
-    tdTask.appendChild(input);
+
+    // Expand button (per row)
+    const expandBtn = document.createElement("button");
+    expandBtn.className = "btn expand-btn";
+    expandBtn.type = "button";
+
+    // Details area
+    const detailsWrap = document.createElement("div");
+    detailsWrap.className = "task-details";
+
+    const detailsTa = document.createElement("textarea");
+    detailsTa.value = r.details || "";
+    detailsTa.placeholder = "Add details for this task…";
+    detailsTa.addEventListener("input", () => {
+      r.details = detailsTa.value;
+      scheduleSave(slug);
+    });
+    detailsWrap.appendChild(detailsTa);
+
+    // Initial state
+    const isOpen = Boolean(r._open);          // UI-only flag (not required to exist)
+    tr.classList.toggle("task-open", isOpen);
+    expandBtn.textContent = isOpen ? "▾" : "▸";
+    expandBtn.title = isOpen ? "Hide details" : "Show details";
+
+    // Toggle open/closed without re-rendering
+    expandBtn.addEventListener("click", () => {
+      r._open = !r._open;                     // UI-only flag; harmless if stored
+      tr.classList.toggle("task-open", r._open);
+      expandBtn.textContent = r._open ? "▾" : "▸";
+      expandBtn.title = r._open ? "Hide details" : "Show details";
+      if (r._open) setTimeout(() => detailsTa.focus(), 0);
+    });
+
+    main.appendChild(input);
+    main.appendChild(expandBtn);
+
+    tdTask.appendChild(main);
+    tdTask.appendChild(detailsWrap);
     tr.appendChild(tdTask);
 
     // days (+ color + xp badge)  —— always-on quest skin
@@ -220,6 +271,9 @@ function renderTable(slug){
     delBtn.title = "Delete row";
     delBtn.textContent = "✕";
     delBtn.addEventListener("click", () => {
+      // optional: cleanup UI open flag
+      r._open = false;
+
       S.rows = S.rows.filter(x => x.id !== r.id);
       if (!S.rows.length) S.rows.push(newRow([]));
       renderTable(slug);

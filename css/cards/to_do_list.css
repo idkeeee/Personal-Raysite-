@@ -207,3 +207,54 @@
   padding:8px 12px; border-radius:12px; background:#0f0f0f; border:1px solid #2a2a2a; color:#fff;
   box-shadow:0 10px 20px rgba(0,0,0,.35); pointer-events:none; z-index:9999;
 }
+
+
+/* ===== Task details dropdown ===== */
+
+.task-row .task-main{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.task-row .task-main .task-input{
+  flex:1;
+  min-width:0; /* prevents overflow in flex */
+}
+
+.expand-btn{
+  width:34px;
+  min-width:34px;
+  padding:6px 0;
+  text-align:center;
+  font-weight:900;
+}
+
+/* hidden by default */
+.task-details{
+  max-height:0;
+  opacity:0;
+  overflow:hidden;
+  margin-top:0;
+  transition: max-height .18s ease, opacity .18s ease, margin-top .18s ease;
+}
+
+/* visible when row expanded */
+.task-row.task-open .task-details{
+  max-height:220px;   /* enough room for textarea */
+  opacity:1;
+  margin-top:8px;
+}
+
+.task-details textarea{
+  width:100%;
+  min-height:90px;
+  resize:vertical;
+  padding:10px 12px;
+  border-radius:10px;
+  background:#0f0f0f;
+  border:1px solid #2a2a2a;
+  color:var(--ink);
+  outline:none;
+  font-family:inherit;
+}
