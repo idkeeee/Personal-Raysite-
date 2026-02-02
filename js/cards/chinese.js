@@ -379,7 +379,6 @@ function closeModal(){
   document.body.classList.remove("modal-open");
 }
 mCancel.addEventListener("click", closeModal);
-modal.addEventListener("click", (e)=>{ if (e.target === modal) closeModal(); });
 
 function saveWord(mode, idx=null){
   const hanzi  = inHanzi.value.trim();
