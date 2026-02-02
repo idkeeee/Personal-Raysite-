@@ -201,19 +201,23 @@ function renderTable(slug){
     detailsWrap.appendChild(detailsTa);
 
     // Initial state
-    const isOpen = Boolean(r._open);          // UI-only flag (not required to exist)
+    const isOpen = false; // always start collapsed
     tr.classList.toggle("task-open", isOpen);
-    expandBtn.textContent = isOpen ? "▾" : "▸";
-    expandBtn.title = isOpen ? "Hide details" : "Show details";
+    expandBtn.textContent = "▸";
+    expandBtn.title = "Show details";
+
 
     // Toggle open/closed without re-rendering
+    let open = false;
+
     expandBtn.addEventListener("click", () => {
-      r._open = !r._open;                     // UI-only flag; harmless if stored
-      tr.classList.toggle("task-open", r._open);
-      expandBtn.textContent = r._open ? "▾" : "▸";
-      expandBtn.title = r._open ? "Hide details" : "Show details";
-      if (r._open) setTimeout(() => detailsTa.focus(), 0);
+      open = !open;
+      tr.classList.toggle("task-open", open);
+      expandBtn.textContent = open ? "▾" : "▸";
+      expandBtn.title = open ? "Hide details" : "Show details";
+      if (open) setTimeout(() => detailsTa.focus(), 0);
     });
+
 
     main.appendChild(input);
     main.appendChild(expandBtn);
