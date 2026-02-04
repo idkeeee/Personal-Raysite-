@@ -5,6 +5,7 @@ const sb = window.supabase.createClient(SB_URL, SB_ANON);
 
 /* lists → slugs */
 const SLUGS = {
+  "todo-daily":  "todo-daily",
   "todo-long":   "todo-long",
   "todo-short":  "todo-short",
   "todo-school": "todo-school",
@@ -18,6 +19,7 @@ const writeLocal = (slug, data) => { try { localStorage.setItem(cacheKey(slug), 
 
 /* item shape: { id:number, text:string, last_progress_at: ISOString } */
 const state = {
+  "todo-daily":  { rows: [], version: 0, saveTimer: null, el: null },
   "todo-long":   { rows: [], version: 0, saveTimer: null, el: null },
   "todo-short":  { rows: [], version: 0, saveTimer: null, el: null },
   "todo-school": { rows: [], version: 0, saveTimer: null, el: null },
@@ -129,6 +131,32 @@ function showXpToast(rowEl, text){
   document.body.appendChild(t);
   setTimeout(()=>t.remove(), 900);
 }
+
+
+  function todayKeyLocal(){
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`; // local YYYY-MM-DD
+  }
+
+  function scheduleMidnightRerender(slug){
+    const tick = () => {
+      const now = new Date();
+      const next = new Date(now);
+      next.setHours(24, 0, 0, 0); // next local midnight
+      const ms = Math.max(500, next - now + 50);
+      setTimeout(() => {
+        renderTable(slug);
+        tick();
+      }, ms);
+    };
+    tick();
+  }
+
+
+
 
 /* ===== render ===== */
 function renderTable(slug){
@@ -249,6 +277,40 @@ function renderTable(slug){
     tdDays.appendChild(xpSpan);
 
     tr.appendChild(tdDays);
+
+    // daily done toggle (only for todo-daily)
+    if (slug === "todo-daily") {
+      const tdDone = document.createElement("td");
+      tdDone.className = "thin";
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+
+      const refreshDoneUI = () => {
+        const done = (r.done_on === todayKeyLocal());
+        btn.className = "btn daily-toggle" + (done ? " done" : "");
+        btn.textContent = done ? "✓" : "✗";
+        btn.title = done ? "Mark as not done today" : "Mark as done today";
+      };
+
+      refreshDoneUI();
+
+      btn.addEventListener("click", () => {
+        const done = (r.done_on === todayKeyLocal());
+        if (done) {
+          r.done_on = null;
+        } else {
+          r.done_on = todayKeyLocal();
+          r.last_progress_at = new Date().toISOString(); // optional: also resets days
+        }
+        refreshDoneUI();
+        scheduleSave(slug);
+      });
+
+      tdDone.appendChild(btn);
+      tr.appendChild(tdDone);
+    }
+
 
     // progress (resets days + XP toast)
     const tdOk = document.createElement("td");
@@ -372,6 +434,7 @@ function wireDrag(slug){
 
 /* ===== boot ===== */
 document.addEventListener("DOMContentLoaded", async () => {
+  scheduleMidnightRerender("todo-daily");
   // attach containers and add-row buttons
   document.querySelectorAll(".todo-card").forEach(card => {
     const slug = card.dataset.slug;

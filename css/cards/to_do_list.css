@@ -258,3 +258,27 @@
   outline:none;
   font-family:inherit;
 }
+
+
+/* Daily done toggle */
+.btn.daily-toggle{
+  width:38px;
+  min-width:38px;
+  padding:6px 0;
+  font-weight:900;
+  border-color:#ff9a9a80;
+  background:#3a2527;
+}
+
+.btn.daily-toggle:hover{
+  background:#4a2b2e;
+}
+
+.btn.daily-toggle.done{
+  border-color:#8fffcd80;
+  background:#23332b;
+}
+
+.btn.daily-toggle.done:hover{
+  background:#2a3f33;
+}

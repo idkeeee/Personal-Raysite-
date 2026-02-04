@@ -33,6 +33,24 @@
 
 
         <section class="todo-wrap">
+
+        <!-- Daily -->
+        <article class="todo-card" data-slug="todo-daily">
+        <header>
+            <h2>Daily</h2>
+            <button class="add-btn">+ Add</button>
+        </header>
+        <div class="table-wrap">
+            <table class="todo-table">
+            <thead>
+                <tr><th></th><th>task</th><th>days</th><th>✓</th><th>⚡</th><th>✕</th></tr>
+            </thead>
+            <tbody></tbody>
+            </table>
+        </div>
+        </article>
+
+    
         <!-- Long-term -->
         <article class="todo-card" data-slug="todo-long">
         <header>
@@ -100,7 +118,7 @@
 
 
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="js/cards/to_do.js?v=5"></script>
+        <script src="js/cards/to_do.js?v=6"></script>
         <script src="js/generals.js"></script>
         <script src="js/navbar.js"></script>
     </body>
