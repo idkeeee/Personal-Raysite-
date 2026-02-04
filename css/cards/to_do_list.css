@@ -267,7 +267,7 @@
   padding:6px 0;
   font-weight:900;
   border-color:#ff9a9a80;
-  background:#3a2527;
+  background:#af0717e3;
 }
 
 .btn.daily-toggle:hover{
@@ -276,7 +276,7 @@
 
 .btn.daily-toggle.done{
   border-color:#8fffcd80;
-  background:#23332b;
+  background:#67d80dc9;
 }
 
 .btn.daily-toggle.done:hover{
