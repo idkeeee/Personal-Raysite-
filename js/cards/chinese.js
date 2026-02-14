@@ -21,8 +21,26 @@ const SAMPLE_WORDS = [
 
 /* state */
 let words = readLocal() || [...SAMPLE_WORDS];
-let index = 0;
+let session = "main"; // "main" | "trash"
+let viewIndex = 0;
 let lastVersion = 0;
+
+function getView(){
+  const out = [];
+  words.forEach((w, rawIdx) => {
+    const isTrash = Boolean(w.deleted_at);
+    const include = (session === "trash") ? isTrash : !isTrash;
+    if (include) out.push({ w, rawIdx });
+  });
+  return out;
+}
+
+function clampViewIndex(){
+  const n = getView().length;
+  if (n <= 0) { viewIndex = 0; return; }
+  viewIndex = Math.max(0, Math.min(viewIndex, n - 1));
+}
+
 
 /* multi-select toggles define the pool */
 const selected = new Set(["hanzi","pinyin","yisi"]);
@@ -50,9 +68,11 @@ const btnVoice = document.getElementById("btnVoice");
 
 /* Click/tap: always speak Hanzi of current card */
 btnVoice.addEventListener("click", () => {
-  const w = words[index];
+  const w = getView()[viewIndex]?.w;
   if (w) speakChinese(w.hanzi);
 });
+
+
 
 /* Desktop: right-click to toggle active (glow on/off) */
 btnVoice.addEventListener("contextmenu", (e) => {
@@ -120,7 +140,7 @@ function subscribeRealtime(){
         const arr = Array.isArray(row?.data) ? row.data : [];
         words = arr;
         writeLocal(words);
-        index = Math.min(index, Math.max(0, words.length - 1));
+        clampViewIndex();
         renderCard(); renderDict();
       })
     .subscribe();
@@ -200,8 +220,12 @@ function pickPromptRandom(){
   currentPrompt = pool[Math.floor(Math.random()*pool.length)];
 }
 function renderCard(){
-  const w = words[index] ?? {hanzi:"—", pinyin:"—", yisi:"—"};
+  const view = getView();
+  const w = view[viewIndex]?.w ?? {hanzi:"—", pinyin:"—", yisi:"—"};
   const parts = [];
+
+
+
 
   if (revealAll) {
     if (selected.has("hanzi"))  parts.push(`<div class="hanzi">${escapeHtml(w.hanzi)}</div>`);
@@ -231,55 +255,89 @@ function renderCard(){
   if (!revealAll && currentPrompt === "voice") {
     const btn = document.getElementById("bigVoice");
     btn?.addEventListener("click", () => {
-      if (!words.length) return;
-      index = Math.floor(Math.random() * words.length);
-      const ww = words[index];
+      const viewNow = getView();
+      if (!viewNow.length) return;
+      viewIndex = Math.floor(Math.random() * viewNow.length);
+      const ww = viewNow[viewIndex].w;
       speakChinese(ww.hanzi);
     });
   }
 
 }
 function renderDict(){
+  const view = getView();
   dictList.innerHTML = "";
-  words.forEach((w, i) => {
+
+  view.forEach(({ w, rawIdx }) => {
     const li = document.createElement("li");
     li.className = "dict-item";
-    li.dataset.idx = i;
-    li.innerHTML = `
-      <div>
-        <div class="dict-hanzi">${escapeHtml(w.hanzi)}</div>
-        <div class="dict-pinyin">${escapeHtml(w.pinyin)}</div>
-        <div class="dict-yisi">${escapeHtml(w.yisi)}</div>
-      </div>
-      <button class="zh-btn mini" data-edit="${i}">Edit</button>
-      <button class="zh-btn ghost mini" data-del="${i}">Delete</button>
-    `;
+
+    if (session === "trash") {
+      li.innerHTML = `
+        <div>
+          <div class="dict-hanzi">${escapeHtml(w.hanzi)}</div>
+          <div class="dict-pinyin">${escapeHtml(w.pinyin)}</div>
+          <div class="dict-yisi">${escapeHtml(w.yisi)}</div>
+        </div>
+        <button class="zh-btn mini" data-restore="${rawIdx}">Restore</button>
+        <button class="zh-btn ghost mini" data-purge="${rawIdx}">Delete forever</button>
+      `;
+    } else {
+      li.innerHTML = `
+        <div>
+          <div class="dict-hanzi">${escapeHtml(w.hanzi)}</div>
+          <div class="dict-pinyin">${escapeHtml(w.pinyin)}</div>
+          <div class="dict-yisi">${escapeHtml(w.yisi)}</div>
+        </div>
+        <button class="zh-btn mini" data-edit="${rawIdx}">Edit</button>
+        <button class="zh-btn ghost mini" data-trash="${rawIdx}">Delete</button>
+      `;
+    }
+
     dictList.appendChild(li);
   });
 }
 
-// uses event delegation so buttons work after every re-render
 dictList.addEventListener("click", (e) => {
-  const editBtn = e.target.closest("[data-edit]");
-  const delBtn  = e.target.closest("[data-del]");
-  if (!editBtn && !delBtn) return;
+  const editBtn    = e.target.closest("[data-edit]");
+  const trashBtn   = e.target.closest("[data-trash]");
+  const purgeBtn   = e.target.closest("[data-purge]");
+  const restoreBtn = e.target.closest("[data-restore]");
 
   if (editBtn) {
-    const i = Number(editBtn.dataset.edit);
-    openAddModal("edit", i);              // opens modal prefilled
+    const raw = Number(editBtn.dataset.edit);
+    openAddModal("edit", raw);
     return;
   }
 
-  if (delBtn) {
-    const i = Number(delBtn.dataset.del);
-    // adjust the current index so the card view remains valid
-    if (i < index) index--;
-    words.splice(i, 1);
-    if (index >= words.length) index = Math.max(0, words.length - 1);
+  // Main session delete => soft delete (no data loss)
+  if (trashBtn) {
+    const raw = Number(trashBtn.dataset.trash);
+    words[raw].deleted_at = new Date().toISOString();
+    clampViewIndex();
+    renderCard(); renderDict();
+    scheduleSave();
+    return;
+  }
 
-    renderCard();
-    renderDict();
-    scheduleSave();                        // persist to Supabase + localStorage
+  // Trash session delete => permanent removal
+  if (purgeBtn) {
+    const raw = Number(purgeBtn.dataset.purge);
+    if (!confirm("Permanently delete this word?")) return;
+    words.splice(raw, 1);
+    clampViewIndex();
+    renderCard(); renderDict();
+    scheduleSave();
+    return;
+  }
+
+  if (restoreBtn) {
+    const raw = Number(restoreBtn.dataset.restore);
+    words[raw].deleted_at = null;
+    clampViewIndex();
+    renderCard(); renderDict();
+    scheduleSave();
+    return;
   }
 });
 
@@ -310,31 +368,69 @@ function speakChinese(text) {
 
 
 /* ===== controls ===== */
-document.getElementById("btnPrev").addEventListener("click", () => {
-  if (!words.length) return;
-  index = (index - 1 + words.length) % words.length;
-  revealAll = false;        // arrive hidden
-  pickPromptRandom();       // choose one of enabled modes
+const trashModeBtn = document.getElementById("btnTrashMode");
+
+function syncTrashBtn(){
+  if (!trashModeBtn) return;
+  const on = (session === "trash");
+  trashModeBtn.classList.toggle("active", on);
+  trashModeBtn.textContent = on ? "Trash (ON)" : "Trash";
+}
+
+trashModeBtn?.addEventListener("click", () => {
+  session = (session === "trash") ? "main" : "trash";
+  viewIndex = 0;
+  revealAll = false;
+  pickPromptRandom();
+  syncTrashBtn();
   renderCard();
+  renderDict();
 });
-document.getElementById("btnNext").addEventListener("click", () => {
-  if (!words.length) return;
-  index = (index + 1) % words.length;
+
+
+
+document.getElementById("btnPrev").addEventListener("click", () => {
+  const view = getView();
+  if (!view.length) return;
+  viewIndex = (viewIndex - 1 + view.length) % view.length;
   revealAll = false;
   pickPromptRandom();
   renderCard();
 });
+
+
+document.getElementById("btnNext").addEventListener("click", () => {
+  const view = getView();
+  if (!view.length) return;
+  viewIndex = (viewIndex + 1) % view.length;
+  revealAll = false;
+  pickPromptRandom();
+  renderCard();
+});
+
+
 document.getElementById("btnReveal").addEventListener("click", () => {
   revealAll = true;
   renderCard();
 });
+function shuffleCurrentSession(){
+  const ids = getView().map(v => v.rawIdx);
+  for (let i = ids.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const a = ids[i], b = ids[j];
+    [words[a], words[b]] = [words[b], words[a]];
+  }
+}
+
 document.getElementById("btnShuffle").addEventListener("click", () => {
-  shuffle(words);
-  index = 0;
+  shuffleCurrentSession();
+  viewIndex = 0;
   revealAll = false;
   pickPromptRandom();
   renderCard(); renderDict(); scheduleSave();
 });
+
+
 
 /* hide/show dictionary */
 toggleDictBtn.addEventListener("click", () => {
@@ -388,10 +484,12 @@ function saveWord(mode, idx=null){
 
   if (mode === "create") {
     words.push({ hanzi, pinyin, yisi });
-    index = words.length - 1;
+    session = "main";          // new word is not trash
+    viewIndex = getView().length - 1;
   } else if (mode === "edit" && idx != null) {
-    words[idx] = { hanzi, pinyin, yisi };
-    index = idx;
+    words[idx] = { ...words[idx], hanzi, pinyin, yisi };
+    // if you're editing a word, just re-clamp and keep position safe
+    clampViewIndex();
   }
   revealAll = false;        // after add/edit, go to prompt mode
   pickPromptRandom();
@@ -423,5 +521,6 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<"
   pickPromptRandom();     // choose an initial single field to show
   renderCard();
   renderDict();
+  syncTrashBtn();
   subscribeRealtime();
 })();
