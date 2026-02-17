@@ -368,7 +368,7 @@ function speakChinese(text) {
 
 
 /* ===== controls ===== */
-const trashModeBtn = document.getElementById("btnTrashMode");
+const trashModeBtn = document.getElementById("btnTrashSession");
 
 function syncTrashBtn(){
   if (!trashModeBtn) return;
