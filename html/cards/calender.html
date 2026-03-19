@@ -31,35 +31,20 @@
         <div class="backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>   <!-- darkens page when sidemenu opens , in generals.js -->
 
 
-        <main class="calendar_page">
+    <main class="calendar_page">
         <section class="calendar_card">
-            
+
             <div class="calendar_header">
                 <div class="calendar_heading">
                     <h1>Calendar</h1>
                     <p>Plan tasks, events, and reminders</p>
                 </div>
-
-                <div class="calendar_nav">
-                    <button id="prevMonthBtn" class="calendar_nav_btn" type="button">&#9664;</button>
-                    <h2 id="monthYearLabel" class="calendar_month_label">March 2026</h2>
-                    <button id="nextMonthBtn" class="calendar_nav_btn" type="button">&#9654;</button>
-                </div>
             </div>
 
-            <div class="calendar_weekdays">
-                <div>Sun</div>
-                <div>Mon</div>
-                <div>Tue</div>
-                <div>Wed</div>
-                <div>Thu</div>
-                <div>Fri</div>
-                <div>Sat</div>
+            <div id="calendarScroll" class="calendar_scroll">
+                <!-- JS will generate months here -->
             </div>
 
-            <div id="calendarGrid" class="calendar_grid">
-                <!-- JS fills this -->
-            </div>
         </section>
     </main>
 
