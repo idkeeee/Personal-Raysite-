@@ -246,3 +246,142 @@
         height: 11px;
     }
 }
+
+
+.calendar_title_row
+{
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.calendar_header_actions
+{
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.calendar_action_btn
+{
+    height: 42px;
+    padding: 0 14px;
+    border: 1px solid rgba(226, 231, 192, 0.18);
+    border-radius: 12px;
+    background-color: rgb(63, 63, 71);
+    color: rgb(226, 231, 192);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: 0.16s ease;
+}
+
+.calendar_action_btn:hover
+{
+    background-color: rgb(74, 74, 84);
+    border-color: rgba(226, 231, 192, 0.3);
+}
+
+.calendar_action_btn:disabled
+{
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.calendar_day
+{
+    cursor: pointer;
+}
+
+.calendar_day_selected
+{
+    border-color: rgba(120, 190, 255, 0.7);
+    box-shadow: 0 0 0 1px rgba(120, 190, 255, 0.18) inset;
+}
+
+.calendar_day_note
+{
+    margin-top: 10px;
+    width: 100%;
+    font-size: 0.86rem;
+    line-height: 1.35;
+    color: rgba(226, 231, 192, 0.88);
+    white-space: pre-wrap;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+}
+
+.calendar_day.has-note
+{
+    border-color: rgba(226, 231, 192, 0.22);
+}
+
+.calendar_note_input
+{
+    margin-top: 10px;
+    width: 100%;
+    min-height: 72px;
+    resize: none;
+    border: 1px solid rgba(226, 231, 192, 0.2);
+    border-radius: 10px;
+    background-color: rgba(0, 0, 0, 0.16);
+    color: rgb(226, 231, 192);
+    padding: 8px 10px;
+    box-sizing: border-box;
+    font: inherit;
+    line-height: 1.35;
+    outline: none;
+}
+
+.calendar_note_input:focus
+{
+    border-color: rgba(120, 190, 255, 0.6);
+    box-shadow: 0 0 0 1px rgba(120, 190, 255, 0.18);
+}
+
+.calendar_day_jump_target
+{
+    animation: calendarPulse 1.2s ease;
+}
+
+@keyframes calendarPulse
+{
+    0%
+    {
+        box-shadow: 0 0 0 0 rgba(255, 214, 102, 0.45);
+    }
+
+    100%
+    {
+        box-shadow: 0 0 0 18px rgba(255, 214, 102, 0);
+    }
+}
+
+@media (max-width: 700px)
+{
+    .calendar_header_actions
+    {
+        width: 100%;
+    }
+
+    .calendar_action_btn
+    {
+        flex: 1 1 120px;
+    }
+
+    .calendar_day_note
+    {
+        font-size: 0.76rem;
+        -webkit-line-clamp: 3;
+    }
+
+    .calendar_note_input
+    {
+        min-height: 56px;
+        padding: 6px 8px;
+    }
+}

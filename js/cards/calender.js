@@ -7,7 +7,10 @@ const sb = window.supabase.createClient(SB_URL, SB_ANON);
 
 
 /* ===== Calendar ===== */
-const calendarScroll = document.getElementById("calendarScroll");
+const calendarScroll   = document.getElementById("calendarScroll");
+const jumpTodayBtn     = document.getElementById("jumpTodayBtn");
+const prevActivityBtn  = document.getElementById("prevActivityBtn");
+const nextActivityBtn  = document.getElementById("nextActivityBtn");
 
 const monthNames = [
     "January", "February", "March", "April", "May", "June",
@@ -21,6 +24,51 @@ const todayDate = today.getDate();
 const todayMonth = today.getMonth();
 const todayYear = today.getFullYear();
 
+const NOTES_STORAGE_KEY = "calendar_notes_v1";
+let calendarNotes = loadNotes();
+let activeEditor = null;
+
+
+/* ===== Notes storage ===== */
+function loadNotes()
+{
+    try
+    {
+        return JSON.parse(localStorage.getItem(NOTES_STORAGE_KEY)) ?? {};
+    }
+    catch
+    {
+        return {};
+    }
+}
+
+function saveNotes()
+{
+    localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(calendarNotes));
+    updateActivityButtons();
+}
+
+
+/* ===== Helpers ===== */
+function formatDateKey(year, month, day)
+{
+    const mm = String(month + 1).padStart(2, "0");
+    const dd = String(day).padStart(2, "0");
+    return `${year}-${mm}-${dd}`;
+}
+
+function getNote(dateKey)
+{
+    return (calendarNotes[dateKey] ?? "").trim();
+}
+
+function clearSelectedCells()
+{
+    document.querySelectorAll(".calendar_day_selected").forEach(function (cell)
+    {
+        cell.classList.remove("calendar_day_selected");
+    });
+}
 
 function createTodayIcon()
 {
@@ -35,7 +83,6 @@ function createTodayIcon()
 
     return icon;
 }
-
 
 function createWeekdaysRow()
 {
@@ -53,12 +100,147 @@ function createWeekdaysRow()
 }
 
 
+/* ===== Note rendering ===== */
+function refreshCellsForDate(dateKey)
+{
+    const allCells = document.querySelectorAll(".calendar_day");
+
+    allCells.forEach(function (cell)
+    {
+        if (cell.dataset.date !== dateKey)
+        {
+            return;
+        }
+
+        const existingInput = cell.querySelector(".calendar_note_input");
+        if (existingInput)
+        {
+            existingInput.remove();
+        }
+
+        let noteBlock = cell.querySelector(".calendar_day_note");
+
+        if (!noteBlock)
+        {
+            noteBlock = document.createElement("div");
+            noteBlock.classList.add("calendar_day_note");
+            cell.appendChild(noteBlock);
+        }
+
+        const noteText = getNote(dateKey);
+        noteBlock.textContent = noteText;
+        cell.classList.toggle("has-note", noteText.length > 0);
+        cell.classList.remove("calendar_day_selected");
+    });
+}
+
+function openEditorForCell(cell)
+{
+    const dateKey = cell.dataset.date;
+
+    if (!dateKey)
+    {
+        return;
+    }
+
+    if (activeEditor && activeEditor.cell === cell)
+    {
+        return;
+    }
+
+    closeActiveEditor(true);
+    clearSelectedCells();
+
+    cell.classList.add("calendar_day_selected");
+
+    const oldNoteBlock = cell.querySelector(".calendar_day_note");
+    const input = document.createElement("textarea");
+    input.classList.add("calendar_note_input");
+    input.placeholder = "Write something...";
+    input.value = getNote(dateKey);
+
+    if (oldNoteBlock)
+    {
+        oldNoteBlock.replaceWith(input);
+    }
+    else
+    {
+        cell.appendChild(input);
+    }
+
+    activeEditor = {
+        cell: cell,
+        dateKey: dateKey,
+        input: input
+    };
+
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+
+    input.addEventListener("click", function (event)
+    {
+        event.stopPropagation();
+    });
+
+    input.addEventListener("keydown", function (event)
+    {
+        if ((event.ctrlKey || event.metaKey) && event.key === "Enter")
+        {
+            event.preventDefault();
+            closeActiveEditor(true);
+        }
+        else if (event.key === "Escape")
+        {
+            event.preventDefault();
+            closeActiveEditor(false);
+        }
+    });
+
+    input.addEventListener("blur", function ()
+    {
+        if (activeEditor && activeEditor.input === input)
+        {
+            closeActiveEditor(true);
+        }
+    });
+}
+
+function closeActiveEditor(shouldSave)
+{
+    if (!activeEditor)
+    {
+        return;
+    }
+
+    const dateKey = activeEditor.dateKey;
+    const value = activeEditor.input.value.trim();
+
+    if (shouldSave)
+    {
+        if (value.length > 0)
+        {
+            calendarNotes[dateKey] = value;
+        }
+        else
+        {
+            delete calendarNotes[dateKey];
+        }
+
+        saveNotes();
+    }
+
+    activeEditor = null;
+    refreshCellsForDate(dateKey);
+}
+
+
+/* ===== Calendar creation ===== */
 function createMonthBlock(month, year)
 {
     const monthBlock = document.createElement("section");
     monthBlock.classList.add("calendar_month_block");
-    monthBlock.dataset.month = month;
-    monthBlock.dataset.year = year;
+    monthBlock.dataset.month = String(month);
+    monthBlock.dataset.year = String(year);
 
     if (month === todayMonth && year === todayYear)
     {
@@ -77,7 +259,6 @@ function createMonthBlock(month, year)
     const firstDayIndex = new Date(year, month, 1).getDay();
     const daysInCurrentMonth = new Date(year, month + 1, 0).getDate();
     const daysInPreviousMonth = new Date(year, month, 0).getDate();
-
     const totalCells = 42;
 
     for (let i = 0; i < totalCells; i++)
@@ -121,6 +302,11 @@ function createMonthBlock(month, year)
             cellYear++;
         }
 
+        const dateKey = formatDateKey(cellYear, cellMonth, displayDay);
+
+        dayCell.dataset.date = dateKey;
+        dayCell.dataset.isCanonical = String(!isOtherMonth);
+
         dayNumber.textContent = displayDay;
         dayCell.appendChild(dayNumber);
 
@@ -140,6 +326,21 @@ function createMonthBlock(month, year)
             dayCell.appendChild(createTodayIcon());
         }
 
+        const noteBlock = document.createElement("div");
+        noteBlock.classList.add("calendar_day_note");
+        noteBlock.textContent = getNote(dateKey);
+        dayCell.appendChild(noteBlock);
+
+        if (getNote(dateKey).length > 0)
+        {
+            dayCell.classList.add("has-note");
+        }
+
+        dayCell.addEventListener("click", function ()
+        {
+            openEditorForCell(dayCell);
+        });
+
         grid.appendChild(dayCell);
     }
 
@@ -149,7 +350,6 @@ function createMonthBlock(month, year)
 
     return monthBlock;
 }
-
 
 function renderScrollableCalendar()
 {
@@ -162,20 +362,145 @@ function renderScrollableCalendar()
     {
         for (let month = 0; month < 12; month++)
         {
-            const monthBlock = createMonthBlock(month, year);
-            calendarScroll.appendChild(monthBlock);
+            calendarScroll.appendChild(createMonthBlock(month, year));
         }
     }
 
-    const currentMonthBlock = document.getElementById("currentMonthBlock");
+    jumpToToday(false);
+    updateActivityButtons();
+}
 
-    if (currentMonthBlock)
+
+/* ===== Navigation ===== */
+function getCanonicalCellByDate(dateKey)
+{
+    const allCells = document.querySelectorAll('.calendar_day[data-is-canonical="true"]');
+
+    for (const cell of allCells)
     {
-        currentMonthBlock.scrollIntoView({
-            behavior: "instant",
-            block: "start"
-        });
+        if (cell.dataset.date === dateKey)
+        {
+            return cell;
+        }
+    }
+
+    return null;
+}
+
+function scrollToCell(cell, smooth = true)
+{
+    if (!cell)
+    {
+        return;
+    }
+
+    const targetTop = Math.max(cell.offsetTop - 100, 0);
+
+    calendarScroll.scrollTo({
+        top: targetTop,
+        behavior: smooth ? "smooth" : "auto"
+    });
+
+    cell.classList.add("calendar_day_jump_target");
+
+    window.setTimeout(function ()
+    {
+        cell.classList.remove("calendar_day_jump_target");
+    }, 1300);
+}
+
+function jumpToToday(smooth = true)
+{
+    closeActiveEditor(true);
+
+    const todayKey = formatDateKey(todayYear, todayMonth, todayDate);
+    const todayCell = getCanonicalCellByDate(todayKey);
+
+    if (todayCell)
+    {
+        scrollToCell(todayCell, smooth);
     }
 }
 
+function getActivityCells()
+{
+    const cells = Array.from(
+        document.querySelectorAll('.calendar_day.has-note[data-is-canonical="true"]')
+    );
+
+    cells.sort(function (a, b)
+    {
+        return a.offsetTop - b.offsetTop;
+    });
+
+    return cells;
+}
+
+function jumpToActivity(direction)
+{
+    closeActiveEditor(true);
+
+    const activityCells = getActivityCells();
+
+    if (activityCells.length === 0)
+    {
+        return;
+    }
+
+    const referenceTop = calendarScroll.scrollTop + (calendarScroll.clientHeight * 0.35);
+
+    if (direction === "next")
+    {
+        const nextCell =
+            activityCells.find(function (cell)
+            {
+                return cell.offsetTop > referenceTop + 8;
+            }) ?? activityCells[activityCells.length - 1];
+
+        scrollToCell(nextCell, true);
+    }
+    else
+    {
+        const prevCells = [...activityCells].reverse();
+
+        const prevCell =
+            prevCells.find(function (cell)
+            {
+                return cell.offsetTop < referenceTop - 8;
+            }) ?? activityCells[0];
+
+        scrollToCell(prevCell, true);
+    }
+}
+
+function updateActivityButtons()
+{
+    const hasActivities = Object.values(calendarNotes).some(function (value)
+    {
+        return String(value).trim().length > 0;
+    });
+
+    prevActivityBtn.disabled = !hasActivities;
+    nextActivityBtn.disabled = !hasActivities;
+}
+
+
+/* ===== Button events ===== */
+jumpTodayBtn.addEventListener("click", function ()
+{
+    jumpToToday(true);
+});
+
+prevActivityBtn.addEventListener("click", function ()
+{
+    jumpToActivity("prev");
+});
+
+nextActivityBtn.addEventListener("click", function ()
+{
+    jumpToActivity("next");
+});
+
+
+/* ===== Init ===== */
 renderScrollableCalendar();

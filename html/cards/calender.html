@@ -14,7 +14,7 @@
         <link rel="stylesheet" href="css/sidebar.css?v=3">
         <link rel="stylesheet" href="css/general_styles.css?v=3">
         <link rel="stylesheet" href="css/cards.css?v=3">
-        <link rel="stylesheet" href="css/cards/calender.css">
+        <link rel="stylesheet" href="css/cards/calender.css?v=1">
     </head>
 
     <body>
@@ -35,9 +35,17 @@
         <section class="calendar_card">
 
             <div class="calendar_header">
-                <div class="calendar_heading">
-                    <h1>Calendar</h1>
-                    <p>Plan tasks, events, and reminders</p>
+                <div class="calendar_title_row">
+                    <div class="calendar_heading">
+                        <h1>Calendar</h1>
+                        <p>Plan tasks, events, and reminders</p>
+                    </div>
+
+                    <div class="calendar_header_actions">
+                        <button id="jumpTodayBtn" class="calendar_action_btn" type="button">Today</button>
+                        <button id="prevActivityBtn" class="calendar_action_btn" type="button">Last Activity</button>
+                        <button id="nextActivityBtn" class="calendar_action_btn" type="button">Next Activity</button>
+                    </div>
                 </div>
             </div>
 
