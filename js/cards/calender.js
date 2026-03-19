@@ -23,29 +23,103 @@ const todayDate = today.getDate();
 const todayMonth = today.getMonth();
 const todayYear = today.getFullYear();
 
-const NOTES_STORAGE_KEY = "calendar_notes_v1";
-let calendarNotes = loadNotes();
+let calendarNotes = {};
+let currentUser = null;
 let activeEditor = null;
 let monthBlocks = [];
 
 
 /* ===== Notes storage ===== */
-function loadNotes()
+async function loadCurrentUser()
 {
-    try
+    const { data, error } = await sb.auth.getUser();
+
+    if (error)
     {
-        return JSON.parse(localStorage.getItem(NOTES_STORAGE_KEY)) ?? {};
+        console.error("Failed to get Supabase user:", error);
+        return null;
     }
-    catch
+
+    return data?.user ?? null;
+}
+
+async function loadNotesFromSupabase()
+{
+    if (!currentUser)
     {
         return {};
     }
+
+    const { data, error } = await sb
+        .from("calendar_notes")
+        .select("note_date, note_text")
+        .eq("user_id", currentUser.id);
+
+    if (error)
+    {
+        console.error("Failed to load calendar notes:", error);
+        return {};
+    }
+
+    const notesObject = {};
+
+    for (const row of data ?? [])
+    {
+        notesObject[row.note_date] = row.note_text ?? "";
+    }
+
+    return notesObject;
 }
 
-function saveNotes()
+async function upsertNoteToSupabase(dateKey, noteText)
 {
-    localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(calendarNotes));
-    updateActivityButtons();
+    if (!currentUser)
+    {
+        return false;
+    }
+
+    const { error } = await sb
+        .from("calendar_notes")
+        .upsert(
+            {
+                user_id: currentUser.id,
+                note_date: dateKey,
+                note_text: noteText
+            },
+            {
+                onConflict: "user_id,note_date"
+            }
+        );
+
+    if (error)
+    {
+        console.error("Failed to save calendar note:", error);
+        return false;
+    }
+
+    return true;
+}
+
+async function deleteNoteFromSupabase(dateKey)
+{
+    if (!currentUser)
+    {
+        return false;
+    }
+
+    const { error } = await sb
+        .from("calendar_notes")
+        .delete()
+        .eq("user_id", currentUser.id)
+        .eq("note_date", dateKey);
+
+    if (error)
+    {
+        console.error("Failed to delete calendar note:", error);
+        return false;
+    }
+
+    return true;
 }
 
 
@@ -197,31 +271,47 @@ function openEditorForCell(cell)
     });
 }
 
-function closeActiveEditor(shouldSave)
+async function closeActiveEditor(shouldSave)
 {
     if (!activeEditor)
     {
         return;
     }
 
-    const dateKey = activeEditor.dateKey;
-    const value = activeEditor.input.value.trim();
+    const editor = activeEditor;
+    activeEditor = null;
+
+    const dateKey = editor.dateKey;
+    const value = editor.input.value.trim();
 
     if (shouldSave)
     {
-        if (value.length > 0)
+        if (!currentUser)
         {
-            calendarNotes[dateKey] = value;
+            console.error("No authenticated Supabase user. calendar_notes table requires login.");
+        }
+        else if (value.length > 0)
+        {
+            const didSave = await upsertNoteToSupabase(dateKey, value);
+
+            if (didSave)
+            {
+                calendarNotes[dateKey] = value;
+                updateActivityButtons();
+            }
         }
         else
         {
-            delete calendarNotes[dateKey];
-        }
+            const didDelete = await deleteNoteFromSupabase(dateKey);
 
-        saveNotes();
+            if (didDelete)
+            {
+                delete calendarNotes[dateKey];
+                updateActivityButtons();
+            }
+        }
     }
 
-    activeEditor = null;
     refreshCellsForDate(dateKey);
 }
 
@@ -526,4 +616,21 @@ calendarScroll.addEventListener("scroll", function ()
 
 
 /* ===== Init ===== */
-renderScrollableCalendar();
+initCalendar();
+
+async function initCalendar()
+{
+    currentUser = await loadCurrentUser();
+
+    if (!currentUser)
+    {
+        console.warn("No authenticated Supabase user found. Notes will not load or save until the user signs in.");
+        calendarNotes = {};
+    }
+    else
+    {
+        calendarNotes = await loadNotesFromSupabase();
+    }
+
+    renderScrollableCalendar();
+}
