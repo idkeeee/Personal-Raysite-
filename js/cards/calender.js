@@ -8,6 +8,7 @@ const sb = window.supabase.createClient(SB_URL, SB_ANON);
 
 /* ===== Calendar ===== */
 const calendarScroll   = document.getElementById("calendarScroll");
+const stickyMonthLabel = document.getElementById("stickyMonthLabel");
 const jumpTodayBtn     = document.getElementById("jumpTodayBtn");
 const prevActivityBtn  = document.getElementById("prevActivityBtn");
 const nextActivityBtn  = document.getElementById("nextActivityBtn");
@@ -17,8 +18,6 @@ const monthNames = [
     "July", "August", "September", "October", "November", "December"
 ];
 
-const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
 const today = new Date();
 const todayDate = today.getDate();
 const todayMonth = today.getMonth();
@@ -27,6 +26,7 @@ const todayYear = today.getFullYear();
 const NOTES_STORAGE_KEY = "calendar_notes_v1";
 let calendarNotes = loadNotes();
 let activeEditor = null;
+let monthBlocks = [];
 
 
 /* ===== Notes storage ===== */
@@ -70,6 +70,13 @@ function clearSelectedCells()
     });
 }
 
+function getCellTop(cell)
+{
+    const scrollRect = calendarScroll.getBoundingClientRect();
+    const cellRect = cell.getBoundingClientRect();
+    return (cellRect.top - scrollRect.top) + calendarScroll.scrollTop;
+}
+
 function createTodayIcon()
 {
     const icon = document.createElement("div");
@@ -82,21 +89,6 @@ function createTodayIcon()
     `;
 
     return icon;
-}
-
-function createWeekdaysRow()
-{
-    const weekdaysRow = document.createElement("div");
-    weekdaysRow.classList.add("calendar_weekdays");
-
-    for (const dayName of weekdayNames)
-    {
-        const day = document.createElement("div");
-        day.textContent = dayName;
-        weekdaysRow.appendChild(day);
-    }
-
-    return weekdaysRow;
 }
 
 
@@ -241,17 +233,16 @@ function createMonthBlock(month, year)
     monthBlock.classList.add("calendar_month_block");
     monthBlock.dataset.month = String(month);
     monthBlock.dataset.year = String(year);
+    monthBlock.dataset.label = `${monthNames[month]} ${year}`;
 
     if (month === todayMonth && year === todayYear)
     {
         monthBlock.id = "currentMonthBlock";
     }
 
-    const monthTitle = document.createElement("h2");
-    monthTitle.classList.add("calendar_month_title");
-    monthTitle.textContent = `${monthNames[month]} ${year}`;
-
-    const weekdaysRow = createWeekdaysRow();
+    const anchor = document.createElement("div");
+    anchor.classList.add("calendar_month_anchor");
+    monthBlock.appendChild(anchor);
 
     const grid = document.createElement("div");
     grid.classList.add("calendar_grid");
@@ -344,11 +335,33 @@ function createMonthBlock(month, year)
         grid.appendChild(dayCell);
     }
 
-    monthBlock.appendChild(monthTitle);
-    monthBlock.appendChild(weekdaysRow);
     monthBlock.appendChild(grid);
-
     return monthBlock;
+}
+
+function updateStickyMonthLabel()
+{
+    if (monthBlocks.length === 0)
+    {
+        return;
+    }
+
+    const referenceTop = calendarScroll.scrollTop + 20;
+    let activeBlock = monthBlocks[0];
+
+    for (const block of monthBlocks)
+    {
+        if (block.offsetTop <= referenceTop)
+        {
+            activeBlock = block;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    stickyMonthLabel.textContent = activeBlock.dataset.label;
 }
 
 function renderScrollableCalendar()
@@ -366,7 +379,10 @@ function renderScrollableCalendar()
         }
     }
 
+    monthBlocks = Array.from(calendarScroll.querySelectorAll(".calendar_month_block"));
+
     jumpToToday(false);
+    updateStickyMonthLabel();
     updateActivityButtons();
 }
 
@@ -394,7 +410,9 @@ function scrollToCell(cell, smooth = true)
         return;
     }
 
-    const targetTop = Math.max(cell.offsetTop - 100, 0);
+    const stickyTop = document.querySelector(".calendar_sticky_top");
+    const stickyHeight = stickyTop ? stickyTop.offsetHeight : 0;
+    const targetTop = Math.max(getCellTop(cell) - stickyHeight - 20, 0);
 
     calendarScroll.scrollTo({
         top: targetTop,
@@ -430,7 +448,7 @@ function getActivityCells()
 
     cells.sort(function (a, b)
     {
-        return a.offsetTop - b.offsetTop;
+        return getCellTop(a) - getCellTop(b);
     });
 
     return cells;
@@ -454,7 +472,7 @@ function jumpToActivity(direction)
         const nextCell =
             activityCells.find(function (cell)
             {
-                return cell.offsetTop > referenceTop + 8;
+                return getCellTop(cell) > referenceTop + 8;
             }) ?? activityCells[activityCells.length - 1];
 
         scrollToCell(nextCell, true);
@@ -466,7 +484,7 @@ function jumpToActivity(direction)
         const prevCell =
             prevCells.find(function (cell)
             {
-                return cell.offsetTop < referenceTop - 8;
+                return getCellTop(cell) < referenceTop - 8;
             }) ?? activityCells[0];
 
         scrollToCell(prevCell, true);
@@ -485,7 +503,7 @@ function updateActivityButtons()
 }
 
 
-/* ===== Button events ===== */
+/* ===== Events ===== */
 jumpTodayBtn.addEventListener("click", function ()
 {
     jumpToToday(true);
@@ -499,6 +517,11 @@ prevActivityBtn.addEventListener("click", function ()
 nextActivityBtn.addEventListener("click", function ()
 {
     jumpToActivity("next");
+});
+
+calendarScroll.addEventListener("scroll", function ()
+{
+    updateStickyMonthLabel();
 });
 
 
