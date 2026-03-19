@@ -31,7 +31,129 @@
         <div class="backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>   <!-- darkens page when sidemenu opens , in generals.js -->
 
 
-        <!-- MAIN CODE AREA HERE -->
+        <main class="calendar_page">
+        <section class="calendar_shell">
+
+            <!-- top header / controls -->
+            <header class="calendar_topbar">
+                <div class="calendar_title_wrap">
+                    <h1 class="calendar_title">Calendar</h1>
+                    <p class="calendar_subtitle">Plan tasks, events, and reminders</p>
+                </div>
+
+                <div class="calendar_controls">
+                    <button class="calendar_btn" id="prevMonthBtn" type="button">◀</button>
+                    <div class="calendar_current_month" id="currentMonthLabel">
+                        March 2026
+                    </div>
+                    <button class="calendar_btn" id="nextMonthBtn" type="button">▶</button>
+                </div>
+            </header>
+
+            <!-- main calendar area -->
+            <section class="calendar_layout">
+
+                <!-- left: actual month grid -->
+                <div class="calendar_main_card">
+                    <div class="calendar_weekdays">
+                        <div class="weekday">Sun</div>
+                        <div class="weekday">Mon</div>
+                        <div class="weekday">Tue</div>
+                        <div class="weekday">Wed</div>
+                        <div class="weekday">Thu</div>
+                        <div class="weekday">Fri</div>
+                        <div class="weekday">Sat</div>
+                    </div>
+
+                    <div class="calendar_grid" id="calendarGrid">
+                        <!-- row 1 -->
+                        <div class="calendar_day is-muted"><span class="day_number">23</span></div>
+                        <div class="calendar_day is-muted"><span class="day_number">24</span></div>
+                        <div class="calendar_day is-muted"><span class="day_number">25</span></div>
+                        <div class="calendar_day is-muted"><span class="day_number">26</span></div>
+                        <div class="calendar_day is-muted"><span class="day_number">27</span></div>
+                        <div class="calendar_day is-muted"><span class="day_number">28</span></div>
+                        <div class="calendar_day"><span class="day_number">1</span></div>
+
+                        <!-- row 2 -->
+                        <div class="calendar_day"><span class="day_number">2</span></div>
+                        <div class="calendar_day"><span class="day_number">3</span></div>
+                        <div class="calendar_day"><span class="day_number">4</span></div>
+                        <div class="calendar_day"><span class="day_number">5</span></div>
+                        <div class="calendar_day"><span class="day_number">6</span></div>
+                        <div class="calendar_day"><span class="day_number">7</span></div>
+                        <div class="calendar_day"><span class="day_number">8</span></div>
+
+                        <!-- row 3 -->
+                        <div class="calendar_day"><span class="day_number">9</span></div>
+                        <div class="calendar_day"><span class="day_number">10</span></div>
+                        <div class="calendar_day"><span class="day_number">11</span></div>
+                        <div class="calendar_day"><span class="day_number">12</span></div>
+                        <div class="calendar_day"><span class="day_number">13</span></div>
+                        <div class="calendar_day"><span class="day_number">14</span></div>
+                        <div class="calendar_day"><span class="day_number">15</span></div>
+
+                        <!-- row 4 -->
+                        <div class="calendar_day"><span class="day_number">16</span></div>
+                        <div class="calendar_day"><span class="day_number">17</span></div>
+                        <div class="calendar_day"><span class="day_number">18</span></div>
+                        <div class="calendar_day"><span class="day_number">19</span></div>
+                        <div class="calendar_day"><span class="day_number">20</span></div>
+                        <div class="calendar_day"><span class="day_number">21</span></div>
+                        <div class="calendar_day"><span class="day_number">22</span></div>
+
+                        <!-- row 5 -->
+                        <div class="calendar_day"><span class="day_number">23</span></div>
+                        <div class="calendar_day"><span class="day_number">24</span></div>
+                        <div class="calendar_day"><span class="day_number">25</span></div>
+                        <div class="calendar_day"><span class="day_number">26</span></div>
+                        <div class="calendar_day"><span class="day_number">27</span></div>
+                        <div class="calendar_day"><span class="day_number">28</span></div>
+                        <div class="calendar_day"><span class="day_number">29</span></div>
+
+                        <!-- row 6 -->
+                        <div class="calendar_day"><span class="day_number">30</span></div>
+                        <div class="calendar_day"><span class="day_number">31</span></div>
+                        <div class="calendar_day is-muted"><span class="day_number">1</span></div>
+                        <div class="calendar_day is-muted"><span class="day_number">2</span></div>
+                        <div class="calendar_day is-muted"><span class="day_number">3</span></div>
+                        <div class="calendar_day is-muted"><span class="day_number">4</span></div>
+                        <div class="calendar_day is-muted"><span class="day_number">5</span></div>
+                    </div>
+                </div>
+
+                <!-- right: side panel -->
+                <aside class="calendar_side_card">
+                    <div class="calendar_side_section">
+                        <h2 class="side_heading">Selected Day</h2>
+                        <div class="selected_day_box">
+                            <p class="selected_day_date" id="selectedDayLabel">No day selected</p>
+                            <p class="selected_day_note">Click a date later to view tasks or events.</p>
+                        </div>
+                    </div>
+
+                    <div class="calendar_side_section">
+                        <h2 class="side_heading">Upcoming</h2>
+                        <div class="upcoming_list">
+                            <div class="upcoming_item">
+                                <p class="upcoming_title">No events yet</p>
+                                <p class="upcoming_meta">Your future Supabase events can go here</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="calendar_side_section">
+                        <h2 class="side_heading">Quick Actions</h2>
+                        <div class="calendar_quick_actions">
+                            <button class="calendar_action_btn" type="button">+ Add Event</button>
+                            <button class="calendar_action_btn" type="button">+ Add Reminder</button>
+                        </div>
+                    </div>
+                </aside>
+
+            </section>
+        </section>
+    </main>
 
 
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
