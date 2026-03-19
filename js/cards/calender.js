@@ -28,6 +28,8 @@ let currentUser = null;
 let activeEditor = null;
 let monthBlocks = [];
 
+const LOCAL_NOTES_KEY = "calendar_notes_local_fallback";
+
 
 /* ===== Notes storage ===== */
 async function loadCurrentUser()
@@ -288,7 +290,17 @@ async function closeActiveEditor(shouldSave)
     {
         if (!currentUser)
         {
-            console.error("No authenticated Supabase user. calendar_notes table requires login.");
+            if (value.length > 0)
+            {
+                calendarNotes[dateKey] = value;
+            }
+            else
+            {
+                delete calendarNotes[dateKey];
+            }
+
+            localStorage.setItem(LOCAL_NOTES_KEY, JSON.stringify(calendarNotes));
+            updateActivityButtons();
         }
         else if (value.length > 0)
         {
@@ -624,8 +636,16 @@ async function initCalendar()
 
     if (!currentUser)
     {
-        console.warn("No authenticated Supabase user found. Notes will not load or save until the user signs in.");
-        calendarNotes = {};
+        console.warn("No authenticated Supabase user found. Using localStorage fallback.");
+
+        try
+        {
+            calendarNotes = JSON.parse(localStorage.getItem(LOCAL_NOTES_KEY)) ?? {};
+        }
+        catch
+        {
+            calendarNotes = {};
+        }
     }
     else
     {
