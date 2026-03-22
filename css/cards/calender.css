@@ -394,3 +394,128 @@
         height: 11px;
     }
 }
+
+
+.calendar_mobile_overlay
+{
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 9999;
+}
+
+.calendar_mobile_overlay.is-open
+{
+    display: block;
+}
+
+.calendar_mobile_backdrop
+{
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.58);
+    backdrop-filter: blur(4px);
+}
+
+.calendar_mobile_modal
+{
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(92vw, 420px);
+    background-color: rgb(52, 52, 60);
+    border: 1px solid rgba(226, 231, 192, 0.16);
+    border-radius: 18px;
+    padding: 16px;
+    box-sizing: border-box;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+.calendar_mobile_modal_header
+{
+    margin-bottom: 12px;
+}
+
+.calendar_mobile_modal_title
+{
+    margin: 0;
+    font-size: 1.05rem;
+    color: rgb(226, 231, 192);
+}
+
+.calendar_mobile_modal_input
+{
+    width: 100%;
+    min-height: 180px;
+    resize: vertical;
+    border: 1px solid rgba(226, 231, 192, 0.18);
+    border-radius: 12px;
+    background-color: rgba(0, 0, 0, 0.16);
+    color: rgb(226, 231, 192);
+    padding: 12px;
+    box-sizing: border-box;
+    font: inherit;
+    line-height: 1.4;
+    outline: none;
+}
+
+.calendar_mobile_modal_input:focus
+{
+    border-color: rgba(120, 190, 255, 0.6);
+    box-shadow: 0 0 0 1px rgba(120, 190, 255, 0.18);
+}
+
+.calendar_mobile_modal_actions
+{
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.calendar_mobile_btn
+{
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(226, 231, 192, 0.18);
+    background-color: rgb(63, 63, 71);
+    color: rgb(226, 231, 192);
+    cursor: pointer;
+}
+
+.calendar_mobile_btn_primary
+{
+    border-color: rgba(120, 190, 255, 0.38);
+}
+
+@media (max-width: 700px)
+{
+    .calendar_day_note
+    {
+        margin-top: 10px;
+        min-height: 22px;
+        font-size: 0;
+        color: transparent;
+        display: flex;
+        align-items: center;
+    }
+
+    .calendar_day.has-note .calendar_day_note::before
+    {
+        content: "!";
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(255, 214, 102, 0.16);
+        border: 1px solid rgba(255, 214, 102, 0.38);
+        color: rgb(255, 214, 102);
+        font-size: 0.95rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+}

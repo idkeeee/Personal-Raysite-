@@ -18,14 +18,14 @@ const monthNames = [
     "July", "August", "September", "October", "November", "December"
 ];
 
-const today = new Date();
-const todayDate = today.getDate();
-const todayMonth = today.getMonth();
-const todayYear = today.getFullYear();
-
 let calendarNotes = {};
 let activeEditor = null;
 let monthBlocks = [];
+let mobileModal = null;
+let mobileModalTitle = null;
+let mobileModalInput = null;
+
+const MOBILE_BREAKPOINT = 700;
 
 /*
     Pick your own weird code here.
@@ -131,6 +131,141 @@ function createTodayIcon()
     return icon;
 }
 
+function isSmallScreen()
+{
+    return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`).matches;
+}
+
+function formatPrettyDate(dateKey)
+{
+    const [year, month, day] = dateKey.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+
+    return date.toLocaleDateString(undefined, {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+    });
+}
+
+function ensureMobileModal()
+{
+    if (mobileModal)
+    {
+        return;
+    }
+
+    mobileModal = document.createElement("div");
+    mobileModal.className = "calendar_mobile_overlay";
+
+    mobileModal.innerHTML = `
+        <div class="calendar_mobile_backdrop"></div>
+
+        <div class="calendar_mobile_modal">
+            <div class="calendar_mobile_modal_header">
+                <h3 class="calendar_mobile_modal_title"></h3>
+            </div>
+
+            <textarea
+                class="calendar_mobile_modal_input"
+                placeholder="Write something..."
+            ></textarea>
+
+            <div class="calendar_mobile_modal_actions">
+                <button type="button" class="calendar_mobile_btn calendar_mobile_btn_ghost">
+                    Cancel
+                </button>
+
+                <button type="button" class="calendar_mobile_btn calendar_mobile_btn_primary">
+                    Save
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(mobileModal);
+
+    mobileModalTitle = mobileModal.querySelector(".calendar_mobile_modal_title");
+    mobileModalInput = mobileModal.querySelector(".calendar_mobile_modal_input");
+
+    const backdrop = mobileModal.querySelector(".calendar_mobile_backdrop");
+    const cancelBtn = mobileModal.querySelector(".calendar_mobile_btn_ghost");
+    const saveBtn = mobileModal.querySelector(".calendar_mobile_btn_primary");
+    const modalCard = mobileModal.querySelector(".calendar_mobile_modal");
+
+    backdrop.addEventListener("click", function ()
+    {
+        closeActiveEditor(false);
+    });
+
+    cancelBtn.addEventListener("click", function ()
+    {
+        closeActiveEditor(false);
+    });
+
+    saveBtn.addEventListener("click", function ()
+    {
+        closeActiveEditor(true);
+    });
+
+    mobileModalInput.addEventListener("keydown", function (event)
+    {
+        if ((event.ctrlKey || event.metaKey) && event.key === "Enter")
+        {
+            event.preventDefault();
+            closeActiveEditor(true);
+        }
+        else if (event.key === "Escape")
+        {
+            event.preventDefault();
+            closeActiveEditor(false);
+        }
+    });
+
+    modalCard.addEventListener("click", function (event)
+    {
+        event.stopPropagation();
+    });
+}
+
+function openMobileEditorForCell(cell)
+{
+    const dateKey = cell.dataset.date;
+
+    if (!dateKey)
+    {
+        return;
+    }
+
+    closeActiveEditor(true);
+    clearSelectedCells();
+    ensureMobileModal();
+
+    cell.classList.add("calendar_day_selected");
+
+    mobileModalTitle.textContent = formatPrettyDate(dateKey);
+    mobileModalInput.value = getNote(dateKey);
+
+    activeEditor = {
+        mode: "mobile",
+        cell: cell,
+        dateKey: dateKey,
+        input: mobileModalInput
+    };
+
+    mobileModal.classList.add("is-open");
+
+    window.setTimeout(function ()
+    {
+        mobileModalInput.focus();
+        mobileModalInput.setSelectionRange(
+            mobileModalInput.value.length,
+            mobileModalInput.value.length
+        );
+    }, 20);
+}
+
 
 /* ===== Note rendering ===== */
 function refreshCellsForDate(dateKey)
@@ -180,6 +315,12 @@ function openEditorForCell(cell)
         return;
     }
 
+    if (isSmallScreen())
+    {
+        openMobileEditorForCell(cell);
+        return;
+    }
+
     closeActiveEditor(true);
     clearSelectedCells();
 
@@ -201,6 +342,7 @@ function openEditorForCell(cell)
     }
 
     activeEditor = {
+        mode: "desktop",
         cell: cell,
         dateKey: dateKey,
         input: input
@@ -250,6 +392,11 @@ async function closeActiveEditor(shouldSave)
     const dateKey = editor.dateKey;
     const value = editor.input.value.trim();
 
+    if (editor.mode === "mobile" && mobileModal)
+    {
+        mobileModal.classList.remove("is-open");
+    }
+
     if (shouldSave)
     {
         const didSave = await saveNoteToSupabase(dateKey, value);
@@ -271,7 +418,6 @@ async function closeActiveEditor(shouldSave)
 
     refreshCellsForDate(dateKey);
 }
-
 
 /* ===== Calendar creation ===== */
 function createMonthBlock(month, year)
