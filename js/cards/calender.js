@@ -18,6 +18,11 @@ const monthNames = [
     "July", "August", "September", "October", "November", "December"
 ];
 
+const today = new Date();
+const todayDate = today.getDate();
+const todayMonth = today.getMonth();
+const todayYear = today.getFullYear();
+
 let calendarNotes = {};
 let activeEditor = null;
 let monthBlocks = [];
