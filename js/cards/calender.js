@@ -24,38 +24,24 @@ const todayMonth = today.getMonth();
 const todayYear = today.getFullYear();
 
 let calendarNotes = {};
-let currentUser = null;
 let activeEditor = null;
 let monthBlocks = [];
 
-const LOCAL_NOTES_KEY = "calendar_notes_local_fallback";
+/*
+    Pick your own weird code here.
+    Same code on every device = same calendar.
+*/
+const CALENDAR_CODE = "bagas-main-calendar-v1";
 
 
 /* ===== Notes storage ===== */
-async function loadCurrentUser()
-{
-    const { data, error } = await sb.auth.getUser();
-
-    if (error)
-    {
-        console.error("Failed to get Supabase user:", error);
-        return null;
-    }
-
-    return data?.user ?? null;
-}
-
 async function loadNotesFromSupabase()
 {
-    if (!currentUser)
-    {
-        return {};
-    }
-
     const { data, error } = await sb
-        .from("calendar_notes")
+        .from("calendar_notes_shared")
         .select("note_date, note_text")
-        .eq("user_id", currentUser.id);
+        .eq("calendar_code", CALENDAR_CODE)
+        .order("note_date", { ascending: true });
 
     if (error)
     {
@@ -67,57 +53,35 @@ async function loadNotesFromSupabase()
 
     for (const row of data ?? [])
     {
-        notesObject[row.note_date] = row.note_text ?? "";
+        const text = (row.note_text ?? "").trim();
+
+        if (text.length > 0)
+        {
+            notesObject[row.note_date] = row.note_text;
+        }
     }
 
     return notesObject;
 }
 
-async function upsertNoteToSupabase(dateKey, noteText)
+async function saveNoteToSupabase(dateKey, noteText)
 {
-    if (!currentUser)
-    {
-        return false;
-    }
-
     const { error } = await sb
-        .from("calendar_notes")
+        .from("calendar_notes_shared")
         .upsert(
             {
-                user_id: currentUser.id,
+                calendar_code: CALENDAR_CODE,
                 note_date: dateKey,
                 note_text: noteText
             },
             {
-                onConflict: "user_id,note_date"
+                onConflict: "calendar_code,note_date"
             }
         );
 
     if (error)
     {
         console.error("Failed to save calendar note:", error);
-        return false;
-    }
-
-    return true;
-}
-
-async function deleteNoteFromSupabase(dateKey)
-{
-    if (!currentUser)
-    {
-        return false;
-    }
-
-    const { error } = await sb
-        .from("calendar_notes")
-        .delete()
-        .eq("user_id", currentUser.id)
-        .eq("note_date", dateKey);
-
-    if (error)
-    {
-        console.error("Failed to delete calendar note:", error);
         return false;
     }
 
@@ -288,7 +252,9 @@ async function closeActiveEditor(shouldSave)
 
     if (shouldSave)
     {
-        if (!currentUser)
+        const didSave = await saveNoteToSupabase(dateKey, value);
+
+        if (didSave)
         {
             if (value.length > 0)
             {
@@ -299,28 +265,7 @@ async function closeActiveEditor(shouldSave)
                 delete calendarNotes[dateKey];
             }
 
-            localStorage.setItem(LOCAL_NOTES_KEY, JSON.stringify(calendarNotes));
             updateActivityButtons();
-        }
-        else if (value.length > 0)
-        {
-            const didSave = await upsertNoteToSupabase(dateKey, value);
-
-            if (didSave)
-            {
-                calendarNotes[dateKey] = value;
-                updateActivityButtons();
-            }
-        }
-        else
-        {
-            const didDelete = await deleteNoteFromSupabase(dateKey);
-
-            if (didDelete)
-            {
-                delete calendarNotes[dateKey];
-                updateActivityButtons();
-            }
         }
     }
 
@@ -632,25 +577,6 @@ initCalendar();
 
 async function initCalendar()
 {
-    currentUser = await loadCurrentUser();
-
-    if (!currentUser)
-    {
-        console.warn("No authenticated Supabase user found. Using localStorage fallback.");
-
-        try
-        {
-            calendarNotes = JSON.parse(localStorage.getItem(LOCAL_NOTES_KEY)) ?? {};
-        }
-        catch
-        {
-            calendarNotes = {};
-        }
-    }
-    else
-    {
-        calendarNotes = await loadNotesFromSupabase();
-    }
-
+    calendarNotes = await loadNotesFromSupabase();
     renderScrollableCalendar();
 }
