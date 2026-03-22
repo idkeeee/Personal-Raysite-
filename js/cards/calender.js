@@ -199,9 +199,9 @@ function ensureMobileModal()
     const saveBtn = mobileModal.querySelector(".calendar_mobile_btn_primary");
     const modalCard = mobileModal.querySelector(".calendar_mobile_modal");
 
-    backdrop.addEventListener("click", function ()
+    backdrop.addEventListener("click", function (event)
     {
-        closeActiveEditor(false);
+        event.preventDefault();
     });
 
     cancelBtn.addEventListener("click", function ()
