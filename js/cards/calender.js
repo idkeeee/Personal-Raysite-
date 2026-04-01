@@ -29,6 +29,9 @@ let monthBlocks = [];
 let mobileModal = null;
 let mobileModalTitle = null;
 let mobileModalInput = null;
+let mobileModalSaveBtn = null;
+let mobileModalCancelBtn = null;
+let isSavingEditor = false;
 
 const MOBILE_BREAKPOINT = 700;
 
@@ -195,8 +198,8 @@ function ensureMobileModal()
     mobileModalInput = mobileModal.querySelector(".calendar_mobile_modal_input");
 
     const backdrop = mobileModal.querySelector(".calendar_mobile_backdrop");
-    const cancelBtn = mobileModal.querySelector(".calendar_mobile_btn_ghost");
-    const saveBtn = mobileModal.querySelector(".calendar_mobile_btn_primary");
+    mobileModalCancelBtn = mobileModal.querySelector(".calendar_mobile_btn_ghost");
+    mobileModalSaveBtn = mobileModal.querySelector(".calendar_mobile_btn_primary");
     const modalCard = mobileModal.querySelector(".calendar_mobile_modal");
 
     backdrop.addEventListener("click", function (event)
@@ -204,14 +207,14 @@ function ensureMobileModal()
         event.preventDefault();
     });
 
-    cancelBtn.addEventListener("click", function ()
+    mobileModalCancelBtn.addEventListener("click", async function ()
     {
-        closeActiveEditor(false);
+        await closeActiveEditor(false);
     });
 
-    saveBtn.addEventListener("click", function ()
+    mobileModalSaveBtn.addEventListener("click", async function ()
     {
-        closeActiveEditor(true);
+        await closeActiveEditor(true);
     });
 
     mobileModalInput.addEventListener("keydown", function (event)
@@ -386,42 +389,97 @@ function openEditorForCell(cell)
 
 async function closeActiveEditor(shouldSave)
 {
-    if (!activeEditor)
+    if (!activeEditor || isSavingEditor)
     {
         return;
     }
 
     const editor = activeEditor;
-    activeEditor = null;
-
     const dateKey = editor.dateKey;
     const value = editor.input.value.trim();
 
-    if (editor.mode === "mobile" && mobileModal)
+    const hadOldNote = Object.prototype.hasOwnProperty.call(calendarNotes, dateKey);
+    const oldValue = hadOldNote ? calendarNotes[dateKey] : "";
+
+    if (!shouldSave)
     {
-        mobileModal.classList.remove("is-open");
+        activeEditor = null;
+
+        if (editor.mode === "mobile" && mobileModal)
+        {
+            mobileModal.classList.remove("is-open");
+        }
+
+        refreshCellsForDate(dateKey);
+        return;
     }
 
-    if (shouldSave)
+    isSavingEditor = true;
+
+    if (editor.mode === "mobile" && mobileModalSaveBtn && mobileModalCancelBtn)
     {
-        const didSave = await saveNoteToSupabase(dateKey, value);
+        mobileModalSaveBtn.disabled = true;
+        mobileModalCancelBtn.disabled = true;
+        mobileModalSaveBtn.textContent = "Saving...";
+    }
 
-        if (didSave)
+    if (value.length > 0)
+    {
+        calendarNotes[dateKey] = value;
+    }
+    else
+    {
+        delete calendarNotes[dateKey];
+    }
+
+    updateActivityButtons();
+    refreshCellsForDate(dateKey);
+
+    const didSave = await saveNoteToSupabase(dateKey, value);
+
+    if (didSave)
+    {
+        activeEditor = null;
+
+        if (editor.mode === "mobile" && mobileModal)
         {
-            if (value.length > 0)
-            {
-                calendarNotes[dateKey] = value;
-            }
-            else
-            {
-                delete calendarNotes[dateKey];
-            }
+            mobileModal.classList.remove("is-open");
+        }
+    }
+    else
+    {
+        if (hadOldNote)
+        {
+            calendarNotes[dateKey] = oldValue;
+        }
+        else
+        {
+            delete calendarNotes[dateKey];
+        }
 
-            updateActivityButtons();
+        updateActivityButtons();
+        refreshCellsForDate(dateKey);
+
+        if (editor.mode === "mobile" && mobileModal)
+        {
+            activeEditor = editor;
+            mobileModal.classList.add("is-open");
+            window.alert("Save failed. Please try again.");
+        }
+        else
+        {
+            activeEditor = null;
         }
     }
 
-    refreshCellsForDate(dateKey);
+    if (editor.mode === "mobile" && mobileModalSaveBtn && mobileModalCancelBtn)
+    {
+        mobileModalSaveBtn.disabled = false;
+        mobileModalCancelBtn.disabled = false;
+        mobileModalSaveBtn.textContent = "Save";
+    }
+
+    isSavingEditor = false;
 }
 
 /* ===== Calendar creation ===== */
