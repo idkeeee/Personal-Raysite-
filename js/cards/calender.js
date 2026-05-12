@@ -597,29 +597,58 @@ function createMonthBlock(month, year)
 
 function updateStickyMonthLabel()
 {
-    if (monthBlocks.length === 0)
-    {
-        return;
-    }
+    const canonicalCells = Array.from(
+        calendarScroll.querySelectorAll('.calendar_day[data-is-canonical="true"]')
+    );
 
-    const referenceTop = calendarScroll.scrollTop + 20;
-    let activeBlock = monthBlocks[0];
+    const stickyTop = document.querySelector(".calendar_sticky_top");
+    const stickyBottom = stickyTop
+        ? stickyTop.getBoundingClientRect().bottom
+        : 0;
 
-    for (const block of monthBlocks)
+    let firstVisibleCell = null;
+
+    for (const cell of canonicalCells)
     {
-        if (block.offsetTop <= referenceTop)
+        const rect = cell.getBoundingClientRect();
+
+        if (rect.bottom > stickyBottom + 4)
         {
-            activeBlock = block;
-        }
-        else
-        {
+            firstVisibleCell = cell;
             break;
         }
     }
 
-    stickyMonthLabel.textContent = activeBlock.dataset.label;
+    if (!firstVisibleCell)
+    {
+        return;
+    }
+
+    const [year, month] = firstVisibleCell.dataset.date.split("-").map(Number);
+    stickyMonthLabel.textContent = `${monthNames[month - 1]} ${year}`;
 }
 
+
+function jumpToCurrentMonth(smooth = true)
+{
+    const currentMonthBlock = document.getElementById("currentMonthBlock");
+
+    if (!currentMonthBlock)
+    {
+        return;
+    }
+
+    const stickyTop = document.querySelector(".calendar_sticky_top");
+    const stickyHeight = stickyTop ? stickyTop.offsetHeight : 0;
+    const targetTop = Math.max(currentMonthBlock.offsetTop - stickyHeight - 8, 0);
+
+    calendarScroll.scrollTo({
+        top: targetTop,
+        behavior: smooth ? "smooth" : "auto"
+    });
+
+    updateStickyMonthLabel();
+}
 function renderScrollableCalendar()
 {
     calendarScroll.innerHTML = "";
@@ -637,7 +666,7 @@ function renderScrollableCalendar()
 
     monthBlocks = Array.from(calendarScroll.querySelectorAll(".calendar_month_block"));
 
-    jumpToToday(false);
+    jumpToCurrentMonth(false);
     updateStickyMonthLabel();
     updateActivityButtons();
 }
