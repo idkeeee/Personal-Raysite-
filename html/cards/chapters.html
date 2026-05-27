@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <base href="https://idkeeee.github.io/Personal-Raysite-/">
+
+        <title> 🔥 </title>
+        <link rel="stylesheet" href="css/navbar.css?v=3">
+        <link rel="stylesheet" href="css/sidebar.css?v=3">
+        <link rel="stylesheet" href="css/general_styles.css?v=3">
+        <link rel="stylesheet" href="css/cards.css?v=3">
+        <link rel="stylesheet" href="css/cards/chinese.css?v=7">
+        <link rel="stylesheet" href="css/cards/chapters.css?v=1">
+    </head>
+
+    <body>
+        <nav class="navbar">
+            <div class="hamburger" onclick="toggleMenu()">&#9776;</div>
+            <div class="ray_title"></div>
+        </nav>
+
+        <aside class="side_menu" id="sideMenu" aria-hidden="true">
+            <button class="side_menu-close-button" aria-label="Close" onclick="toggleMenu()">x</button>
+        </aside>
+        <div class="backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>
+
+        <section class="zh-wrap chapters-wrap">
+            <header class="zh-head chapters-head">
+                <div>
+                    <h2>Chinese Chapters</h2>
+                    <p class="chapters-sub">Create date-named chapters and study only the words you send into them.</p>
+                </div>
+                <div class="zh-mode">
+                    <button class="zh-btn ghost" id="btnBackToTrainer" type="button">Back to Trainer</button>
+                    <button class="zh-btn primary" id="btnCreateChapter" type="button">＋ New Chapter</button>
+                </div>
+            </header>
+
+            <section class="chapters-panel">
+                <div class="chapters-list-card">
+                    <div class="chapters-list-head">
+                        <h3>Chapters</h3>
+                        <span id="chapterCountBadge" class="chapter-pill">0</span>
+                    </div>
+                    <ul id="chapterList" class="chapter-list"></ul>
+                </div>
+
+                <div class="chapter-workspace">
+                    <div class="workspace-top">
+                        <div class="workspace-title-wrap">
+                            <h3 id="activeChapterTitle">No chapter selected</h3>
+                            <p id="activeChapterMeta" class="chapters-sub small">Create a chapter first, then send words into it from the main trainer page.</p>
+                        </div>
+                        <div class="zh-mode">
+                            <button class="zh-toggle active" data-mode="hanzi">Hanzi</button>
+                            <button class="zh-toggle active" data-mode="pinyin">Pinyin</button>
+                            <button class="zh-toggle active" data-mode="yisi">Yìsi</button>
+                            <button class="zh-toggle" id="btnVoice" data-mode="voice" title="Speak (tap); long-press/right-click to toggle">Voice</button>
+                        </div>
+                    </div>
+
+                    <div class="zh-card" id="zhCard" aria-live="polite"></div>
+
+                    <div class="zh-ctrl">
+                        <button class="zh-btn ghost" id="btnPrev" type="button">◀ Prev</button>
+                        <button class="zh-btn" id="btnReveal" type="button">Reveal</button>
+                        <button class="zh-btn" id="btnNext" type="button">Next ▶</button>
+                        <button class="zh-btn ghost" id="btnShuffle" type="button">Shuffle</button>
+                    </div>
+
+                    <section class="zh-dict">
+                        <h3>Chapter words</h3>
+                        <ul id="dictList" class="dict-list"></ul>
+                    </section>
+                </div>
+            </section>
+        </section>
+
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        <script src="js/cards/chapters.js?v=1"></script>
+        <script src="js/generals.js"></script>
+        <script src="js/navbar.js"></script>
+    </body>
+</html>

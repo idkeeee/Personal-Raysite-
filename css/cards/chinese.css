@@ -96,7 +96,7 @@
 .zh-dict h3{ margin:0 0 10px; font-size:18px; color:var(--ink); }
 .dict-list{ list-style:none; padding:0; margin:0; display:grid; gap:8px; }
 .dict-item{
-  display:grid; gap:8px; grid-template-columns: 1fr auto auto;
+  display:grid; gap:8px; grid-template-columns: 1fr auto auto auto;
   align-items:center; background:#232126; border:1px solid #3b3940;
   border-radius:12px; padding:10px 12px;
 }
@@ -194,7 +194,20 @@
   .peek-handle:after{ height: 26px; }
 }
 
-
-/* you likely already have .mini; this just ensures grid has two button columns */
-.dict-item { grid-template-columns: 1fr auto auto; }
+/* chapter helpers */
 .dict-item .mini { padding: 6px 10px; font-size: 13px; border-radius: 10px; }
+.word-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+.word-actions .mini { white-space: nowrap; }
+.chapter-badge {
+  display:inline-flex; align-items:center; gap:6px; margin-top:6px; padding:4px 8px;
+  border-radius:999px; font-size:12px; border:1px solid #4b4950; background:#1a191d; opacity:.88;
+}
+
+@media (max-width: 720px){
+  .dict-item{
+    grid-template-columns: 1fr;
+  }
+  .word-actions{
+    justify-content:flex-start;
+  }
+}
