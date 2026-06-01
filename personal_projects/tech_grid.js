@@ -1,9 +1,10 @@
 /* ===== Supabase ===== */
-const SB_URL = window.SUPABASE_URL ?? "https://ntlsmrzpatcultvsrpll.supabase.co";
-const SB_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
+const SB_URL = window.SUPABASE_URL ?? "httpssupabase.co";
+const SB_ANON = window.SUPABASE_ANON ?? "..5sggDXSK-";
 const sb = window.supabase.createClient(SB_URL, SB_ANON);
 
 const TABLE_NAME = "tech_blocks";
+const PAGE_TABLE_NAME = "tech_block_pages";
 const COVER_BUCKET = "tech-covers";
 
 /* ===== DOM ===== */
@@ -22,7 +23,12 @@ const coverInput = document.getElementById("coverInput");
 
 const subpage = document.getElementById("subpage");
 const subpageTitle = document.getElementById("subpageTitle");
+const subpageCover = document.getElementById("subpageCover");
 const closeSubpageButton = document.getElementById("closeSubpageButton");
+const pageTextInput = document.getElementById("pageTextInput");
+const pageImageInput = document.getElementById("pageImageInput");
+const pageImages = document.getElementById("pageImages");
+const savePageButton = document.getElementById("savePageButton");
 
 /* ===== Canvas state ===== */
 let width = 0;
@@ -59,28 +65,29 @@ const coverCache = new Map();
 
 let pendingAddWorldPoint = null;
 let editingBlock = null;
+let currentPageBlock = null;
+let currentPageData = null;
+let currentPageImages = [];
 let longPressTimer = null;
 
 const pointer = {
   isDown: false,
-  mode: null, // "pan" | "block" | "pinch"
+  mode: null,
   id: null,
-  secondId: null,
   startX: 0,
   startY: 0,
   lastX: 0,
   lastY: 0,
-  blockStartX: 0,
-  blockStartY: 0,
   block: null,
   blockMoved: false,
   panMoved: false,
   pinchStartDistance: 0,
   pinchStartZoom: 1,
-  pinchWorldCenter: null,
 };
 
-/* ===== Supabase data ===== */
+const activePointers = new Map();
+
+/* ===== Supabase blocks ===== */
 async function loadBlocks() {
   const { data, error } = await sb
     .from(TABLE_NAME)
@@ -135,8 +142,7 @@ async function createBlock(worldPoint) {
     return;
   }
 
-  const normalized = normalizeBlock(data);
-  rectangles.push(normalized);
+  rectangles.push(normalizeBlock(data));
 }
 
 async function updateBlock(block, patch) {
@@ -152,6 +158,7 @@ async function updateBlock(block, patch) {
 
   if (error) {
     console.error("Could not update block:", error);
+    alert("Could not save block. Check Supabase table policies.");
   }
 }
 
@@ -177,24 +184,114 @@ async function deleteBlock(block) {
   if (editingBlock?.id === block.id) closeEditor();
 }
 
-async function uploadCover(block, file) {
+/* ===== Supabase page content ===== */
+async function loadPage(block) {
+  const { data, error } = await sb
+    .from(PAGE_TABLE_NAME)
+    .select("*")
+    .eq("block_id", block.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Could not load page:", error);
+    alert("Could not load page. Check tech_block_pages policies.");
+    return null;
+  }
+
+  if (data) return normalizePage(data, block.id);
+
+  const newPage = {
+    block_id: block.id,
+    body_text: "",
+    image_paths: [],
+  };
+
+  const { data: created, error: createError } = await sb
+    .from(PAGE_TABLE_NAME)
+    .insert(newPage)
+    .select()
+    .single();
+
+  if (createError) {
+    console.error("Could not create page:", createError);
+    alert("Could not create page. Check tech_block_pages policies.");
+    return null;
+  }
+
+  return normalizePage(created, block.id);
+}
+
+function normalizePage(row, blockId) {
+  return {
+    id: row.id,
+    block_id: row.block_id ?? blockId,
+    body_text: row.body_text ?? "",
+    image_paths: Array.isArray(row.image_paths) ? row.image_paths : [],
+  };
+}
+
+async function saveCurrentPage() {
+  if (!currentPageData) return;
+
+  savePageButton.disabled = true;
+  savePageButton.textContent = "Saving...";
+
+  try {
+    currentPageData.body_text = pageTextInput.value;
+    currentPageData.image_paths = [...currentPageImages];
+
+    const { error } = await sb
+      .from(PAGE_TABLE_NAME)
+      .update({
+        body_text: currentPageData.body_text,
+        image_paths: currentPageData.image_paths,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", currentPageData.id);
+
+    if (error) {
+      console.error("Could not save page:", error);
+      alert("Could not save page. Check tech_block_pages policies.");
+    }
+  } finally {
+    savePageButton.disabled = false;
+    savePageButton.textContent = "Save Page";
+  }
+}
+
+/* ===== Storage ===== */
+async function uploadImage(pathPrefix, file) {
   const extension = file.name.split(".").pop()?.toLowerCase() || "png";
-  const path = `covers/${block.id}-${Date.now()}.${extension}`;
+  const safeName = file.name
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[^a-z0-9_-]+/gi, "-")
+    .slice(0, 50);
+
+  const path = `${pathPrefix}/${Date.now()}-${crypto.randomUUID()}-${safeName}.${extension}`;
 
   const { error: uploadError } = await sb.storage
     .from(COVER_BUCKET)
     .upload(path, file, {
       cacheControl: "3600",
       upsert: true,
+      contentType: file.type || "image/png",
     });
 
   if (uploadError) {
-    console.error("Could not upload cover:", uploadError);
-    alert("Could not upload image. Check bucket name and storage policies.");
+    console.error("Could not upload image:", uploadError);
+    alert(`Could not upload image: ${uploadError.message}`);
     return null;
   }
 
   return path;
+}
+
+async function uploadCover(block, file) {
+  return uploadImage(`covers/${block.id}`, file);
+}
+
+async function uploadPageImage(block, file) {
+  return uploadImage(`pages/${block.id}`, file);
 }
 
 function getPublicCoverUrl(path) {
@@ -219,6 +316,10 @@ function loadCoverImage(block) {
 
   image.onload = () => {
     coverCache.set(block.image_path, image);
+  };
+
+  image.onerror = () => {
+    console.warn("Could not load cover image:", url);
   };
 }
 
@@ -384,7 +485,7 @@ function drawRectangles() {
       roundedRect(screen.x, screen.y, w, h, radius);
       ctx.clip();
       drawCoverImage(cover, screen.x, screen.y, w, h);
-      ctx.fillStyle = "rgba(0, 0, 0, 0.42)";
+      ctx.fillStyle = "rgba(0, 0, 0, 0.40)";
       ctx.fillRect(screen.x, screen.y, w, h);
       ctx.restore();
     }
@@ -475,16 +576,85 @@ function getRectangleAt(screenX, screenY) {
   return null;
 }
 
-/* ===== Interaction ===== */
-function openSubpage(block) {
+/* ===== Page popup ===== */
+async function openSubpage(block) {
+  currentPageBlock = block;
   subpageTitle.textContent = block.title || "Untitled";
-  subpage.hidden = false;
+
+  if (block.image_path) {
+    const coverUrl = getPublicCoverUrl(block.image_path);
+    subpageCover.style.backgroundImage = `linear-gradient(rgba(0,0,0,.10), rgba(0,0,0,.34)), url("${coverUrl}")`;
+  } else {
+    subpageCover.style.backgroundImage = "";
+  }
+
+  currentPageData = await loadPage(block);
+  currentPageImages = currentPageData?.image_paths ? [...currentPageData.image_paths] : [];
+  pageTextInput.value = currentPageData?.body_text ?? "";
+  renderPageImages();
+
+  subpage.classList.add("is-open");
+  subpage.setAttribute("aria-hidden", "false");
 }
 
 function closeSubpage() {
-  subpage.hidden = true;
+  subpage.classList.remove("is-open");
+  subpage.setAttribute("aria-hidden", "true");
+  currentPageBlock = null;
+  currentPageData = null;
+  currentPageImages = [];
+  pageTextInput.value = "";
+  renderPageImages();
 }
 
+function renderPageImages() {
+  pageImages.innerHTML = "";
+
+  currentPageImages.forEach((path, index) => {
+    const card = document.createElement("div");
+    card.className = "page-image-card";
+
+    const img = document.createElement("img");
+    img.src = getPublicCoverUrl(path);
+    img.alt = "Page image";
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.textContent = "×";
+    removeButton.title = "Remove image";
+    removeButton.addEventListener("click", () => {
+      currentPageImages.splice(index, 1);
+      renderPageImages();
+    });
+
+    card.append(img, removeButton);
+    pageImages.append(card);
+  });
+}
+
+async function addPageImages(files) {
+  if (!currentPageBlock || !files?.length) return;
+
+  savePageButton.disabled = true;
+  savePageButton.textContent = "Uploading...";
+
+  try {
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) continue;
+
+      const path = await uploadPageImage(currentPageBlock, file);
+      if (path) currentPageImages.push(path);
+    }
+
+    renderPageImages();
+    await saveCurrentPage();
+  } finally {
+    savePageButton.disabled = false;
+    savePageButton.textContent = "Save Page";
+  }
+}
+
+/* ===== Interactions ===== */
 function zoomAt(screenX, screenY, nextZoom) {
   nextZoom = Math.min(camera.maxZoom, Math.max(camera.minZoom, nextZoom));
   if (nextZoom === camera.zoom) return;
@@ -513,8 +683,6 @@ function centerBetweenTouches() {
   };
 }
 
-const activePointers = new Map();
-
 canvas.addEventListener("pointerdown", (event) => {
   if (event.button === 2) return;
 
@@ -531,9 +699,6 @@ canvas.addEventListener("pointerdown", (event) => {
     pointer.mode = "pinch";
     pointer.pinchStartDistance = distanceBetweenTouches();
     pointer.pinchStartZoom = camera.zoom;
-
-    const center = centerBetweenTouches();
-    pointer.pinchWorldCenter = screenToWorld(center.x, center.y);
     return;
   }
 
@@ -551,10 +716,7 @@ canvas.addEventListener("pointerdown", (event) => {
   if (block) {
     pointer.mode = "block";
     pointer.block = block;
-    pointer.blockStartX = block.x;
-    pointer.blockStartY = block.y;
 
-    // Mobile right-click substitute: hold a block to edit it.
     longPressTimer = window.setTimeout(() => {
       if (!pointer.blockMoved && pointer.mode === "block") {
         openEditor(block);
@@ -639,7 +801,7 @@ canvas.addEventListener("pointerup", async (event) => {
         y: block.y,
       });
     } else {
-      openSubpage(block);
+      await openSubpage(block);
     }
 
     return;
@@ -666,7 +828,7 @@ window.addEventListener("wheel", (event) => {
 }, { passive: false });
 
 window.addEventListener("contextmenu", (event) => {
-  if (event.target.closest(".home-button") || event.target.closest(".action-menu") || event.target.closest(".edit-panel")) {
+  if (event.target.closest(".home-button") || event.target.closest(".action-menu") || event.target.closest(".edit-panel") || event.target.closest(".subpage")) {
     return;
   }
 
@@ -701,6 +863,27 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
+document.addEventListener("paste", async (event) => {
+  if (!subpage.classList.contains("is-open") || !currentPageBlock) return;
+
+  const files = [];
+
+  for (const item of event.clipboardData?.items ?? []) {
+    if (item.type.startsWith("image/")) {
+      const file = item.getAsFile();
+      if (file) {
+        const namedFile = new File([file], `pasted-${Date.now()}.png`, { type: file.type || "image/png" });
+        files.push(namedFile);
+      }
+    }
+  }
+
+  if (files.length) {
+    event.preventDefault();
+    await addPageImages(files);
+  }
+});
+
 /* ===== Buttons ===== */
 addNewButton.addEventListener("click", async () => {
   if (!pendingAddWorldPoint) return;
@@ -714,27 +897,34 @@ closeEditButton.addEventListener("click", closeEditor);
 saveEditButton.addEventListener("click", async () => {
   if (!editingBlock) return;
 
-  const patch = {
-    title: titleInput.value.trim() || "Untitled",
-  };
+  saveEditButton.disabled = true;
+  saveEditButton.textContent = "Saving...";
 
-  const file = coverInput.files?.[0];
+  try {
+    const patch = {
+      title: titleInput.value.trim() || "Untitled",
+    };
 
-  if (file) {
-    const uploadedPath = await uploadCover(editingBlock, file);
-    if (uploadedPath) {
+    const file = coverInput.files?.[0];
+
+    if (file) {
+      const uploadedPath = await uploadCover(editingBlock, file);
+      if (!uploadedPath) return;
+
       patch.image_path = uploadedPath;
-      coverCache.delete(uploadedPath);
     }
+
+    await updateBlock(editingBlock, patch);
+
+    if (editingBlock.image_path) {
+      loadCoverImage(editingBlock);
+    }
+
+    closeEditor();
+  } finally {
+    saveEditButton.disabled = false;
+    saveEditButton.textContent = "Save";
   }
-
-  await updateBlock(editingBlock, patch);
-
-  if (editingBlock.image_path) {
-    loadCoverImage(editingBlock);
-  }
-
-  closeEditor();
 });
 
 deleteBlockButton.addEventListener("click", async () => {
@@ -743,6 +933,17 @@ deleteBlockButton.addEventListener("click", async () => {
 });
 
 closeSubpageButton.addEventListener("click", closeSubpage);
+
+subpage.addEventListener("click", (event) => {
+  if (event.target === subpage) closeSubpage();
+});
+
+savePageButton.addEventListener("click", saveCurrentPage);
+
+pageImageInput.addEventListener("change", async () => {
+  await addPageImages([...pageImageInput.files]);
+  pageImageInput.value = "";
+});
 
 /* ===== Realtime sync ===== */
 sb.channel("tech-blocks-sync")
@@ -764,11 +965,8 @@ sb.channel("tech-blocks-sync")
         const index = rectangles.findIndex((item) => item.id === payload.new.id);
         const block = normalizeBlock(payload.new);
 
-        if (index !== -1) {
-          rectangles[index] = block;
-        } else {
-          rectangles.push(block);
-        }
+        if (index !== -1) rectangles[index] = block;
+        else rectangles.push(block);
 
         loadCoverImage(block);
       }
@@ -777,6 +975,21 @@ sb.channel("tech-blocks-sync")
         const index = rectangles.findIndex((item) => item.id === payload.old.id);
         if (index !== -1) rectangles.splice(index, 1);
       }
+    }
+  )
+  .subscribe();
+
+sb.channel("tech-pages-sync")
+  .on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: PAGE_TABLE_NAME },
+    (payload) => {
+      if (!currentPageData || payload.new?.id !== currentPageData.id) return;
+
+      currentPageData = normalizePage(payload.new, currentPageData.block_id);
+      currentPageImages = [...currentPageData.image_paths];
+      pageTextInput.value = currentPageData.body_text;
+      renderPageImages();
     }
   )
   .subscribe();

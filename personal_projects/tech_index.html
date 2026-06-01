@@ -30,12 +30,12 @@
     </div>
 
     <label class="field">
-      <span>Text</span>
+      <span>Card Text</span>
       <input id="titleInput" type="text" placeholder="Block title" />
     </label>
 
     <label class="field">
-      <span>Cover Image</span>
+      <span>Card Thumbnail</span>
       <input id="coverInput" type="file" accept="image/*" />
     </label>
 
@@ -45,13 +45,38 @@
     </div>
   </div>
 
-  <div id="subpage" class="subpage" hidden>
+  <div id="subpage" class="subpage" aria-hidden="true">
     <button id="closeSubpageButton" class="subpage-close" type="button">Back</button>
-    <div class="subpage-card">
-      <p class="subpage-kicker">Subpage Placeholder</p>
-      <h1 id="subpageTitle">Untitled</h1>
-      <p>Later, this is where images, notes, pasted content, and other details can live.</p>
-    </div>
+
+    <section class="subpage-card">
+      <div id="subpageCover" class="subpage-cover"></div>
+
+      <div class="subpage-content">
+        <div class="subpage-topline">
+          <div>
+            <p class="subpage-kicker">Tech Block</p>
+            <h1 id="subpageTitle">Untitled</h1>
+          </div>
+
+          <button id="savePageButton" class="save-page-button" type="button">Save Page</button>
+        </div>
+
+        <label class="page-field">
+          <span>Notes</span>
+          <textarea id="pageTextInput" placeholder="Type here. Paste screenshots with Ctrl + V."></textarea>
+        </label>
+
+        <div class="page-toolbar">
+          <label class="upload-page-image">
+            Add Images
+            <input id="pageImageInput" type="file" accept="image/*" multiple />
+          </label>
+          <span class="paste-hint">Tip: screenshot in Windows, then Ctrl + V here.</span>
+        </div>
+
+        <div id="pageImages" class="page-images"></div>
+      </div>
+    </section>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
