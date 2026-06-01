@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tech Grid</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Tech Canvas</title>
 
   <link rel="stylesheet" href="tech_style.css" />
 </head>
@@ -23,6 +23,38 @@
     <button id="addNewButton" type="button">Add New</button>
   </div>
 
+  <div id="editPanel" class="edit-panel" hidden>
+    <div class="edit-panel-header">
+      <strong>Edit Block</strong>
+      <button id="closeEditButton" type="button" aria-label="Close editor">×</button>
+    </div>
+
+    <label class="field">
+      <span>Text</span>
+      <input id="titleInput" type="text" placeholder="Block title" />
+    </label>
+
+    <label class="field">
+      <span>Cover Image</span>
+      <input id="coverInput" type="file" accept="image/*" />
+    </label>
+
+    <div class="edit-actions">
+      <button id="saveEditButton" type="button">Save</button>
+      <button id="deleteBlockButton" type="button">Delete</button>
+    </div>
+  </div>
+
+  <div id="subpage" class="subpage" hidden>
+    <button id="closeSubpageButton" class="subpage-close" type="button">Back</button>
+    <div class="subpage-card">
+      <p class="subpage-kicker">Subpage Placeholder</p>
+      <h1 id="subpageTitle">Untitled</h1>
+      <p>Later, this is where images, notes, pasted content, and other details can live.</p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="tech_grid.js"></script>
 </body>
 </html>

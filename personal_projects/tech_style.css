@@ -11,6 +11,7 @@ body {
   overflow: hidden;
   background: #000;
   font-family: system-ui, sans-serif;
+  touch-action: none;
 }
 
 canvas {
@@ -18,6 +19,7 @@ canvas {
   width: 100vw;
   height: 100vh;
   background: #000;
+  touch-action: none;
 }
 
 .home-button {
@@ -64,39 +66,210 @@ canvas {
   stroke-linejoin: round;
 }
 
-.action-menu {
+.action-menu,
+.edit-panel {
   position: fixed;
   z-index: 30;
-  min-width: 138px;
-  padding: 8px;
+  color: white;
   border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: 16px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.03)),
-    rgba(0, 0, 0, 0.72);
+    rgba(0, 0, 0, 0.76);
   backdrop-filter: blur(12px);
   box-shadow:
     0 18px 45px rgba(0, 0, 0, 0.42),
     inset 0 0 18px rgba(255, 255, 255, 0.04);
 }
 
-.action-menu button {
-  width: 100%;
+.action-menu {
+  min-width: 138px;
+  padding: 8px;
+}
+
+.action-menu button,
+.edit-actions button,
+.edit-panel-header button,
+.subpage-close {
   border: 0;
-  border-radius: 11px;
-  padding: 10px 12px;
   color: white;
   background: rgba(255, 255, 255, 0.09);
   font: inherit;
-  font-size: 14px;
-  letter-spacing: 0.03em;
   cursor: pointer;
   transition:
     background 0.18s ease,
     transform 0.18s ease;
 }
 
-.action-menu button:hover {
+.action-menu button {
+  width: 100%;
+  border-radius: 11px;
+  padding: 10px 12px;
+  font-size: 14px;
+  letter-spacing: 0.03em;
+}
+
+.action-menu button:hover,
+.edit-actions button:hover,
+.edit-panel-header button:hover,
+.subpage-close:hover {
   background: rgba(255, 255, 255, 0.18);
   transform: translateY(-1px);
+}
+
+.edit-panel {
+  top: 82px;
+  right: 20px;
+  width: min(330px, calc(100vw - 32px));
+  padding: 14px;
+}
+
+.edit-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.edit-panel-header strong {
+  font-size: 16px;
+  letter-spacing: 0.03em;
+}
+
+.edit-panel-header button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 13px;
+}
+
+.field span {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.68);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.field input[type="text"],
+.field input[type="file"] {
+  width: 100%;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 10px 11px;
+  font: inherit;
+}
+
+.field input[type="file"] {
+  font-size: 13px;
+}
+
+.edit-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.edit-actions button {
+  border-radius: 12px;
+  padding: 11px 12px;
+}
+
+#deleteBlockButton {
+  background: rgba(255, 70, 70, 0.18);
+}
+
+#deleteBlockButton:hover {
+  background: rgba(255, 70, 70, 0.30);
+}
+
+.subpage {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  color: white;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.09), rgba(0, 0, 0, 0.92) 48%),
+    rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(10px);
+}
+
+.subpage[hidden] {
+  display: none;
+}
+
+.subpage-close {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  border-radius: 999px;
+  padding: 11px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+.subpage-card {
+  width: min(680px, calc(100vw - 32px));
+  min-height: 320px;
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  border-radius: 28px;
+  padding: 34px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)),
+    rgba(0, 0, 0, 0.58);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+}
+
+.subpage-kicker {
+  margin-bottom: 9px;
+  color: rgba(255, 255, 255, 0.62);
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+
+.subpage-card h1 {
+  margin-bottom: 14px;
+  font-size: clamp(32px, 5vw, 58px);
+}
+
+.subpage-card p {
+  color: rgba(255, 255, 255, 0.74);
+  line-height: 1.55;
+}
+
+@media (max-width: 700px) {
+  .home-button {
+    top: 12px;
+    left: 12px;
+    padding: 10px 13px;
+    font-size: 14px;
+  }
+
+  .home-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .edit-panel {
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: 12px;
+    width: auto;
+  }
+
+  .action-menu {
+    min-width: 150px;
+  }
 }
