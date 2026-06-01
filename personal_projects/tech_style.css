@@ -10,7 +10,6 @@ body {
   height: 100%;
   overflow: hidden;
   background: #000;
-  cursor: none;
   font-family: system-ui, sans-serif;
 }
 
@@ -21,13 +20,31 @@ canvas {
   background: #000;
 }
 
-.hint {
+.back-home {
   position: fixed;
+  top: 18px;
   left: 18px;
-  bottom: 16px;
-  color: rgba(255, 255, 255, 0.65);
+  z-index: 10;
+
+  color: white;
+  text-decoration: none;
   font-size: 14px;
-  letter-spacing: 0.02em;
-  pointer-events: none;
-  user-select: none;
+  letter-spacing: 0.04em;
+
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.back-home:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: white;
+  transform: translateY(-1px);
 }

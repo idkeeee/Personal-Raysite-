@@ -19,7 +19,6 @@ const settings = {
   gravityStrength: 72,
   lineAlpha: 0.9,
   lineWidth: 1,
-  cursorRadius: 13,
 };
 
 function resize() {
@@ -46,7 +45,6 @@ function bendPoint(x, y) {
     return { x, y };
   }
 
-  // Strongest near the cursor, fades smoothly at the edge.
   const normalized = 1 - distance / settings.influenceRadius;
   const pull = normalized * normalized * settings.gravityStrength;
 
@@ -81,7 +79,6 @@ function drawGrid() {
   const detailStep = 12;
   const margin = settings.influenceRadius + settings.spacing;
 
-  // Vertical grid lines
   for (let x = -margin; x <= width + margin; x += settings.spacing) {
     const points = [];
 
@@ -92,7 +89,6 @@ function drawGrid() {
     drawBentLine(points);
   }
 
-  // Horizontal grid lines
   for (let y = -margin; y <= height + margin; y += settings.spacing) {
     const points = [];
 
@@ -104,46 +100,11 @@ function drawGrid() {
   }
 }
 
-function drawCursorMass() {
-  if (!mouse.active) return;
-
-  const glow = ctx.createRadialGradient(
-    mouse.x,
-    mouse.y,
-    0,
-    mouse.x,
-    mouse.y,
-    settings.influenceRadius * 0.45
-  );
-
-  glow.addColorStop(0, "rgba(255, 255, 255, 0.18)");
-  glow.addColorStop(0.35, "rgba(255, 255, 255, 0.06)");
-  glow.addColorStop(1, "rgba(255, 255, 255, 0)");
-
-  ctx.fillStyle = glow;
-  ctx.beginPath();
-  ctx.arc(mouse.x, mouse.y, settings.influenceRadius * 0.45, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = "white";
-  ctx.beginPath();
-  ctx.arc(mouse.x, mouse.y, settings.cursorRadius, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(mouse.x, mouse.y, settings.cursorRadius + 8, 0, Math.PI * 2);
-  ctx.stroke();
-}
-
 function animate() {
-  // Smooth cursor movement so the fabric does not twitch.
   mouse.x += (mouse.targetX - mouse.x) * 0.18;
   mouse.y += (mouse.targetY - mouse.y) * 0.18;
 
   drawGrid();
-  drawCursorMass();
 
   requestAnimationFrame(animate);
 }
