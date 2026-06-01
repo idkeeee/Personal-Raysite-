@@ -376,18 +376,26 @@ window.addEventListener("wheel", (event) => {
 }, { passive: false });
 
 window.addEventListener("contextmenu", (event) => {
-  const hit = getRectangleAt(event.clientX, event.clientY);
-
-  if (!hit) return;
+  if (event.target.closest(".home-button") || event.target.closest(".action-menu")) {
+    return;
+  }
 
   event.preventDefault();
+
+  const hit = getRectangleAt(event.clientX, event.clientY);
   hideMenu();
 
-  const confirmed = window.confirm("Delete this rectangle?");
+  if (hit) {
+    const confirmed = window.confirm("Delete this rectangle?");
 
-  if (confirmed) {
-    rectangles.splice(hit.index, 1);
+    if (confirmed) {
+      rectangles.splice(hit.index, 1);
+    }
+
+    return;
   }
+
+  showMenu(event.clientX, event.clientY);
 });
 
 window.addEventListener("mouseleave", () => {
