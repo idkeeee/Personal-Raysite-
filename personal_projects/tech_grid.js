@@ -16,7 +16,8 @@ const mouse = {
 const settings = {
   spacing: 42,
   influenceRadius: 240,
-  gravityStrength: 72,
+  gravityStrength: 86,
+  centerSoftness: 58,
   lineAlpha: 0.9,
   lineWidth: 1,
 };
@@ -46,7 +47,11 @@ function bendPoint(x, y) {
   }
 
   const normalized = 1 - distance / settings.influenceRadius;
-  const pull = normalized * normalized * settings.gravityStrength;
+
+  // Softened center fixes the sharp spider-leg artifacts near the cursor.
+  // It still pulls the grid inward, but points no longer collapse into one knot.
+  const centerSoftening = distance / (distance + settings.centerSoftness);
+  const pull = normalized * normalized * settings.gravityStrength * centerSoftening;
 
   return {
     x: x + (dx / distance) * pull,
@@ -76,7 +81,7 @@ function drawGrid() {
   ctx.strokeStyle = `rgba(255, 255, 255, ${settings.lineAlpha})`;
   ctx.lineWidth = settings.lineWidth;
 
-  const detailStep = 12;
+  const detailStep = 10;
   const margin = settings.influenceRadius + settings.spacing;
 
   for (let x = -margin; x <= width + margin; x += settings.spacing) {

@@ -20,22 +20,27 @@ canvas {
   background: #000;
 }
 
-.back-home {
+.home-button {
   position: fixed;
   top: 18px;
   left: 18px;
   z-index: 10;
 
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+
   color: white;
   text-decoration: none;
-  font-size: 14px;
-  letter-spacing: 0.04em;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 
-  padding: 10px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  padding: 12px 17px;
+  border: 1px solid rgba(255, 255, 255, 0.78);
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.48);
+  backdrop-filter: blur(8px);
 
   transition:
     background 0.2s ease,
@@ -43,8 +48,18 @@ canvas {
     transform 0.2s ease;
 }
 
-.back-home:hover {
-  background: rgba(255, 255, 255, 0.12);
+.home-button:hover {
+  background: rgba(255, 255, 255, 0.14);
   border-color: white;
   transform: translateY(-1px);
+}
+
+.home-icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }

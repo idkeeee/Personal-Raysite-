@@ -8,7 +8,14 @@
   <link rel="stylesheet" href="tech_style.css" />
 </head>
 <body>
-  <a class="back-home" href="../index.html">Back to Home</a>
+  <a class="home-button" href="../index.html" aria-label="Back to home">
+    <svg class="home-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 10.8L12 3l9 7.8" />
+      <path d="M5.5 9.5V21h13V9.5" />
+      <path d="M9.5 21v-6h5v6" />
+    </svg>
+    <span>Home</span>
+  </a>
 
   <canvas id="gridCanvas"></canvas>
 
