@@ -24,7 +24,7 @@ canvas {
   position: fixed;
   top: 18px;
   left: 18px;
-  z-index: 10;
+  z-index: 20;
 
   display: inline-flex;
   align-items: center;
@@ -62,4 +62,41 @@ canvas {
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.action-menu {
+  position: fixed;
+  z-index: 30;
+  min-width: 138px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.03)),
+    rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.42),
+    inset 0 0 18px rgba(255, 255, 255, 0.04);
+}
+
+.action-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: 11px;
+  padding: 10px 12px;
+  color: white;
+  background: rgba(255, 255, 255, 0.09);
+  font: inherit;
+  font-size: 14px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.action-menu button:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
 }
