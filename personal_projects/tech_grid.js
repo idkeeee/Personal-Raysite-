@@ -836,7 +836,9 @@ canvas.addEventListener("pointercancel", () => {
 });
 
 window.addEventListener("wheel", (event) => {
-  if (subpage.classList.contains("is-open")) return;
+  if (subpage.classList.contains("is-open")) {
+    return;
+  }
 
   event.preventDefault();
   hideMenu();
