@@ -1,6 +1,6 @@
 /* ===== Supabase ===== */
-const SB_URL = window.SUPABASE_URL ?? "httpssupabase.co";
-const SB_ANON = window.SUPABASE_ANON ?? "..5sggDXSK-";
+const SB_URL  = window.SUPABASE_URL  ?? "https://ntlsmrzpatcultvsrpll.supabase.co";
+const SB_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
 const sb = window.supabase.createClient(SB_URL, SB_ANON);
 
 const TABLE_NAME = "tech_blocks";
