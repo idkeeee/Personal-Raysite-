@@ -1,6 +1,6 @@
 /* ===== Supabase ===== */
-const SB_URL = window.SUPABASE_URL ?? "https://ntlsmrzpatcultvsrpll.supabase.co";
-const SB_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
+const SB_URL = window.SUPABASE_URL ?? "httpssupabase.co";
+const SB_ANON = window.SUPABASE_ANON ?? "..5sggDXSK-";
 const sb = window.supabase.createClient(SB_URL, SB_ANON);
 
 const TABLE_NAME = "tech_blocks";
@@ -25,9 +25,8 @@ const subpage = document.getElementById("subpage");
 const subpageTitle = document.getElementById("subpageTitle");
 const subpageCover = document.getElementById("subpageCover");
 const closeSubpageButton = document.getElementById("closeSubpageButton");
-const pageTextInput = document.getElementById("pageTextInput");
+const pageEditor = document.getElementById("pageEditor");
 const pageImageInput = document.getElementById("pageImageInput");
-const pageImages = document.getElementById("pageImages");
 const savePageButton = document.getElementById("savePageButton");
 
 /* ===== Canvas state ===== */
@@ -237,8 +236,8 @@ async function saveCurrentPage() {
   savePageButton.textContent = "Saving...";
 
   try {
-    currentPageData.body_text = pageTextInput.value;
-    currentPageData.image_paths = [...currentPageImages];
+    currentPageData.body_text = pageEditor.innerHTML;
+    currentPageData.image_paths = getEditorImagePaths();
 
     const { error } = await sb
       .from(PAGE_TABLE_NAME)
@@ -257,6 +256,12 @@ async function saveCurrentPage() {
     savePageButton.disabled = false;
     savePageButton.textContent = "Save Page";
   }
+}
+
+function getEditorImagePaths() {
+  return [...pageEditor.querySelectorAll("img[data-path]")]
+    .map((img) => img.dataset.path)
+    .filter(Boolean);
 }
 
 /* ===== Storage ===== */
@@ -589,12 +594,12 @@ async function openSubpage(block) {
   }
 
   currentPageData = await loadPage(block);
-  currentPageImages = currentPageData?.image_paths ? [...currentPageData.image_paths] : [];
-  pageTextInput.value = currentPageData?.body_text ?? "";
-  renderPageImages();
+  pageEditor.innerHTML = currentPageData?.body_text ?? "";
 
   subpage.classList.add("is-open");
   subpage.setAttribute("aria-hidden", "false");
+
+  setTimeout(() => pageEditor.focus(), 160);
 }
 
 function closeSubpage() {
@@ -602,37 +607,48 @@ function closeSubpage() {
   subpage.setAttribute("aria-hidden", "true");
   currentPageBlock = null;
   currentPageData = null;
-  currentPageImages = [];
-  pageTextInput.value = "";
-  renderPageImages();
+  pageEditor.innerHTML = "";
 }
 
-function renderPageImages() {
-  pageImages.innerHTML = "";
+function insertNodeAtCaret(node) {
+  pageEditor.focus();
 
-  currentPageImages.forEach((path, index) => {
-    const card = document.createElement("div");
-    card.className = "page-image-card";
+  const selection = window.getSelection();
 
-    const img = document.createElement("img");
-    img.src = getPublicCoverUrl(path);
-    img.alt = "Page image";
+  if (!selection || selection.rangeCount === 0) {
+    pageEditor.appendChild(node);
+    return;
+  }
 
-    const removeButton = document.createElement("button");
-    removeButton.type = "button";
-    removeButton.textContent = "×";
-    removeButton.title = "Remove image";
-    removeButton.addEventListener("click", () => {
-      currentPageImages.splice(index, 1);
-      renderPageImages();
-    });
+  const range = selection.getRangeAt(0);
 
-    card.append(img, removeButton);
-    pageImages.append(card);
-  });
+  if (!pageEditor.contains(range.commonAncestorContainer)) {
+    pageEditor.appendChild(node);
+    return;
+  }
+
+  range.deleteContents();
+  range.insertNode(node);
+
+  const spacer = document.createElement("div");
+  spacer.innerHTML = "<br>";
+  node.after(spacer);
+
+  range.setStartAfter(spacer);
+  range.setEndAfter(spacer);
+  selection.removeAllRanges();
+  selection.addRange(range);
 }
 
-async function addPageImages(files) {
+function insertImageIntoEditor(path) {
+  const img = document.createElement("img");
+  img.src = getPublicCoverUrl(path);
+  img.alt = "Inserted image";
+  img.dataset.path = path;
+  insertNodeAtCaret(img);
+}
+
+async function addImagesIntoEditor(files) {
   if (!currentPageBlock || !files?.length) return;
 
   savePageButton.disabled = true;
@@ -643,10 +659,9 @@ async function addPageImages(files) {
       if (!file.type.startsWith("image/")) continue;
 
       const path = await uploadPageImage(currentPageBlock, file);
-      if (path) currentPageImages.push(path);
+      if (path) insertImageIntoEditor(path);
     }
 
-    renderPageImages();
     await saveCurrentPage();
   } finally {
     savePageButton.disabled = false;
@@ -863,7 +878,7 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
-document.addEventListener("paste", async (event) => {
+pageEditor.addEventListener("paste", async (event) => {
   if (!subpage.classList.contains("is-open") || !currentPageBlock) return;
 
   const files = [];
@@ -880,7 +895,7 @@ document.addEventListener("paste", async (event) => {
 
   if (files.length) {
     event.preventDefault();
-    await addPageImages(files);
+    await addImagesIntoEditor(files);
   }
 });
 
@@ -941,7 +956,7 @@ subpage.addEventListener("click", (event) => {
 savePageButton.addEventListener("click", saveCurrentPage);
 
 pageImageInput.addEventListener("change", async () => {
-  await addPageImages([...pageImageInput.files]);
+  await addImagesIntoEditor([...pageImageInput.files]);
   pageImageInput.value = "";
 });
 
@@ -987,9 +1002,7 @@ sb.channel("tech-pages-sync")
       if (!currentPageData || payload.new?.id !== currentPageData.id) return;
 
       currentPageData = normalizePage(payload.new, currentPageData.block_id);
-      currentPageImages = [...currentPageData.image_paths];
-      pageTextInput.value = currentPageData.body_text;
-      renderPageImages();
+      pageEditor.innerHTML = currentPageData.body_text;
     }
   )
   .subscribe();

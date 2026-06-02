@@ -54,17 +54,23 @@
       <div class="subpage-content">
         <div class="subpage-topline">
           <div>
-            <p class="subpage-kicker">Tech Block</p>
+            <p class="subpage-kicker">Project Title</p>
             <h1 id="subpageTitle">Untitled</h1>
           </div>
 
           <button id="savePageButton" class="save-page-button" type="button">Save Page</button>
         </div>
 
-        <label class="page-field">
+        <div class="page-field">
           <span>Notes</span>
-          <textarea id="pageTextInput" placeholder="Type here. Paste screenshots with Ctrl + V."></textarea>
-        </label>
+          <div
+            id="pageEditor"
+            class="page-editor"
+            contenteditable="true"
+            spellcheck="true"
+            data-placeholder="Type here. Paste screenshots with Ctrl + V."
+          ></div>
+        </div>
 
         <div class="page-toolbar">
           <label class="upload-page-image">
@@ -73,8 +79,6 @@
           </label>
           <span class="paste-hint">Tip: screenshot in Windows, then Ctrl + V here.</span>
         </div>
-
-        <div id="pageImages" class="page-images"></div>
       </div>
     </section>
   </div>
