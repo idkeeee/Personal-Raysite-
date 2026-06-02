@@ -527,3 +527,102 @@ canvas {
     min-height: 48vh;
   }
 }
+
+
+/* ===== Bigger opaque document popup + proper notes scrolling ===== */
+.subpage {
+  padding: 44px 70px;
+  background: rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(2px);
+}
+
+.subpage.is-open {
+  backdrop-filter: blur(3px);
+}
+
+.subpage-card {
+  width: min(1420px, calc(100vw - 140px));
+  height: min(920px, calc(100vh - 88px));
+  max-height: min(920px, calc(100vh - 88px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.16), transparent 34%),
+    linear-gradient(135deg, #1a1a1a, #0b0b0b 58%, #050505);
+  box-shadow:
+    0 34px 90px rgba(0, 0, 0, 0.72),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.subpage-cover {
+  flex: 0 0 clamp(105px, 18vh, 200px);
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.14), transparent 58%),
+    linear-gradient(135deg, #292929, #111111);
+  background-size: cover;
+  background-position: center;
+}
+
+.subpage-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(24px, 2.8vw, 38px);
+  background: #0a0a0a;
+}
+
+.subpage-topline {
+  flex: 0 0 auto;
+  margin-bottom: 18px;
+}
+
+.page-field {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-editor {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: #111111;
+  border-color: rgba(255, 255, 255, 0.38);
+  scrollbar-color: rgba(255, 255, 255, 0.55) rgba(255, 255, 255, 0.08);
+  scrollbar-width: thin;
+}
+
+.page-editor::-webkit-scrollbar {
+  width: 12px;
+}
+
+.page-editor::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+.page-editor::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.48);
+  border-radius: 999px;
+  border: 3px solid #111111;
+}
+
+.page-toolbar {
+  flex: 0 0 auto;
+  margin: 15px 0 0;
+}
+
+@media (max-width: 900px) {
+  .subpage {
+    padding: 14px;
+  }
+
+  .subpage-card {
+    width: calc(100vw - 28px);
+    height: calc(100vh - 28px);
+    max-height: calc(100vh - 28px);
+  }
+}
