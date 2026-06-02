@@ -27,9 +27,8 @@ const subpageCover = document.getElementById("subpageCover");
 const closeSubpageButton = document.getElementById("closeSubpageButton");
 const pageEditor = document.getElementById("pageEditor");
 const pageImageInput = document.getElementById("pageImageInput");
-const savePageButton = document.getElementById("savePageButton");
+const autosaveStatus = document.getElementById("autosaveStatus");
 
-/* ===== Canvas state ===== */
 let width = 0;
 let height = 0;
 let dpr = window.devicePixelRatio || 1;
@@ -66,8 +65,9 @@ let pendingAddWorldPoint = null;
 let editingBlock = null;
 let currentPageBlock = null;
 let currentPageData = null;
-let currentPageImages = [];
 let longPressTimer = null;
+let pageSaveTimer = null;
+let titleSaveTimer = null;
 
 const pointer = {
   isDown: false,
@@ -144,7 +144,7 @@ async function createBlock(worldPoint) {
   rectangles.push(normalizeBlock(data));
 }
 
-async function updateBlock(block, patch) {
+async function updateBlock(block, patch, showAlert = true) {
   Object.assign(block, patch);
 
   const { error } = await sb
@@ -157,7 +157,7 @@ async function updateBlock(block, patch) {
 
   if (error) {
     console.error("Could not update block:", error);
-    alert("Could not save block. Check Supabase table policies.");
+    if (showAlert) alert("Could not save block. Check Supabase table policies.");
   }
 }
 
@@ -229,33 +229,42 @@ function normalizePage(row, blockId) {
   };
 }
 
+function setStatus(text) {
+  autosaveStatus.textContent = text;
+}
+
+function schedulePageSave() {
+  if (!currentPageData) return;
+
+  setStatus("Saving...");
+  window.clearTimeout(pageSaveTimer);
+  pageSaveTimer = window.setTimeout(saveCurrentPage, 550);
+}
+
 async function saveCurrentPage() {
   if (!currentPageData) return;
 
-  savePageButton.disabled = true;
-  savePageButton.textContent = "Saving...";
+  const imagePaths = getEditorImagePaths();
 
-  try {
-    currentPageData.body_text = pageEditor.innerHTML;
-    currentPageData.image_paths = getEditorImagePaths();
+  currentPageData.body_text = pageEditor.innerHTML;
+  currentPageData.image_paths = imagePaths;
 
-    const { error } = await sb
-      .from(PAGE_TABLE_NAME)
-      .update({
-        body_text: currentPageData.body_text,
-        image_paths: currentPageData.image_paths,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", currentPageData.id);
+  const { error } = await sb
+    .from(PAGE_TABLE_NAME)
+    .update({
+      body_text: currentPageData.body_text,
+      image_paths: currentPageData.image_paths,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", currentPageData.id);
 
-    if (error) {
-      console.error("Could not save page:", error);
-      alert("Could not save page. Check tech_block_pages policies.");
-    }
-  } finally {
-    savePageButton.disabled = false;
-    savePageButton.textContent = "Save Page";
+  if (error) {
+    console.error("Could not save page:", error);
+    setStatus("Save failed");
+    return;
   }
+
+  setStatus("Saved");
 }
 
 function getEditorImagePaths() {
@@ -596,10 +605,9 @@ async function openSubpage(block) {
   currentPageData = await loadPage(block);
   pageEditor.innerHTML = currentPageData?.body_text ?? "";
 
+  setStatus("Saved");
   subpage.classList.add("is-open");
   subpage.setAttribute("aria-hidden", "false");
-
-  setTimeout(() => pageEditor.focus(), 160);
 }
 
 function closeSubpage() {
@@ -608,6 +616,8 @@ function closeSubpage() {
   currentPageBlock = null;
   currentPageData = null;
   pageEditor.innerHTML = "";
+  window.clearTimeout(pageSaveTimer);
+  window.clearTimeout(titleSaveTimer);
 }
 
 function insertNodeAtCaret(node) {
@@ -651,22 +661,16 @@ function insertImageIntoEditor(path) {
 async function addImagesIntoEditor(files) {
   if (!currentPageBlock || !files?.length) return;
 
-  savePageButton.disabled = true;
-  savePageButton.textContent = "Uploading...";
+  setStatus("Uploading...");
 
-  try {
-    for (const file of files) {
-      if (!file.type.startsWith("image/")) continue;
+  for (const file of files) {
+    if (!file.type.startsWith("image/")) continue;
 
-      const path = await uploadPageImage(currentPageBlock, file);
-      if (path) insertImageIntoEditor(path);
-    }
-
-    await saveCurrentPage();
-  } finally {
-    savePageButton.disabled = false;
-    savePageButton.textContent = "Save Page";
+    const path = await uploadPageImage(currentPageBlock, file);
+    if (path) insertImageIntoEditor(path);
   }
+
+  schedulePageSave();
 }
 
 /* ===== Interactions ===== */
@@ -811,10 +815,7 @@ canvas.addEventListener("pointerup", async (event) => {
 
   if (mode === "block" && block) {
     if (blockMoved) {
-      await updateBlock(block, {
-        x: block.x,
-        y: block.y,
-      });
+      await updateBlock(block, { x: block.x, y: block.y });
     } else {
       await openSubpage(block);
     }
@@ -835,11 +836,7 @@ canvas.addEventListener("pointercancel", () => {
 });
 
 window.addEventListener("wheel", (event) => {
-  // When the document popup is open, scrolling belongs to the notes/page,
-  // not to the background canvas zoom.
-  if (subpage.classList.contains("is-open")) {
-    return;
-  }
+  if (subpage.classList.contains("is-open")) return;
 
   event.preventDefault();
   hideMenu();
@@ -881,6 +878,29 @@ window.addEventListener("keydown", (event) => {
     hideMenu();
     closeEditor();
     closeSubpage();
+  }
+});
+
+pageEditor.addEventListener("input", schedulePageSave);
+
+subpageTitle.addEventListener("input", () => {
+  if (!currentPageBlock) return;
+
+  const nextTitle = subpageTitle.textContent.trim() || "Untitled";
+  currentPageBlock.title = nextTitle;
+  setStatus("Saving...");
+
+  window.clearTimeout(titleSaveTimer);
+  titleSaveTimer = window.setTimeout(async () => {
+    await updateBlock(currentPageBlock, { title: nextTitle }, false);
+    setStatus("Saved");
+  }, 450);
+});
+
+subpageTitle.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    pageEditor.focus();
   }
 });
 
@@ -959,8 +979,6 @@ subpage.addEventListener("click", (event) => {
   if (event.target === subpage) closeSubpage();
 });
 
-savePageButton.addEventListener("click", saveCurrentPage);
-
 pageImageInput.addEventListener("change", async () => {
   await addImagesIntoEditor([...pageImageInput.files]);
   pageImageInput.value = "";
@@ -1006,6 +1024,7 @@ sb.channel("tech-pages-sync")
     { event: "*", schema: "public", table: PAGE_TABLE_NAME },
     (payload) => {
       if (!currentPageData || payload.new?.id !== currentPageData.id) return;
+      if (document.activeElement === pageEditor || document.activeElement === subpageTitle) return;
 
       currentPageData = normalizePage(payload.new, currentPageData.block_id);
       pageEditor.innerHTML = currentPageData.body_text;

@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Tech Canvas</title>
-
   <link rel="stylesheet" href="tech_style.css" />
 </head>
 <body>
@@ -53,32 +52,30 @@
 
       <div class="subpage-content">
         <div class="subpage-topline">
-          <div>
+          <div class="title-wrap">
             <p class="subpage-kicker">Project Title</p>
-            <h1 id="subpageTitle">Untitled</h1>
+            <h1
+              id="subpageTitle"
+              contenteditable="true"
+              spellcheck="false"
+              data-placeholder="Untitled"
+            >Untitled</h1>
+            <p id="autosaveStatus" class="autosave-status">Saved</p>
           </div>
 
-          <button id="savePageButton" class="save-page-button" type="button">Save Page</button>
-        </div>
-
-        <div class="page-field">
-          <span>Notes</span>
-          <div
-            id="pageEditor"
-            class="page-editor"
-            contenteditable="true"
-            spellcheck="true"
-            data-placeholder="Type here. Paste screenshots with Ctrl + V."
-          ></div>
-        </div>
-
-        <div class="page-toolbar">
-          <label class="upload-page-image">
+          <label class="top-add-image">
             Add Images
             <input id="pageImageInput" type="file" accept="image/*" multiple />
           </label>
-          <span class="paste-hint">Tip: screenshot in Windows, then Ctrl + V here.</span>
         </div>
+
+        <div
+          id="pageEditor"
+          class="page-editor"
+          contenteditable="true"
+          spellcheck="true"
+          data-placeholder="Type here. Paste screenshots with Ctrl + V."
+        ></div>
       </div>
     </section>
   </div>
