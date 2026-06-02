@@ -52,12 +52,22 @@ function getView(){
   words.forEach((word, rawIdx) => {
     const w = normalizeWord(word);
     const isTrash = Boolean(w.deleted_at);
-    const include = (session === "trash") ? isTrash : !isTrash;
-    if (include) out.push({ w, rawIdx });
+    const inAnyChapter = Array.isArray(w.chapters) && w.chapters.length > 0;
+
+    if (session === "trash") {
+      if (isTrash) out.push({ w, rawIdx });
+      return;
+    }
+
+    // main session only shows words that are:
+    // - not deleted
+    // - not inside any chapter
+    if (!isTrash && !inAnyChapter) {
+      out.push({ w, rawIdx });
+    }
   });
   return out;
 }
-
 function clampViewIndex(){
   const n = getView().length;
   if (n <= 0) { viewIndex = 0; return; }
@@ -308,6 +318,10 @@ function addWordToLatestChapter(rawIdx){
     scheduleSaveWords();
   }
 
+  clampViewIndex();
+  revealAll = false;
+  pickPromptRandom();
+  renderCard();
   renderDict();
   flashCard();
 }
