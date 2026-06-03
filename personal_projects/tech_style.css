@@ -219,9 +219,12 @@ canvas {
 }
 
 .subpage-card {
-  width: min(1460px, calc(100vw - 28px));
-  height: calc(100vh - 28px);
-  overflow: hidden;
+  width: min(1500px, calc(100vw - 24px));
+  height: calc(100vh - 24px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.32) rgba(255, 255, 255, 0.055);
   border: 1px solid rgba(255, 255, 255, 0.52);
   border-radius: 32px;
   background: #080808;
@@ -237,6 +240,27 @@ canvas {
   opacity: 1;
 }
 
+.subpage-card::-webkit-scrollbar {
+  width: 8px;
+}
+
+.subpage-card::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.045);
+  border-radius: 999px;
+  margin: 18px 0;
+}
+
+.subpage-card::-webkit-scrollbar-thumb {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.50), rgba(255, 255, 255, 0.18));
+  border-radius: 999px;
+}
+
+.subpage-card::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.28));
+}
+
 .subpage-cover {
   height: clamp(150px, 22vh, 250px);
   background:
@@ -248,32 +272,7 @@ canvas {
 }
 
 .subpage-content {
-  height: calc(100% - clamp(150px, 22vh, 250px));
-  overflow-y: auto;
   padding: clamp(26px, 3vw, 44px);
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.32) rgba(255, 255, 255, 0.055);
-}
-
-.subpage-content::-webkit-scrollbar {
-  width: 8px;
-}
-
-.subpage-content::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.045);
-  border-radius: 999px;
-  margin: 16px 0;
-}
-
-.subpage-content::-webkit-scrollbar-thumb {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.50), rgba(255, 255, 255, 0.18));
-  border-radius: 999px;
-}
-
-.subpage-content::-webkit-scrollbar-thumb:hover {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.28));
 }
 
 .subpage-topline {
@@ -340,7 +339,7 @@ canvas {
 }
 
 .page-editor {
-  min-height: max(620px, calc(100vh - 430px));
+  min-height: max(760px, calc(100vh - 300px));
   width: 100%;
   color: rgba(255, 255, 255, 0.92);
   padding: 6px 2px 42px;
@@ -408,6 +407,8 @@ canvas {
     height: calc(100vh - 12px);
     min-height: auto;
     max-height: none;
+    overflow-y: auto;
+    overflow-x: hidden;
     border-radius: 24px;
   }
 
@@ -416,7 +417,6 @@ canvas {
   }
 
   .subpage-content {
-    height: calc(100% - 130px);
     padding: 22px 18px 30px;
   }
 
