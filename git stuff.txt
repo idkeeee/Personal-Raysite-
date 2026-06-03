@@ -14,3 +14,11 @@ every time you work on it :
     git push
 
 yea no thats it, the same
+
+
+
+
+
+
+Test-NetConnection github.com -Port 443
+ipconfig /flushdns
