@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Tech Canvas</title>
+
   <link rel="stylesheet" href="tech_style.css" />
 </head>
 <body>
@@ -52,35 +53,28 @@
 
       <div class="subpage-content">
         <div class="subpage-topline">
-          <div class="title-wrap">
-            <p class="subpage-kicker">Project Title</p>
-            <h1
-              id="subpageTitle"
-              contenteditable="true"
-              spellcheck="false"
-              data-placeholder="Untitled"
-            >Untitled</h1>
-            <p id="autosaveStatus" class="autosave-status">Saved</p>
+          <div>
+            <p class="subpage-kicker">Tech Block</p>
+            <h1 id="subpageTitle">Untitled</h1>
           </div>
 
-          <div class="iteration-actions">
-            <button id="prevIterationButton" class="iteration-button" type="button">Previous Iteration</button>
-            <button id="nextIterationButton" class="iteration-button" type="button">Next Iteration</button>
-
-            <label class="top-add-image">
-              Add Images
-              <input id="pageImageInput" type="file" accept="image/*" multiple />
-            </label>
-          </div>
+          <button id="savePageButton" class="save-page-button" type="button">Save Page</button>
         </div>
 
-        <div
-          id="pageEditor"
-          class="page-editor"
-          contenteditable="true"
-          spellcheck="true"
-          data-placeholder="Type here. Paste screenshots with Ctrl + V."
-        ></div>
+        <label class="page-field">
+          <span>Notes</span>
+          <textarea id="pageTextInput" placeholder="Type here. Paste screenshots with Ctrl + V."></textarea>
+        </label>
+
+        <div class="page-toolbar">
+          <label class="upload-page-image">
+            Add Images
+            <input id="pageImageInput" type="file" accept="image/*" multiple />
+          </label>
+          <span class="paste-hint">Tip: screenshot in Windows, then Ctrl + V here.</span>
+        </div>
+
+        <div id="pageImages" class="page-images"></div>
       </div>
     </section>
   </div>

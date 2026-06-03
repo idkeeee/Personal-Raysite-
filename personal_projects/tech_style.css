@@ -27,20 +27,27 @@ canvas {
   top: 18px;
   left: 18px;
   z-index: 20;
+
   display: inline-flex;
   align-items: center;
   gap: 9px;
+
   color: white;
   text-decoration: none;
   font-size: 16px;
   font-weight: 500;
   letter-spacing: 0.02em;
+
   padding: 12px 17px;
   border: 1px solid rgba(255, 255, 255, 0.78);
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.48);
   backdrop-filter: blur(8px);
-  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .home-button:hover {
@@ -70,7 +77,9 @@ canvas {
     linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.03)),
     rgba(0, 0, 0, 0.76);
   backdrop-filter: blur(12px);
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.42), inset 0 0 18px rgba(255, 255, 255, 0.04);
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.42),
+    inset 0 0 18px rgba(255, 255, 255, 0.04);
 }
 
 .action-menu {
@@ -82,13 +91,15 @@ canvas {
 .edit-actions button,
 .edit-panel-header button,
 .subpage-close,
-.top-add-image {
+.save-page-button {
   border: 0;
   color: white;
   background: rgba(255, 255, 255, 0.09);
   font: inherit;
   cursor: pointer;
-  transition: background 0.18s ease, transform 0.18s ease;
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
 }
 
 .action-menu button {
@@ -103,7 +114,7 @@ canvas {
 .edit-actions button:hover,
 .edit-panel-header button:hover,
 .subpage-close:hover,
-.top-add-image:hover {
+.save-page-button:hover {
   background: rgba(255, 255, 255, 0.18);
   transform: translateY(-1px);
 }
@@ -141,7 +152,8 @@ canvas {
   margin-bottom: 13px;
 }
 
-.field span {
+.field span,
+.page-field span {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.68);
   letter-spacing: 0.06em;
@@ -149,7 +161,8 @@ canvas {
 }
 
 .field input[type="text"],
-.field input[type="file"] {
+.field input[type="file"],
+.page-field textarea {
   width: 100%;
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.28);
@@ -183,7 +196,7 @@ canvas {
   background: rgba(255, 70, 70, 0.30);
 }
 
-/* ===== Editable document popup ===== */
+/* ===== Editable subpage popup ===== */
 .subpage {
   position: fixed;
   inset: 0;
@@ -191,21 +204,23 @@ canvas {
   display: grid;
   place-items: center;
   color: white;
-  padding: 12px;
+  padding: 20px;
   background:
-    radial-gradient(circle at center, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.52) 58%),
-    rgba(0, 0, 0, 0.42);
-  backdrop-filter: blur(2px);
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.11), rgba(0, 0, 0, 0.93) 52%),
+    rgba(0, 0, 0, 0.86);
+  backdrop-filter: blur(0);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.26s ease, backdrop-filter 0.26s ease;
+  transition:
+    opacity 0.26s ease,
+    backdrop-filter 0.26s ease;
   touch-action: auto;
 }
 
 .subpage.is-open {
   opacity: 1;
   pointer-events: auto;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(12px);
 }
 
 .subpage-close {
@@ -219,19 +234,22 @@ canvas {
 }
 
 .subpage-card {
-  width: min(1500px, calc(100vw - 24px));
-  height: calc(100vh - 24px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.32) rgba(255, 255, 255, 0.055);
+  width: min(920px, calc(100vw - 32px));
+  max-height: min(860px, calc(100vh - 48px));
+  overflow: auto;
   border: 1px solid rgba(255, 255, 255, 0.52);
   border-radius: 32px;
-  background: #080808;
-  box-shadow: 0 36px 90px rgba(0, 0, 0, 0.58), inset 0 0 34px rgba(255, 255, 255, 0.035);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.03)),
+    rgba(0, 0, 0, 0.70);
+  box-shadow:
+    0 36px 90px rgba(0, 0, 0, 0.58),
+    inset 0 0 28px rgba(255, 255, 255, 0.04);
   transform: translateY(26px) scale(0.94);
   opacity: 0;
-  transition: transform 0.38s cubic-bezier(.16, 1, .3, 1), opacity 0.28s ease;
+  transition:
+    transform 0.38s cubic-bezier(.16, 1, .3, 1),
+    opacity 0.28s ease;
   touch-action: auto;
 }
 
@@ -240,52 +258,26 @@ canvas {
   opacity: 1;
 }
 
-.subpage-card::-webkit-scrollbar {
-  width: 8px;
-}
-
-.subpage-card::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.045);
-  border-radius: 999px;
-  margin: 18px 0;
-}
-
-.subpage-card::-webkit-scrollbar-thumb {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.50), rgba(255, 255, 255, 0.18));
-  border-radius: 999px;
-}
-
-.subpage-card::-webkit-scrollbar-thumb:hover {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.28));
-}
-
 .subpage-cover {
-  height: clamp(150px, 22vh, 250px);
+  height: 230px;
   background:
     radial-gradient(circle at center, rgba(255, 255, 255, 0.14), transparent 56%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.04));
+    linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.02));
   border-bottom: 1px solid rgba(255, 255, 255, 0.18);
   background-size: cover;
   background-position: center;
 }
 
 .subpage-content {
-  padding: clamp(26px, 3vw, 44px);
+  padding: 32px 34px 36px;
 }
 
 .subpage-topline {
   display: flex;
   align-items: start;
   justify-content: space-between;
-  gap: 22px;
+  gap: 18px;
   margin-bottom: 20px;
-}
-
-.title-wrap {
-  min-width: 0;
-  flex: 1;
 }
 
 .subpage-kicker {
@@ -297,80 +289,97 @@ canvas {
 }
 
 .subpage-card h1 {
-  display: inline-block;
-  max-width: 100%;
-  min-width: 2ch;
-  padding: 2px 4px;
-  margin-left: -4px;
-  border-radius: 10px;
-  font-size: clamp(42px, 5.6vw, 82px);
+  font-size: clamp(32px, 5vw, 58px);
   line-height: 0.98;
-  outline: none;
-  overflow-wrap: anywhere;
 }
 
-.subpage-card h1:focus {
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.12);
-}
-
-.subpage-card h1:empty::before {
-  content: attr(data-placeholder);
-  color: rgba(255, 255, 255, 0.38);
-}
-
-.autosave-status {
-  height: 18px;
-  margin-top: 8px;
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 12px;
-  letter-spacing: 0.04em;
-}
-
-.top-add-image {
+.save-page-button {
   flex: 0 0 auto;
   border-radius: 999px;
-  padding: 12px 17px;
+  padding: 11px 16px;
   border: 1px solid rgba(255, 255, 255, 0.45);
 }
 
-.top-add-image input {
+.page-field {
+  display: grid;
+  gap: 8px;
+}
+
+.page-field textarea {
+  min-height: 210px;
+  resize: vertical;
+  line-height: 1.55;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.045));
+}
+
+.page-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 15px 0 17px;
+}
+
+.upload-page-image {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 10px 14px;
+  color: white;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.30);
+}
+
+.upload-page-image:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.upload-page-image input {
   display: none;
 }
 
-.page-editor {
-  min-height: max(760px, calc(100vh - 300px));
-  width: 100%;
-  color: rgba(255, 255, 255, 0.92);
-  padding: 6px 2px 42px;
-  font: inherit;
-  font-size: 18px;
-  line-height: 1.7;
-  outline: none;
-  overflow-wrap: anywhere;
-  touch-action: auto;
+.paste-hint {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 13px;
 }
 
-.page-editor:empty::before {
-  content: attr(data-placeholder);
-  color: rgba(255, 255, 255, 0.36);
-  pointer-events: none;
+.page-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
 }
 
-.page-editor p,
-.page-editor div {
-  margin-bottom: 0.9em;
-}
-
-.page-editor img {
-  display: block;
-  max-width: min(100%, 900px);
-  max-height: 680px;
-  margin: 18px 0;
+.page-image-card {
+  position: relative;
+  overflow: hidden;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
-  object-fit: contain;
+  min-height: 130px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.page-image-card img {
+  width: 100%;
+  height: 100%;
+  min-height: 130px;
+  object-fit: cover;
+  display: block;
+}
+
+.page-image-card button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.68);
 }
 
 @media (max-width: 700px) {
@@ -399,87 +408,27 @@ canvas {
   }
 
   .subpage {
-    padding: 8px;
+    padding: 14px;
   }
 
   .subpage-card {
-    width: calc(100vw - 12px);
-    height: calc(100vh - 12px);
-    min-height: auto;
-    max-height: none;
-    overflow-y: auto;
-    overflow-x: hidden;
-    border-radius: 24px;
+    max-height: calc(100vh - 28px);
+    border-radius: 26px;
   }
 
   .subpage-cover {
-    height: 130px;
+    height: 190px;
   }
 
   .subpage-content {
-    padding: 22px 18px 30px;
+    padding: 26px 22px 30px;
   }
 
   .subpage-topline {
     display: grid;
   }
 
-  .top-add-image {
-    width: max-content;
-  }
-
-  .page-editor {
-    min-height: 60vh;
-    font-size: 16px;
-  }
-}
-
-
-/* ===== Linked-list connector tabs and iteration controls ===== */
-.iteration-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px;
-  flex: 0 0 auto;
-}
-
-.iteration-button {
-  border: 0;
-  color: white;
-  background: rgba(255, 255, 255, 0.09);
-  font: inherit;
-  cursor: pointer;
-  transition: background 0.18s ease, transform 0.18s ease;
-  border-radius: 999px;
-  padding: 12px 15px;
-  border: 1px solid rgba(255, 255, 255, 0.38);
-  color: rgba(255, 255, 255, 0.88);
-}
-
-.iteration-button:hover {
-  background: rgba(255, 255, 255, 0.18);
-  transform: translateY(-1px);
-}
-
-.iteration-button:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.iteration-button:disabled:hover {
-  transform: none;
-  background: rgba(255, 255, 255, 0.09);
-}
-
-@media (max-width: 700px) {
-  .iteration-actions {
-    justify-content: flex-start;
-  }
-
-  .iteration-button,
-  .top-add-image {
+  .save-page-button {
     width: 100%;
-    justify-content: center;
   }
 }
