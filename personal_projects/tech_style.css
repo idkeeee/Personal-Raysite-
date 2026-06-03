@@ -433,3 +433,53 @@ canvas {
     font-size: 16px;
   }
 }
+
+
+/* ===== Linked-list connector tabs and iteration controls ===== */
+.iteration-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.iteration-button {
+  border: 0;
+  color: white;
+  background: rgba(255, 255, 255, 0.09);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease;
+  border-radius: 999px;
+  padding: 12px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.iteration-button:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.iteration-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.iteration-button:disabled:hover {
+  transform: none;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+@media (max-width: 700px) {
+  .iteration-actions {
+    justify-content: flex-start;
+  }
+
+  .iteration-button,
+  .top-add-image {
+    width: 100%;
+    justify-content: center;
+  }
+}
