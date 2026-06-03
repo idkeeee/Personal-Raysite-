@@ -5,6 +5,7 @@ const sb = window.supabase.createClient(SB_URL, SB_ANON);
 
 const TABLE_NAME = "tech_blocks";
 const PAGE_TABLE_NAME = "tech_block_pages";
+const LINK_TABLE_NAME = "tech_block_links";
 const COVER_BUCKET = "tech-covers";
 
 /* ===== DOM ===== */
@@ -25,12 +26,12 @@ const subpage = document.getElementById("subpage");
 const subpageTitle = document.getElementById("subpageTitle");
 const subpageCover = document.getElementById("subpageCover");
 const closeSubpageButton = document.getElementById("closeSubpageButton");
-const pageTextInput = document.getElementById("pageTextInput");
+const pageEditor = document.getElementById("pageEditor");
 const pageImageInput = document.getElementById("pageImageInput");
-const pageImages = document.getElementById("pageImages");
-const savePageButton = document.getElementById("savePageButton");
+const prevIterationButton = document.getElementById("prevIterationButton");
+const nextIterationButton = document.getElementById("nextIterationButton");
+const autosaveStatus = document.getElementById("autosaveStatus");
 
-/* ===== Canvas state ===== */
 let width = 0;
 let height = 0;
 let dpr = window.devicePixelRatio || 1;
@@ -61,14 +62,49 @@ const settings = {
 };
 
 const rectangles = [];
+const links = [];
 const coverCache = new Map();
+
+const connectorSettings = {
+  tabWidth: 20,
+  tabHeight: 72,
+  hitPadding: 12,
+};
+
+const resizeSettings = {
+  handleSize: 24,
+  minWidth: 150,
+  minHeight: 95,
+};
+
+let resizing = {
+  active: false,
+  block: null,
+  corner: null,
+  startMouseWorldX: 0,
+  startMouseWorldY: 0,
+  startX: 0,
+  startY: 0,
+  startWidth: 0,
+  startHeight: 0,
+};
+
+let linking = {
+  active: false,
+  fromBlock: null,
+  startX: 0,
+  startY: 0,
+  currentX: 0,
+  currentY: 0,
+};
 
 let pendingAddWorldPoint = null;
 let editingBlock = null;
 let currentPageBlock = null;
 let currentPageData = null;
-let currentPageImages = [];
 let longPressTimer = null;
+let pageSaveTimer = null;
+let titleSaveTimer = null;
 
 const pointer = {
   isDown: false,
@@ -145,7 +181,7 @@ async function createBlock(worldPoint) {
   rectangles.push(normalizeBlock(data));
 }
 
-async function updateBlock(block, patch) {
+async function updateBlock(block, patch, showAlert = true) {
   Object.assign(block, patch);
 
   const { error } = await sb
@@ -158,7 +194,7 @@ async function updateBlock(block, patch) {
 
   if (error) {
     console.error("Could not update block:", error);
-    alert("Could not save block. Check Supabase table policies.");
+    if (showAlert) alert("Could not save block. Check Supabase table policies.");
   }
 }
 
@@ -181,8 +217,97 @@ async function deleteBlock(block) {
   const index = rectangles.findIndex((item) => item.id === block.id);
   if (index !== -1) rectangles.splice(index, 1);
 
+  for (let i = links.length - 1; i >= 0; i--) {
+    if (links[i].from_block_id === block.id || links[i].to_block_id === block.id) {
+      links.splice(i, 1);
+    }
+  }
+
   if (editingBlock?.id === block.id) closeEditor();
 }
+
+/* ===== Supabase links ===== */
+async function loadLinks() {
+  const { data, error } = await sb
+    .from(LINK_TABLE_NAME)
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Could not load links:", error);
+    return;
+  }
+
+  links.length = 0;
+  for (const row of data ?? []) links.push(normalizeLink(row));
+}
+
+function normalizeLink(row) {
+  return {
+    id: row.id,
+    from_block_id: row.from_block_id,
+    to_block_id: row.to_block_id,
+  };
+}
+
+function getNextBlock(blockId) {
+  const link = links.find((item) => item.from_block_id === blockId);
+  if (!link) return null;
+  return rectangles.find((block) => block.id === link.to_block_id) ?? null;
+}
+
+function getPreviousBlock(blockId) {
+  const link = links.find((item) => item.to_block_id === blockId);
+  if (!link) return null;
+  return rectangles.find((block) => block.id === link.from_block_id) ?? null;
+}
+
+async function createOrReplaceLink(fromBlock, toBlock) {
+  if (!fromBlock || !toBlock || fromBlock.id === toBlock.id) return;
+
+  const existing = links.find((item) => item.from_block_id === fromBlock.id);
+
+  if (existing) {
+    const { data, error } = await sb
+      .from(LINK_TABLE_NAME)
+      .update({
+        to_block_id: toBlock.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existing.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Could not update link:", error);
+      alert("Could not update link. Check tech_block_links policies.");
+      return;
+    }
+
+    Object.assign(existing, normalizeLink(data));
+    updateIterationButtons();
+    return;
+  }
+
+  const { data, error } = await sb
+    .from(LINK_TABLE_NAME)
+    .insert({
+      from_block_id: fromBlock.id,
+      to_block_id: toBlock.id,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Could not create link:", error);
+    alert("Could not create link. Check tech_block_links policies.");
+    return;
+  }
+
+  links.push(normalizeLink(data));
+  updateIterationButtons();
+}
+
 
 /* ===== Supabase page content ===== */
 async function loadPage(block) {
@@ -230,33 +355,48 @@ function normalizePage(row, blockId) {
   };
 }
 
+function setStatus(text) {
+  autosaveStatus.textContent = text;
+}
+
+function schedulePageSave() {
+  if (!currentPageData) return;
+
+  setStatus("Saving...");
+  window.clearTimeout(pageSaveTimer);
+  pageSaveTimer = window.setTimeout(saveCurrentPage, 550);
+}
+
 async function saveCurrentPage() {
   if (!currentPageData) return;
 
-  savePageButton.disabled = true;
-  savePageButton.textContent = "Saving...";
+  const imagePaths = getEditorImagePaths();
 
-  try {
-    currentPageData.body_text = pageTextInput.value;
-    currentPageData.image_paths = [...currentPageImages];
+  currentPageData.body_text = pageEditor.innerHTML;
+  currentPageData.image_paths = imagePaths;
 
-    const { error } = await sb
-      .from(PAGE_TABLE_NAME)
-      .update({
-        body_text: currentPageData.body_text,
-        image_paths: currentPageData.image_paths,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", currentPageData.id);
+  const { error } = await sb
+    .from(PAGE_TABLE_NAME)
+    .update({
+      body_text: currentPageData.body_text,
+      image_paths: currentPageData.image_paths,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", currentPageData.id);
 
-    if (error) {
-      console.error("Could not save page:", error);
-      alert("Could not save page. Check tech_block_pages policies.");
-    }
-  } finally {
-    savePageButton.disabled = false;
-    savePageButton.textContent = "Save Page";
+  if (error) {
+    console.error("Could not save page:", error);
+    setStatus("Save failed");
+    return;
   }
+
+  setStatus("Saved");
+}
+
+function getEditorImagePaths() {
+  return [...pageEditor.querySelectorAll("img[data-path]")]
+    .map((img) => img.dataset.path)
+    .filter(Boolean);
 }
 
 /* ===== Storage ===== */
@@ -461,6 +601,364 @@ function drawGrid() {
   }
 }
 
+
+
+function getResizeHandleAt(screenX, screenY) {
+  for (let i = rectangles.length - 1; i >= 0; i--) {
+    const block = rectangles[i];
+    const screen = worldToScreen(block.x, block.y);
+    const w = block.width * camera.zoom;
+    const h = block.height * camera.zoom;
+    const size = Math.max(18, resizeSettings.handleSize * camera.zoom);
+    const half = size / 2;
+
+    const corners = [
+      { name: "top-left", x: screen.x, y: screen.y },
+      { name: "top-right", x: screen.x + w, y: screen.y },
+      { name: "bottom-left", x: screen.x, y: screen.y + h },
+      { name: "bottom-right", x: screen.x + w, y: screen.y + h },
+    ];
+
+    for (const corner of corners) {
+      const hit =
+        screenX >= corner.x - half &&
+        screenX <= corner.x + half &&
+        screenY >= corner.y - half &&
+        screenY <= corner.y + half;
+
+      if (hit) return { block, corner: corner.name };
+    }
+  }
+
+  return null;
+}
+
+function beginResize(block, corner, screenX, screenY) {
+  const world = screenToWorld(screenX, screenY);
+
+  resizing.active = true;
+  resizing.block = block;
+  resizing.corner = corner;
+  resizing.startMouseWorldX = world.x;
+  resizing.startMouseWorldY = world.y;
+  resizing.startX = block.x;
+  resizing.startY = block.y;
+  resizing.startWidth = block.width;
+  resizing.startHeight = block.height;
+}
+
+function updateResize(screenX, screenY) {
+  if (!resizing.active || !resizing.block) return;
+
+  const world = screenToWorld(screenX, screenY);
+  const dx = world.x - resizing.startMouseWorldX;
+  const dy = world.y - resizing.startMouseWorldY;
+
+  let nextX = resizing.startX;
+  let nextY = resizing.startY;
+  let nextWidth = resizing.startWidth;
+  let nextHeight = resizing.startHeight;
+
+  if (resizing.corner.includes("right")) nextWidth = resizing.startWidth + dx;
+
+  if (resizing.corner.includes("left")) {
+    nextWidth = resizing.startWidth - dx;
+    nextX = resizing.startX + dx;
+  }
+
+  if (resizing.corner.includes("bottom")) nextHeight = resizing.startHeight + dy;
+
+  if (resizing.corner.includes("top")) {
+    nextHeight = resizing.startHeight - dy;
+    nextY = resizing.startY + dy;
+  }
+
+  if (nextWidth < resizeSettings.minWidth) {
+    if (resizing.corner.includes("left")) {
+      nextX = resizing.startX + resizing.startWidth - resizeSettings.minWidth;
+    }
+    nextWidth = resizeSettings.minWidth;
+  }
+
+  if (nextHeight < resizeSettings.minHeight) {
+    if (resizing.corner.includes("top")) {
+      nextY = resizing.startY + resizing.startHeight - resizeSettings.minHeight;
+    }
+    nextHeight = resizeSettings.minHeight;
+  }
+
+  resizing.block.x = nextX;
+  resizing.block.y = nextY;
+  resizing.block.width = nextWidth;
+  resizing.block.height = nextHeight;
+}
+
+async function finishResize() {
+  if (!resizing.active || !resizing.block) return;
+
+  const block = resizing.block;
+
+  resizing.active = false;
+  resizing.block = null;
+  resizing.corner = null;
+
+  await updateBlock(block, {
+    x: block.x,
+    y: block.y,
+    width: block.width,
+    height: block.height,
+  });
+}
+
+function drawResizeHandles(block) {
+  const screen = worldToScreen(block.x, block.y);
+  const w = block.width * camera.zoom;
+  const h = block.height * camera.zoom;
+  const len = Math.max(14, 18 * camera.zoom);
+  const inset = Math.max(8, 9 * camera.zoom);
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.78)";
+  ctx.lineWidth = Math.max(1.2, 1.5 * camera.zoom);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.shadowColor = "rgba(255, 255, 255, 0.24)";
+  ctx.shadowBlur = 10;
+
+  drawCornerBracket(screen.x + inset, screen.y + inset, len, "top-left");
+  drawCornerBracket(screen.x + w - inset, screen.y + inset, len, "top-right");
+  drawCornerBracket(screen.x + inset, screen.y + h - inset, len, "bottom-left");
+  drawCornerBracket(screen.x + w - inset, screen.y + h - inset, len, "bottom-right");
+
+  ctx.restore();
+}
+
+function drawCornerBracket(x, y, len, corner) {
+  ctx.beginPath();
+
+  if (corner === "top-left") {
+    ctx.moveTo(x, y + len);
+    ctx.lineTo(x, y);
+    ctx.lineTo(x + len, y);
+  }
+
+  if (corner === "top-right") {
+    ctx.moveTo(x - len, y);
+    ctx.lineTo(x, y);
+    ctx.lineTo(x, y + len);
+  }
+
+  if (corner === "bottom-left") {
+    ctx.moveTo(x, y - len);
+    ctx.lineTo(x, y);
+    ctx.lineTo(x + len, y);
+  }
+
+  if (corner === "bottom-right") {
+    ctx.moveTo(x - len, y);
+    ctx.lineTo(x, y);
+    ctx.lineTo(x, y - len);
+  }
+
+  ctx.stroke();
+}
+
+function getBlockConnectorScreen(block, side) {
+  const screen = worldToScreen(block.x, block.y);
+  const w = block.width * camera.zoom;
+  const h = block.height * camera.zoom;
+
+  return {
+    x: side === "left" ? screen.x : screen.x + w,
+    y: screen.y + h / 2,
+  };
+}
+
+function getConnectorHit(screenX, screenY) {
+  for (let i = rectangles.length - 1; i >= 0; i--) {
+    const block = rectangles[i];
+    const screen = worldToScreen(block.x, block.y);
+    const w = block.width * camera.zoom;
+    const h = block.height * camera.zoom;
+    const tabW = Math.max(18, connectorSettings.tabWidth * camera.zoom) + connectorSettings.hitPadding;
+    const tabH = Math.max(48, connectorSettings.tabHeight * camera.zoom) + connectorSettings.hitPadding;
+
+    const leftHit =
+      screenX >= screen.x - tabW &&
+      screenX <= screen.x + tabW &&
+      screenY >= screen.y + h / 2 - tabH / 2 &&
+      screenY <= screen.y + h / 2 + tabH / 2;
+
+    if (leftHit) return { block, side: "left" };
+
+    const rightHit =
+      screenX >= screen.x + w - tabW &&
+      screenX <= screen.x + w + tabW &&
+      screenY >= screen.y + h / 2 - tabH / 2 &&
+      screenY <= screen.y + h / 2 + tabH / 2;
+
+    if (rightHit) return { block, side: "right" };
+  }
+
+  return null;
+}
+
+function drawConnectorTabs(block) {
+  const screen = worldToScreen(block.x, block.y);
+  const w = block.width * camera.zoom;
+  const h = block.height * camera.zoom;
+
+  const tabW = Math.max(14, connectorSettings.tabWidth * camera.zoom);
+  const tabH = Math.max(46, connectorSettings.tabHeight * camera.zoom);
+  const y = screen.y + h / 2 - tabH / 2;
+  const radius = Math.min(12, tabW * 0.75);
+
+  drawConnectorTab(screen.x - tabW * 0.72, y, tabW, tabH, radius, "from");
+  drawConnectorTab(screen.x + w - tabW * 0.28, y, tabW, tabH, radius, "to");
+}
+
+function drawConnectorTab(x, y, w, h, radius, type) {
+  ctx.save();
+
+  ctx.shadowColor = "rgba(255, 255, 255, 0.18)";
+  ctx.shadowBlur = 16;
+  ctx.fillStyle = type === "from" ? "rgba(255, 255, 255, 0.10)" : "rgba(255, 255, 255, 0.15)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.62)";
+  ctx.lineWidth = 1.2;
+
+  roundedRect(x, y, w, h, radius);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.55)";
+  ctx.lineWidth = 2;
+
+  for (let i = 0; i < 4; i++) {
+    const yy = y + 12 + i * ((h - 24) / 3);
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.22, yy + 8);
+    ctx.lineTo(x + w * 0.78, yy - 8);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawLinks() {
+  links.forEach((link) => {
+    const fromBlock = rectangles.find((block) => block.id === link.from_block_id);
+    const toBlock = rectangles.find((block) => block.id === link.to_block_id);
+
+    if (!fromBlock || !toBlock) return;
+
+    const start = getBlockConnectorScreen(fromBlock, "right");
+    const end = getBlockConnectorScreen(toBlock, "left");
+
+    drawDirectionalArrowPath(start.x, start.y, end.x, end.y);
+  });
+
+  if (linking.active) {
+    drawDirectionalArrowPath(linking.startX, linking.startY, linking.currentX, linking.currentY, true);
+  }
+}
+
+function drawDirectionalArrowPath(startX, startY, endX, endY, preview = false) {
+  const midX = (startX + endX) / 2;
+  const horizontalOffset = Math.max(42, Math.min(130, Math.abs(endX - startX) * 0.18));
+
+  const points = [
+    { x: startX, y: startY },
+    { x: startX + horizontalOffset, y: startY },
+    { x: midX, y: startY },
+    { x: midX, y: endY },
+    { x: endX - horizontalOffset, y: endY },
+    { x: endX, y: endY },
+  ];
+
+  ctx.save();
+
+  ctx.strokeStyle = preview ? "rgba(255, 255, 255, 0.42)" : "rgba(255, 255, 255, 0.70)";
+  ctx.lineWidth = preview ? 1.4 : 1.8;
+  ctx.setLineDash(preview ? [8, 8] : []);
+  ctx.shadowColor = "rgba(255, 255, 255, 0.18)";
+  ctx.shadowBlur = preview ? 0 : 12;
+
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, points[i].y);
+  }
+
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const segments = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    const length = Math.hypot(b.x - a.x, b.y - a.y);
+    if (length > 24) segments.push({ a, b, length });
+  }
+
+  const totalLength = segments.reduce((sum, segment) => sum + segment.length, 0);
+  const arrowCount = Math.max(1, Math.floor(totalLength / 150));
+
+  for (let i = 1; i <= arrowCount; i++) {
+    const distance = (totalLength / (arrowCount + 1)) * i;
+    const point = getPointAlongSegments(segments, distance);
+    if (point) drawArrowHead(point.x, point.y, point.angle, preview);
+  }
+
+  const last = points[points.length - 1];
+  const beforeLast = points[points.length - 2];
+  drawArrowHead(last.x, last.y, Math.atan2(last.y - beforeLast.y, last.x - beforeLast.x), preview, true);
+
+  ctx.restore();
+}
+
+function getPointAlongSegments(segments, targetDistance) {
+  let travelled = 0;
+
+  for (const segment of segments) {
+    if (travelled + segment.length >= targetDistance) {
+      const t = (targetDistance - travelled) / segment.length;
+      const x = segment.a.x + (segment.b.x - segment.a.x) * t;
+      const y = segment.a.y + (segment.b.y - segment.a.y) * t;
+      const angle = Math.atan2(segment.b.y - segment.a.y, segment.b.x - segment.a.x);
+      return { x, y, angle };
+    }
+
+    travelled += segment.length;
+  }
+
+  return null;
+}
+
+function drawArrowHead(x, y, angle, preview = false, finalHead = false) {
+  const size = finalHead ? 16 : 12;
+  const wing = finalHead ? 0.72 : 0.66;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+
+  ctx.strokeStyle = preview ? "rgba(255, 255, 255, 0.50)" : "rgba(255, 255, 255, 0.86)";
+  ctx.lineWidth = finalHead ? 2.2 : 1.8;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(-size, -size * wing);
+  ctx.moveTo(0, 0);
+  ctx.lineTo(-size, size * wing);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 function drawRectangles() {
   rectangles.forEach((block) => {
     const screen = worldToScreen(block.x, block.y);
@@ -579,6 +1077,7 @@ function getRectangleAt(screenX, screenY) {
 /* ===== Page popup ===== */
 async function openSubpage(block) {
   currentPageBlock = block;
+  updateIterationButtons();
   subpageTitle.textContent = block.title || "Untitled";
 
   if (block.image_path) {
@@ -589,12 +1088,33 @@ async function openSubpage(block) {
   }
 
   currentPageData = await loadPage(block);
-  currentPageImages = currentPageData?.image_paths ? [...currentPageData.image_paths] : [];
-  pageTextInput.value = currentPageData?.body_text ?? "";
-  renderPageImages();
+  pageEditor.innerHTML = currentPageData?.body_text ?? "";
 
+  setStatus("Saved");
   subpage.classList.add("is-open");
   subpage.setAttribute("aria-hidden", "false");
+}
+
+function updateIterationButtons() {
+  if (!currentPageBlock || !prevIterationButton || !nextIterationButton) return;
+
+  const previous = getPreviousBlock(currentPageBlock.id);
+  const next = getNextBlock(currentPageBlock.id);
+
+  prevIterationButton.disabled = !previous;
+  nextIterationButton.disabled = !next;
+}
+
+async function goToPreviousIteration() {
+  if (!currentPageBlock) return;
+  const previous = getPreviousBlock(currentPageBlock.id);
+  if (previous) await openSubpage(previous);
+}
+
+async function goToNextIteration() {
+  if (!currentPageBlock) return;
+  const next = getNextBlock(currentPageBlock.id);
+  if (next) await openSubpage(next);
 }
 
 function closeSubpage() {
@@ -602,56 +1122,62 @@ function closeSubpage() {
   subpage.setAttribute("aria-hidden", "true");
   currentPageBlock = null;
   currentPageData = null;
-  currentPageImages = [];
-  pageTextInput.value = "";
-  renderPageImages();
+  pageEditor.innerHTML = "";
+  window.clearTimeout(pageSaveTimer);
+  window.clearTimeout(titleSaveTimer);
 }
 
-function renderPageImages() {
-  pageImages.innerHTML = "";
+function insertNodeAtCaret(node) {
+  pageEditor.focus();
 
-  currentPageImages.forEach((path, index) => {
-    const card = document.createElement("div");
-    card.className = "page-image-card";
+  const selection = window.getSelection();
 
-    const img = document.createElement("img");
-    img.src = getPublicCoverUrl(path);
-    img.alt = "Page image";
+  if (!selection || selection.rangeCount === 0) {
+    pageEditor.appendChild(node);
+    return;
+  }
 
-    const removeButton = document.createElement("button");
-    removeButton.type = "button";
-    removeButton.textContent = "×";
-    removeButton.title = "Remove image";
-    removeButton.addEventListener("click", () => {
-      currentPageImages.splice(index, 1);
-      renderPageImages();
-    });
+  const range = selection.getRangeAt(0);
 
-    card.append(img, removeButton);
-    pageImages.append(card);
-  });
+  if (!pageEditor.contains(range.commonAncestorContainer)) {
+    pageEditor.appendChild(node);
+    return;
+  }
+
+  range.deleteContents();
+  range.insertNode(node);
+
+  const spacer = document.createElement("div");
+  spacer.innerHTML = "<br>";
+  node.after(spacer);
+
+  range.setStartAfter(spacer);
+  range.setEndAfter(spacer);
+  selection.removeAllRanges();
+  selection.addRange(range);
 }
 
-async function addPageImages(files) {
+function insertImageIntoEditor(path) {
+  const img = document.createElement("img");
+  img.src = getPublicCoverUrl(path);
+  img.alt = "Inserted image";
+  img.dataset.path = path;
+  insertNodeAtCaret(img);
+}
+
+async function addImagesIntoEditor(files) {
   if (!currentPageBlock || !files?.length) return;
 
-  savePageButton.disabled = true;
-  savePageButton.textContent = "Uploading...";
+  setStatus("Uploading...");
 
-  try {
-    for (const file of files) {
-      if (!file.type.startsWith("image/")) continue;
+  for (const file of files) {
+    if (!file.type.startsWith("image/")) continue;
 
-      const path = await uploadPageImage(currentPageBlock, file);
-      if (path) currentPageImages.push(path);
-    }
-
-    renderPageImages();
-    await saveCurrentPage();
-  } finally {
-    savePageButton.disabled = false;
-    savePageButton.textContent = "Save Page";
+    const path = await uploadPageImage(currentPageBlock, file);
+    if (path) insertImageIntoEditor(path);
   }
+
+  schedulePageSave();
 }
 
 /* ===== Interactions ===== */
@@ -702,6 +1228,27 @@ canvas.addEventListener("pointerdown", (event) => {
     return;
   }
 
+  const resizeHit = getResizeHandleAt(event.clientX, event.clientY);
+
+  if (resizeHit) {
+    beginResize(resizeHit.block, resizeHit.corner, event.clientX, event.clientY);
+    return;
+  }
+
+  const connectorHit = getConnectorHit(event.clientX, event.clientY);
+
+  if (connectorHit?.side === "right") {
+    linking.active = true;
+    linking.fromBlock = connectorHit.block;
+
+    const start = getBlockConnectorScreen(connectorHit.block, "right");
+    linking.startX = start.x;
+    linking.startY = start.y;
+    linking.currentX = event.clientX;
+    linking.currentY = event.clientY;
+    return;
+  }
+
   const block = getRectangleAt(event.clientX, event.clientY);
 
   pointer.isDown = true;
@@ -735,6 +1282,17 @@ canvas.addEventListener("pointermove", (event) => {
 
   mouse.targetX = event.clientX;
   mouse.targetY = event.clientY;
+
+  if (resizing.active) {
+    updateResize(event.clientX, event.clientY);
+    return;
+  }
+
+  if (linking.active) {
+    linking.currentX = event.clientX;
+    linking.currentY = event.clientY;
+    return;
+  }
 
   if (pointer.mode === "pinch" && activePointers.size >= 2) {
     const center = centerBetweenTouches();
@@ -775,6 +1333,23 @@ canvas.addEventListener("pointerup", async (event) => {
   activePointers.delete(event.pointerId);
   window.clearTimeout(longPressTimer);
 
+  if (resizing.active) {
+    await finishResize();
+    return;
+  }
+
+  if (linking.active) {
+    const hit = getConnectorHit(event.clientX, event.clientY);
+
+    if (hit?.side === "left" && hit.block.id !== linking.fromBlock.id) {
+      await createOrReplaceLink(linking.fromBlock, hit.block);
+    }
+
+    linking.active = false;
+    linking.fromBlock = null;
+    return;
+  }
+
   if (pointer.mode === "pinch") {
     if (activePointers.size < 2) {
       pointer.mode = null;
@@ -796,10 +1371,7 @@ canvas.addEventListener("pointerup", async (event) => {
 
   if (mode === "block" && block) {
     if (blockMoved) {
-      await updateBlock(block, {
-        x: block.x,
-        y: block.y,
-      });
+      await updateBlock(block, { x: block.x, y: block.y });
     } else {
       await openSubpage(block);
     }
@@ -814,12 +1386,21 @@ canvas.addEventListener("pointerup", async (event) => {
 
 canvas.addEventListener("pointercancel", () => {
   activePointers.clear();
+  resizing.active = false;
+  resizing.block = null;
+  resizing.corner = null;
+  linking.active = false;
+  linking.fromBlock = null;
   window.clearTimeout(longPressTimer);
   pointer.isDown = false;
   pointer.mode = null;
 });
 
 window.addEventListener("wheel", (event) => {
+  if (subpage.classList.contains("is-open")) {
+    return;
+  }
+
   event.preventDefault();
   hideMenu();
 
@@ -845,6 +1426,7 @@ window.addEventListener("contextmenu", (event) => {
   showMenu(event.clientX, event.clientY);
 });
 
+
 function updateCanvasCursor(event) {
   if (subpage.classList.contains("is-open")) {
     canvas.style.cursor = "default";
@@ -853,11 +1435,10 @@ function updateCanvasCursor(event) {
 
   const resizeHit = getResizeHandleAt(event.clientX, event.clientY);
   if (resizeHit) {
-    if (resizeHit.corner === "top-left" || resizeHit.corner === "bottom-right") {
-      canvas.style.cursor = "nwse-resize";
-    } else {
-      canvas.style.cursor = "nesw-resize";
-    }
+    canvas.style.cursor =
+      resizeHit.corner === "top-left" || resizeHit.corner === "bottom-right"
+        ? "nwse-resize"
+        : "nesw-resize";
     return;
   }
 
@@ -891,7 +1472,30 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
-document.addEventListener("paste", async (event) => {
+pageEditor.addEventListener("input", schedulePageSave);
+
+subpageTitle.addEventListener("input", () => {
+  if (!currentPageBlock) return;
+
+  const nextTitle = subpageTitle.textContent.trim() || "Untitled";
+  currentPageBlock.title = nextTitle;
+  setStatus("Saving...");
+
+  window.clearTimeout(titleSaveTimer);
+  titleSaveTimer = window.setTimeout(async () => {
+    await updateBlock(currentPageBlock, { title: nextTitle }, false);
+    setStatus("Saved");
+  }, 450);
+});
+
+subpageTitle.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    pageEditor.focus();
+  }
+});
+
+pageEditor.addEventListener("paste", async (event) => {
   if (!subpage.classList.contains("is-open") || !currentPageBlock) return;
 
   const files = [];
@@ -908,7 +1512,7 @@ document.addEventListener("paste", async (event) => {
 
   if (files.length) {
     event.preventDefault();
-    await addPageImages(files);
+    await addImagesIntoEditor(files);
   }
 });
 
@@ -966,12 +1570,18 @@ subpage.addEventListener("click", (event) => {
   if (event.target === subpage) closeSubpage();
 });
 
-savePageButton.addEventListener("click", saveCurrentPage);
-
 pageImageInput.addEventListener("change", async () => {
-  await addPageImages([...pageImageInput.files]);
+  await addImagesIntoEditor([...pageImageInput.files]);
   pageImageInput.value = "";
 });
+
+if (prevIterationButton) {
+  prevIterationButton.addEventListener("click", goToPreviousIteration);
+}
+
+if (nextIterationButton) {
+  nextIterationButton.addEventListener("click", goToNextIteration);
+}
 
 /* ===== Realtime sync ===== */
 sb.channel("tech-blocks-sync")
@@ -1013,11 +1623,38 @@ sb.channel("tech-pages-sync")
     { event: "*", schema: "public", table: PAGE_TABLE_NAME },
     (payload) => {
       if (!currentPageData || payload.new?.id !== currentPageData.id) return;
+      if (document.activeElement === pageEditor || document.activeElement === subpageTitle) return;
 
       currentPageData = normalizePage(payload.new, currentPageData.block_id);
-      currentPageImages = [...currentPageData.image_paths];
-      pageTextInput.value = currentPageData.body_text;
-      renderPageImages();
+      pageEditor.innerHTML = currentPageData.body_text;
+    }
+  )
+  .subscribe();
+
+sb.channel("tech-links-sync")
+  .on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: LINK_TABLE_NAME },
+    (payload) => {
+      if (payload.eventType === "INSERT") {
+        const link = normalizeLink(payload.new);
+        const exists = links.some((item) => item.id === link.id);
+        if (!exists) links.push(link);
+      }
+
+      if (payload.eventType === "UPDATE") {
+        const index = links.findIndex((item) => item.id === payload.new.id);
+        const link = normalizeLink(payload.new);
+        if (index !== -1) links[index] = link;
+        else links.push(link);
+      }
+
+      if (payload.eventType === "DELETE") {
+        const index = links.findIndex((item) => item.id === payload.old.id);
+        if (index !== -1) links.splice(index, 1);
+      }
+
+      updateIterationButtons();
     }
   )
   .subscribe();
@@ -1028,11 +1665,15 @@ function animate() {
   mouse.y += (mouse.targetY - mouse.y) * 0.18;
 
   drawGrid();
+  drawLinks();
   drawRectangles();
+  rectangles.forEach(drawConnectorTabs);
+  rectangles.forEach(drawResizeHandles);
 
   requestAnimationFrame(animate);
 }
 
 resize();
 loadBlocks();
+loadLinks();
 animate();
