@@ -1158,30 +1158,129 @@ function insertNodeAtCaret(node) {
   selection.addRange(range);
 }
 
-function insertImageIntoEditor(path) {
-  const img = document.createElement("img");
-  img.src = getPublicCoverUrl(path);
-  img.alt = "Inserted image";
-  img.dataset.path = path;
 
+
+/* ===== Collapsible outline editor helpers ===== */
+function createOutlineLine(text = "", depth = 0, isSection = false) {
   const line = document.createElement("div");
-  applyIndentClass(line, Number(getCurrentEditorLine()?.dataset?.indent || 0));
-  line.appendChild(img);
+  line.className = "outline-line";
+  line.dataset.depth = String(Math.max(0, Math.min(8, Number(depth) || 0)));
+  line.style.setProperty("--depth", line.dataset.depth);
 
-  insertNodeAtCaret(line);
+  const toggle = document.createElement("span");
+  toggle.className = "outline-toggle";
+  toggle.contentEditable = "false";
+
+  const content = document.createElement("span");
+  content.className = "outline-content";
+  content.contentEditable = "true";
+  content.spellcheck = true;
+
+  if (text) content.textContent = text;
+  else content.innerHTML = "<br>";
+
+  line.append(toggle, content);
+
+  if (isSection) line.classList.add("is-section");
+  return line;
 }
 
+function getLineDepth(line) {
+  return Number(line?.dataset?.depth || 0);
+}
+
+function setLineDepth(line, depth) {
+  if (!line) return;
+  depth = Math.max(0, Math.min(8, Number(depth) || 0));
+  line.dataset.depth = String(depth);
+  line.style.setProperty("--depth", String(depth));
+}
+
+function getLineContent(line) {
+  return line?.querySelector(".outline-content") ?? null;
+}
 
 function ensureEditorHasLine() {
-  if (pageEditor.innerHTML.trim() !== "") return;
+  if (pageEditor.querySelector(".outline-line")) return;
+  pageEditor.appendChild(createOutlineLine("", 0, false));
+}
 
-  const line = document.createElement("div");
-  line.className = "note-line indent-0";
-  line.dataset.indent = "0";
-  line.innerHTML = "<br>";
-  pageEditor.appendChild(line);
+function normalizeEditorLines() {
+  if (pageEditor.querySelector(".outline-line")) {
+    pageEditor.querySelectorAll(".outline-line").forEach((line) => {
+      const depth = getLineDepth(line);
+      line.style.setProperty("--depth", String(depth));
 
-  placeCaretAtEnd(line);
+      if (!line.querySelector(".outline-toggle")) {
+        const toggle = document.createElement("span");
+        toggle.className = "outline-toggle";
+        toggle.contentEditable = "false";
+        line.prepend(toggle);
+      }
+
+      let content = line.querySelector(".outline-content");
+      if (!content) {
+        content = document.createElement("span");
+        content.className = "outline-content";
+        content.contentEditable = "true";
+        content.spellcheck = true;
+
+        const movableNodes = [...line.childNodes].filter((node) => {
+          return !(node.classList && node.classList.contains("outline-toggle"));
+        });
+
+        movableNodes.forEach((node) => content.appendChild(node));
+        line.appendChild(content);
+      }
+    });
+
+    applyCollapseVisibility();
+    return;
+  }
+
+  const oldHtml = pageEditor.innerHTML.trim();
+  pageEditor.innerHTML = "";
+
+  if (!oldHtml) {
+    pageEditor.appendChild(createOutlineLine("", 0, false));
+    return;
+  }
+
+  const temp = document.createElement("div");
+  temp.innerHTML = oldHtml;
+
+  [...temp.childNodes].forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent.trim();
+      if (text) pageEditor.appendChild(createOutlineLine(text, 0, false));
+      return;
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+    if (node.tagName === "IMG") {
+      const line = createOutlineLine("", 0, false);
+      const content = getLineContent(line);
+      content.innerHTML = "";
+      content.appendChild(node);
+      pageEditor.appendChild(line);
+      return;
+    }
+
+    const indentClassDepth = [...node.classList]
+      .map((className) => /^indent-(\d+)$/.exec(className)?.[1])
+      .filter(Boolean)[0];
+
+    const oldDepth = Number(node.dataset?.depth ?? node.dataset?.indent ?? indentClassDepth ?? 0);
+
+    const line = createOutlineLine("", oldDepth, node.classList.contains("is-section"));
+    const content = getLineContent(line);
+    content.innerHTML = node.innerHTML || "<br>";
+    pageEditor.appendChild(line);
+  });
+
+  updateSectionStatesAround(null);
+  applyCollapseVisibility();
 }
 
 function getCurrentEditorLine() {
@@ -1194,54 +1293,13 @@ function getCurrentEditorLine() {
   if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
   if (!node || !pageEditor.contains(node)) return null;
 
-  let line = node.closest?.(".note-line");
-  if (line && pageEditor.contains(line)) return line;
-
-  let block = node.closest?.("div,p");
-  if (!block || block === pageEditor || !pageEditor.contains(block)) {
-    block = document.createElement("div");
-    block.className = "note-line indent-0";
-    block.dataset.indent = "0";
-
-    const range = selection.getRangeAt(0);
-    range.insertNode(block);
-    block.innerHTML = "<br>";
-    placeCaretAtEnd(block);
-    return block;
-  }
-
-  applyIndentClass(block, Number(block.dataset.indent || 0));
-  return block;
-}
-
-function applyIndentClass(line, depth) {
-  depth = Math.max(0, Math.min(8, Number(depth) || 0));
-
-  line.classList.add("note-line");
-  line.dataset.indent = String(depth);
-
-  for (let i = 0; i <= 8; i++) {
-    line.classList.remove(`indent-${i}`);
-  }
-
-  line.classList.add(`indent-${depth}`);
-}
-
-function indentCurrentLine(direction) {
-  ensureEditorHasLine();
-
-  const line = getCurrentEditorLine();
-  if (!line) return;
-
-  const current = Number(line.dataset.indent || 0);
-  const next = Math.max(0, Math.min(8, current + direction));
-
-  applyIndentClass(line, next);
-  placeCaretAtEnd(line);
-  schedulePageSave();
+  const line = node.closest?.(".outline-line");
+  return line && pageEditor.contains(line) ? line : null;
 }
 
 function placeCaretAtEnd(element) {
+  if (!element) return;
+
   const range = document.createRange();
   const selection = window.getSelection();
 
@@ -1254,51 +1312,57 @@ function placeCaretAtEnd(element) {
 
 function lineCaretIsAtStart(line) {
   const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0) return false;
+  if (!selection || selection.rangeCount === 0 || !line) return false;
 
+  const content = getLineContent(line);
   const range = selection.getRangeAt(0);
-  if (!line.contains(range.startContainer) || !range.collapsed) return false;
+  if (!content || !content.contains(range.startContainer) || !range.collapsed) return false;
 
   const before = range.cloneRange();
-  before.selectNodeContents(line);
+  before.selectNodeContents(content);
   before.setEnd(range.startContainer, range.startOffset);
 
   return before.toString().length === 0;
 }
 
-function normalizeEditorLines() {
-  const childNodes = [...pageEditor.childNodes];
+function getNextSiblingLine(line) {
+  let next = line?.nextElementSibling;
+  while (next && !next.classList.contains("outline-line")) next = next.nextElementSibling;
+  return next;
+}
 
-  if (childNodes.length === 0) {
-    ensureEditorHasLine();
-    return;
-  }
+function insertLineAfter(currentLine, depth = 0) {
+  const newLine = createOutlineLine("", depth, false);
 
-  childNodes.forEach((node) => {
-    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== "") {
-      const line = document.createElement("div");
-      line.textContent = node.textContent;
-      applyIndentClass(line, 0);
-      node.replaceWith(line);
-      return;
-    }
+  if (currentLine) currentLine.after(newLine);
+  else pageEditor.appendChild(newLine);
 
-    if (node.nodeType !== Node.ELEMENT_NODE) return;
+  placeCaretAtEnd(getLineContent(newLine));
+  return newLine;
+}
 
-    if (node.tagName === "IMG") {
-      const wrapper = document.createElement("div");
-      applyIndentClass(wrapper, 0);
-      node.replaceWith(wrapper);
-      wrapper.appendChild(node);
-      return;
-    }
+function indentCurrentLine(direction) {
+  ensureEditorHasLine();
 
-    if (node === pageEditor) return;
+  const line = getCurrentEditorLine();
+  if (!line) return;
 
-    if (!node.classList.contains("note-line") && ["DIV", "P"].includes(node.tagName)) {
-      applyIndentClass(node, Number(node.dataset.indent || 0));
-    }
-  });
+  setLineDepth(line, getLineDepth(line) + direction);
+  updateSectionStatesAround(line);
+  applyCollapseVisibility();
+  placeCaretAtEnd(getLineContent(line));
+  schedulePageSave();
+}
+
+function makeCurrentLineSection() {
+  const line = getCurrentEditorLine();
+  if (!line) return;
+
+  line.classList.toggle("is-section");
+  if (!line.classList.contains("is-section")) line.classList.remove("is-collapsed");
+
+  applyCollapseVisibility();
+  schedulePageSave();
 }
 
 function setActiveEditorLine() {
@@ -1310,19 +1374,64 @@ function setActiveEditorLine() {
   if (line) line.classList.add("is-active-line");
 }
 
-function setupNewLineIndent(previousLine) {
-  const previousIndent = Number(previousLine?.dataset?.indent || 0);
+function applyCollapseVisibility() {
+  const lines = [...pageEditor.querySelectorAll(".outline-line")];
+  const collapsedDepths = [];
 
-  window.setTimeout(() => {
-    const line = getCurrentEditorLine();
-    if (!line) return;
+  lines.forEach((line) => {
+    const depth = getLineDepth(line);
 
-    applyIndentClass(line, previousIndent);
-    setActiveEditorLine();
-    schedulePageSave();
-  }, 0);
+    while (collapsedDepths.length && depth <= collapsedDepths[collapsedDepths.length - 1]) {
+      collapsedDepths.pop();
+    }
+
+    line.classList.toggle("is-hidden", collapsedDepths.length > 0);
+
+    if (line.classList.contains("is-section") && line.classList.contains("is-collapsed")) {
+      collapsedDepths.push(depth);
+    }
+  });
 }
 
+function toggleLineCollapse(line) {
+  if (!line || !line.classList.contains("is-section")) return;
+
+  line.classList.toggle("is-collapsed");
+  applyCollapseVisibility();
+  schedulePageSave();
+}
+
+function updateSectionStatesAround(line) {
+  pageEditor.querySelectorAll(".outline-line").forEach((item) => {
+    const next = getNextSiblingLine(item);
+    const hasChild = next && getLineDepth(next) > getLineDepth(item);
+
+    if (hasChild) {
+      item.classList.add("is-section");
+    } else if (!item.classList.contains("is-collapsed")) {
+      item.classList.remove("is-section");
+    }
+  });
+}
+
+function insertImageIntoEditor(path) {
+  const img = document.createElement("img");
+  img.src = getPublicCoverUrl(path);
+  img.alt = "Inserted image";
+  img.dataset.path = path;
+
+  const current = getCurrentEditorLine();
+  const depth = current ? getLineDepth(current) : 0;
+  const line = createOutlineLine("", depth, false);
+  const content = getLineContent(line);
+  content.innerHTML = "";
+  content.appendChild(img);
+
+  if (current) current.after(line);
+  else pageEditor.appendChild(line);
+
+  placeCaretAtEnd(content);
+}
 
 async function addImagesIntoEditor(files) {
   if (!currentPageBlock || !files?.length) return;
@@ -1633,35 +1742,71 @@ window.addEventListener("keydown", (event) => {
 
 pageEditor.addEventListener("input", () => {
   normalizeEditorLines();
+  updateSectionStatesAround(getCurrentEditorLine());
+  applyCollapseVisibility();
   setActiveEditorLine();
   schedulePageSave();
 });
 
 pageEditor.addEventListener("focus", ensureEditorHasLine);
-pageEditor.addEventListener("click", setActiveEditorLine);
+pageEditor.addEventListener("click", (event) => {
+  const toggle = event.target.closest?.(".outline-toggle");
+
+  if (toggle) {
+    event.preventDefault();
+    toggleLineCollapse(toggle.closest(".outline-line"));
+    return;
+  }
+
+  setActiveEditorLine();
+});
+
 pageEditor.addEventListener("keyup", setActiveEditorLine);
 
 pageEditor.addEventListener("keydown", (event) => {
+  ensureEditorHasLine();
+
   if (event.key === "Tab") {
     event.preventDefault();
     indentCurrentLine(event.shiftKey ? -1 : 1);
     return;
   }
 
+  if (event.ctrlKey && event.key.toLowerCase() === "arrowright") {
+    event.preventDefault();
+    makeCurrentLineSection();
+    return;
+  }
+
   if (event.key === "Enter") {
+    event.preventDefault();
+
     const currentLine = getCurrentEditorLine();
-    setupNewLineIndent(currentLine);
+    const currentDepth = getLineDepth(currentLine);
+
+    if (currentLine?.classList.contains("is-collapsed")) {
+      currentLine.classList.remove("is-collapsed");
+      applyCollapseVisibility();
+    }
+
+    insertLineAfter(currentLine, currentDepth);
+    updateSectionStatesAround(currentLine);
+    applyCollapseVisibility();
+    schedulePageSave();
     return;
   }
 
   if (event.key === "Backspace") {
     const line = getCurrentEditorLine();
-    const indent = Number(line?.dataset?.indent || 0);
+    const indent = getLineDepth(line);
 
     if (line && indent > 0 && lineCaretIsAtStart(line)) {
       event.preventDefault();
-      applyIndentClass(line, indent - 1);
+      setLineDepth(line, indent - 1);
+      updateSectionStatesAround(line);
+      applyCollapseVisibility();
       schedulePageSave();
+      return;
     }
   }
 });

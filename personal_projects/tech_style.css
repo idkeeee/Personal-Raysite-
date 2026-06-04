@@ -485,53 +485,106 @@ canvas {
 }
 
 
-/* ===== VS-Code-ish note indentation ===== */
+/* ===== Collapsible outline notes ===== */
 .page-editor {
   tab-size: 4;
   white-space: pre-wrap;
 }
 
-.page-editor .note-line {
+.page-editor .outline-line {
   position: relative;
   min-height: 1.65em;
-  padding: 1px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 2px 0 2px calc(var(--depth, 0) * 28px);
   border-radius: 8px;
 }
 
-.page-editor .note-line:focus {
-  outline: none;
-}
-
-.page-editor .note-line:not(.indent-0) {
-  padding-left: 14px;
-  border-left: 1px solid rgba(255, 255, 255, 0.22);
-}
-
-.page-editor .note-line:not(.indent-0)::before {
+.page-editor .outline-line::before {
   content: "";
+  display: none;
   position: absolute;
-  left: -1px;
-  top: 0.25em;
-  bottom: 0.25em;
+  left: calc((var(--depth, 0) * 28px) - 14px);
+  top: -0.25em;
+  bottom: -0.25em;
   width: 1px;
   background: rgba(255, 255, 255, 0.22);
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.08);
 }
 
-.page-editor .indent-0 { margin-left: 0; }
-.page-editor .indent-1 { margin-left: 24px; }
-.page-editor .indent-2 { margin-left: 48px; }
-.page-editor .indent-3 { margin-left: 72px; }
-.page-editor .indent-4 { margin-left: 96px; }
-.page-editor .indent-5 { margin-left: 120px; }
-.page-editor .indent-6 { margin-left: 144px; }
-.page-editor .indent-7 { margin-left: 168px; }
-.page-editor .indent-8 { margin-left: 192px; }
-
-.page-editor .note-line img {
-  margin-left: 0;
+.page-editor .outline-line[data-depth]:not([data-depth="0"])::before {
+  display: block;
 }
 
-.page-editor .note-line.is-active-line {
-  background: rgba(255, 255, 255, 0.035);
+.page-editor .outline-toggle {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  user-select: none;
+  font-size: 15px;
+  line-height: 1;
+  transform: translateY(1px);
+}
+
+.page-editor .outline-toggle::before {
+  content: "›";
+  transition: transform 0.15s ease;
+}
+
+.page-editor .outline-line.is-section:not(.is-collapsed) > .outline-toggle::before {
+  transform: rotate(90deg);
+}
+
+.page-editor .outline-line:not(.is-section) > .outline-toggle {
+  opacity: 0.18;
+  cursor: default;
+}
+
+.page-editor .outline-content {
+  flex: 1;
+  min-width: 0;
+  outline: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.page-editor .outline-line.is-section > .outline-content {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
+}
+
+.page-editor .outline-line.is-active-line {
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.page-editor .outline-line.is-hidden {
+  display: none;
+}
+
+.page-editor .outline-line.is-collapsed > .outline-content::after {
+  content: "  ...";
+  color: rgba(255, 255, 255, 0.38);
+  font-weight: 400;
+}
+
+.page-editor .outline-line img {
+  display: block;
+  max-width: min(100%, 900px);
+  max-height: 680px;
+  margin: 18px 0;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+  object-fit: contain;
+}
+
+.page-editor:empty::before {
+  content: attr(data-placeholder);
+  color: rgba(255, 255, 255, 0.36);
+  pointer-events: none;
 }
