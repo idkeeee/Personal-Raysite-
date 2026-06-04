@@ -588,3 +588,22 @@ canvas {
   color: rgba(255, 255, 255, 0.36);
   pointer-events: none;
 }
+
+
+/* ===== Outline polish ===== */
+.page-editor .outline-toggle {
+  flex-basis: 24px;
+  width: 24px;
+  height: 28px;
+  font-size: 19px;
+  margin-left: -2px;
+}
+
+.page-editor .outline-line.is-empty[data-depth="0"]:not(.is-section) > .outline-toggle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.page-editor .outline-line.is-empty:not(.is-section):not([data-depth="0"]) > .outline-toggle {
+  opacity: 0.10;
+}

@@ -1090,6 +1090,7 @@ async function openSubpage(block) {
   currentPageData = await loadPage(block);
   pageEditor.innerHTML = currentPageData?.body_text ?? "";
   normalizeEditorLines();
+  updateEmptyLineStates();
 
   setStatus("Saved");
   subpage.classList.add("is-open");
@@ -1280,6 +1281,7 @@ function normalizeEditorLines() {
   });
 
   updateSectionStatesAround(null);
+  updateEmptyLineStates();
   applyCollapseVisibility();
 }
 
@@ -1349,6 +1351,7 @@ function indentCurrentLine(direction) {
 
   setLineDepth(line, getLineDepth(line) + direction);
   updateSectionStatesAround(line);
+  updateEmptyLineStates();
   applyCollapseVisibility();
   placeCaretAtEnd(getLineContent(line));
   schedulePageSave();
@@ -1413,6 +1416,81 @@ function updateSectionStatesAround(line) {
     }
   });
 }
+
+
+function isLineEmpty(line) {
+  const content = getLineContent(line);
+  if (!content) return true;
+
+  const hasImage = content.querySelector("img");
+  const text = content.textContent.replace(/\u200B/g, "").trim();
+
+  return !hasImage && text === "";
+}
+
+function updateEmptyLineStates() {
+  pageEditor.querySelectorAll(".outline-line").forEach((line) => {
+    line.classList.toggle("is-empty", isLineEmpty(line));
+  });
+}
+
+function getPreviousSiblingLine(line) {
+  let previous = line?.previousElementSibling;
+  while (previous && !previous.classList.contains("outline-line")) {
+    previous = previous.previousElementSibling;
+  }
+  return previous;
+}
+
+function removeCurrentEmptyLineAndGoUp(line) {
+  const previous = getPreviousSiblingLine(line);
+  const next = getNextSiblingLine(line);
+
+  if (!previous) return false;
+
+  const removedDepth = getLineDepth(line);
+  let walker = next;
+
+  while (walker && getLineDepth(walker) > removedDepth) {
+    setLineDepth(walker, Math.max(0, getLineDepth(walker) - 1));
+    walker = getNextSiblingLine(walker);
+  }
+
+  line.remove();
+
+  updateSectionStatesAround(previous);
+  updateEmptyLineStates();
+  applyCollapseVisibility();
+  placeCaretAtEnd(getLineContent(previous));
+  schedulePageSave();
+
+  return true;
+}
+
+function mergeLineIntoPrevious(line) {
+  const previous = getPreviousSiblingLine(line);
+  if (!previous) return false;
+
+  const currentContent = getLineContent(line);
+  const previousContent = getLineContent(previous);
+
+  if (!currentContent || !previousContent) return false;
+
+  while (currentContent.firstChild) {
+    previousContent.appendChild(currentContent.firstChild);
+  }
+
+  line.remove();
+
+  updateSectionStatesAround(previous);
+  updateEmptyLineStates();
+  applyCollapseVisibility();
+  placeCaretAtEnd(previousContent);
+  schedulePageSave();
+
+  return true;
+}
+
 
 function insertImageIntoEditor(path) {
   const img = document.createElement("img");
@@ -1743,6 +1821,7 @@ window.addEventListener("keydown", (event) => {
 pageEditor.addEventListener("input", () => {
   normalizeEditorLines();
   updateSectionStatesAround(getCurrentEditorLine());
+  updateEmptyLineStates();
   applyCollapseVisibility();
   setActiveEditorLine();
   schedulePageSave();
@@ -1791,6 +1870,7 @@ pageEditor.addEventListener("keydown", (event) => {
 
     insertLineAfter(currentLine, currentDepth);
     updateSectionStatesAround(currentLine);
+    updateEmptyLineStates();
     applyCollapseVisibility();
     schedulePageSave();
     return;
@@ -1800,13 +1880,27 @@ pageEditor.addEventListener("keydown", (event) => {
     const line = getCurrentEditorLine();
     const indent = getLineDepth(line);
 
-    if (line && indent > 0 && lineCaretIsAtStart(line)) {
-      event.preventDefault();
-      setLineDepth(line, indent - 1);
-      updateSectionStatesAround(line);
-      applyCollapseVisibility();
-      schedulePageSave();
-      return;
+    if (line && lineCaretIsAtStart(line)) {
+      if (isLineEmpty(line)) {
+        event.preventDefault();
+        removeCurrentEmptyLineAndGoUp(line);
+        return;
+      }
+
+      if (indent > 0) {
+        event.preventDefault();
+        setLineDepth(line, indent - 1);
+        updateSectionStatesAround(line);
+        updateEmptyLineStates();
+        applyCollapseVisibility();
+        schedulePageSave();
+        return;
+      }
+
+      if (mergeLineIntoPrevious(line)) {
+        event.preventDefault();
+        return;
+      }
     }
   }
 });
