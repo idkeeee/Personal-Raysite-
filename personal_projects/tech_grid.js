@@ -32,6 +32,12 @@ const prevIterationButton = document.getElementById("prevIterationButton");
 const nextIterationButton = document.getElementById("nextIterationButton");
 const autosaveStatus = document.getElementById("autosaveStatus");
 
+const iterationPicker = document.createElement("div");
+iterationPicker.id = "iterationPicker";
+iterationPicker.className = "iteration-picker";
+iterationPicker.hidden = true;
+document.body.appendChild(iterationPicker);
+
 let width = 0;
 let height = 0;
 let dpr = window.devicePixelRatio || 1;
@@ -69,6 +75,12 @@ const connectorSettings = {
   tabWidth: 20,
   tabHeight: 72,
   hitPadding: 12,
+};
+
+const linkRouteSettings = {
+  hitDistance: 12,
+  laneGap: 28,
+  loopPadding: 96,
 };
 
 const resizeSettings = {
@@ -250,51 +262,32 @@ function normalizeLink(row) {
   };
 }
 
-function getNextBlock(blockId) {
-  const link = links.find((item) => item.from_block_id === blockId);
-  if (!link) return null;
-  return rectangles.find((block) => block.id === link.to_block_id) ?? null;
+function getNextBlocks(blockId) {
+  return links
+    .filter((item) => item.from_block_id === blockId)
+    .map((link) => rectangles.find((block) => block.id === link.to_block_id))
+    .filter(Boolean);
 }
 
-function getPreviousBlock(blockId) {
-  const link = links.find((item) => item.to_block_id === blockId);
-  if (!link) return null;
-  return rectangles.find((block) => block.id === link.from_block_id) ?? null;
+function getPreviousBlocks(blockId) {
+  return links
+    .filter((item) => item.to_block_id === blockId)
+    .map((link) => rectangles.find((block) => block.id === link.from_block_id))
+    .filter(Boolean);
 }
 
-async function createOrReplaceLink(fromBlock, toBlock) {
+async function createLink(fromBlock, toBlock) {
   if (!fromBlock || !toBlock || fromBlock.id === toBlock.id) return;
 
-  const existing = links.find((item) => item.from_block_id === fromBlock.id);
+  const duplicate = links.find((item) => {
+    return item.from_block_id === fromBlock.id && item.to_block_id === toBlock.id;
+  });
 
-  if (existing) {
-    const { data, error } = await sb
-      .from(LINK_TABLE_NAME)
-      .update({
-        to_block_id: toBlock.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", existing.id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Could not update link:", error);
-      alert("Could not update link. Check tech_block_links policies.");
-      return;
-    }
-
-    Object.assign(existing, normalizeLink(data));
-    updateIterationButtons();
-    return;
-  }
+  if (duplicate) return;
 
   const { data, error } = await sb
     .from(LINK_TABLE_NAME)
-    .insert({
-      from_block_id: fromBlock.id,
-      to_block_id: toBlock.id,
-    })
+    .insert({ from_block_id: fromBlock.id, to_block_id: toBlock.id })
     .select()
     .single();
 
@@ -308,7 +301,23 @@ async function createOrReplaceLink(fromBlock, toBlock) {
   updateIterationButtons();
 }
 
+async function deleteLink(link) {
+  if (!link) return;
+  const confirmed = window.confirm("Sever this connection?");
+  if (!confirmed) return;
 
+  const { error } = await sb.from(LINK_TABLE_NAME).delete().eq("id", link.id);
+
+  if (error) {
+    console.error("Could not delete link:", error);
+    alert("Could not delete link. Check tech_block_links policies.");
+    return;
+  }
+
+  const index = links.findIndex((item) => item.id === link.id);
+  if (index !== -1) links.splice(index, 1);
+  updateIterationButtons();
+}
 /* ===== Supabase page content ===== */
 async function loadPage(block) {
   const { data, error } = await sb
@@ -846,81 +855,102 @@ function drawConnectorTab(x, y, w, h, radius, type) {
 }
 
 function drawLinks() {
+  const laneCounters = new Map();
+
   links.forEach((link) => {
     const fromBlock = rectangles.find((block) => block.id === link.from_block_id);
     const toBlock = rectangles.find((block) => block.id === link.to_block_id);
-
     if (!fromBlock || !toBlock) return;
 
-    const start = getBlockConnectorScreen(fromBlock, "right");
-    const end = getBlockConnectorScreen(toBlock, "left");
+    const key = `${link.from_block_id}:${link.to_block_id}`;
+    const laneIndex = laneCounters.get(key) ?? 0;
+    laneCounters.set(key, laneIndex + 1);
 
-    drawDirectionalArrowPath(start.x, start.y, end.x, end.y);
+    drawDirectionalArrowPolyline(getLinkRoutePoints(fromBlock, toBlock, laneIndex));
   });
 
   if (linking.active) {
-    drawDirectionalArrowPath(linking.startX, linking.startY, linking.currentX, linking.currentY, true);
+    drawDirectionalArrowPolyline([
+      { x: linking.startX, y: linking.startY },
+      { x: linking.currentX, y: linking.currentY },
+    ], true);
   }
 }
 
-function drawDirectionalArrowPath(startX, startY, endX, endY, preview = false) {
-  const midX = (startX + endX) / 2;
-  const horizontalOffset = Math.max(42, Math.min(130, Math.abs(endX - startX) * 0.18));
+function getLinkRoutePoints(fromBlock, toBlock, laneIndex = 0) {
+  const start = getBlockConnectorScreen(fromBlock, "right");
+  const end = getBlockConnectorScreen(toBlock, "left");
+  const fromScreen = worldToScreen(fromBlock.x, fromBlock.y);
+  const toScreen = worldToScreen(toBlock.x, toBlock.y);
+  const fromW = fromBlock.width * camera.zoom;
+  const laneOffset = laneIndex * linkRouteSettings.laneGap;
+  const forward = end.x >= start.x + 60;
 
-  const points = [
-    { x: startX, y: startY },
-    { x: startX + horizontalOffset, y: startY },
-    { x: midX, y: startY },
-    { x: midX, y: endY },
-    { x: endX - horizontalOffset, y: endY },
-    { x: endX, y: endY },
+  if (forward) {
+    const midX = (start.x + end.x) / 2 + laneOffset;
+    return [
+      { x: start.x, y: start.y },
+      { x: Math.min(start.x + 70 + laneOffset, midX), y: start.y },
+      { x: midX, y: start.y },
+      { x: midX, y: end.y },
+      { x: Math.max(end.x - 70 - laneOffset, midX), y: end.y },
+      { x: end.x, y: end.y },
+    ];
+  }
+
+  const topY = Math.min(fromScreen.y, toScreen.y) - linkRouteSettings.loopPadding - laneOffset;
+  const rightX = fromScreen.x + fromW + 82 + laneOffset;
+  const leftX = toScreen.x - 82 - laneOffset;
+  return [
+    { x: start.x, y: start.y },
+    { x: rightX, y: start.y },
+    { x: rightX, y: topY },
+    { x: leftX, y: topY },
+    { x: leftX, y: end.y },
+    { x: end.x, y: end.y },
   ];
+}
 
+function drawDirectionalArrowPolyline(points, preview = false) {
+  if (!points || points.length < 2) return;
   ctx.save();
-
   ctx.strokeStyle = preview ? "rgba(255, 255, 255, 0.42)" : "rgba(255, 255, 255, 0.70)";
   ctx.lineWidth = preview ? 1.4 : 1.8;
   ctx.setLineDash(preview ? [8, 8] : []);
   ctx.shadowColor = "rgba(255, 255, 255, 0.18)";
   ctx.shadowBlur = preview ? 0 : 12;
-
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
-
-  for (let i = 1; i < points.length; i++) {
-    ctx.lineTo(points[i].x, points[i].y);
-  }
-
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
   ctx.stroke();
   ctx.setLineDash([]);
 
-  const segments = [];
-  for (let i = 0; i < points.length - 1; i++) {
-    const a = points[i];
-    const b = points[i + 1];
-    const length = Math.hypot(b.x - a.x, b.y - a.y);
-    if (length > 24) segments.push({ a, b, length });
-  }
-
+  const segments = getPolylineSegments(points);
   const totalLength = segments.reduce((sum, segment) => sum + segment.length, 0);
   const arrowCount = Math.max(1, Math.floor(totalLength / 150));
-
   for (let i = 1; i <= arrowCount; i++) {
     const distance = (totalLength / (arrowCount + 1)) * i;
     const point = getPointAlongSegments(segments, distance);
     if (point) drawArrowHead(point.x, point.y, point.angle, preview);
   }
-
   const last = points[points.length - 1];
   const beforeLast = points[points.length - 2];
   drawArrowHead(last.x, last.y, Math.atan2(last.y - beforeLast.y, last.x - beforeLast.x), preview, true);
-
   ctx.restore();
+}
+
+function getPolylineSegments(points) {
+  const segments = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i], b = points[i + 1];
+    const length = Math.hypot(b.x - a.x, b.y - a.y);
+    if (length > 1) segments.push({ a, b, length });
+  }
+  return segments;
 }
 
 function getPointAlongSegments(segments, targetDistance) {
   let travelled = 0;
-
   for (const segment of segments) {
     if (travelled + segment.length >= targetDistance) {
       const t = (targetDistance - travelled) / segment.length;
@@ -929,34 +959,52 @@ function getPointAlongSegments(segments, targetDistance) {
       const angle = Math.atan2(segment.b.y - segment.a.y, segment.b.x - segment.a.x);
       return { x, y, angle };
     }
-
     travelled += segment.length;
   }
-
   return null;
 }
 
 function drawArrowHead(x, y, angle, preview = false, finalHead = false) {
   const size = finalHead ? 16 : 12;
   const wing = finalHead ? 0.72 : 0.66;
-
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
-
   ctx.strokeStyle = preview ? "rgba(255, 255, 255, 0.50)" : "rgba(255, 255, 255, 0.86)";
   ctx.lineWidth = finalHead ? 2.2 : 1.8;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-
   ctx.beginPath();
   ctx.moveTo(0, 0);
   ctx.lineTo(-size, -size * wing);
   ctx.moveTo(0, 0);
   ctx.lineTo(-size, size * wing);
   ctx.stroke();
-
   ctx.restore();
+}
+
+function getLinkHit(screenX, screenY) {
+  let best = null;
+  links.forEach((link) => {
+    const fromBlock = rectangles.find((block) => block.id === link.from_block_id);
+    const toBlock = rectangles.find((block) => block.id === link.to_block_id);
+    if (!fromBlock || !toBlock) return;
+    const segments = getPolylineSegments(getLinkRoutePoints(fromBlock, toBlock, 0));
+    for (const segment of segments) {
+      const distance = distanceToSegment(screenX, screenY, segment.a.x, segment.a.y, segment.b.x, segment.b.y);
+      if (distance <= linkRouteSettings.hitDistance && (!best || distance < best.distance)) best = { link, distance };
+    }
+  });
+  return best?.link ?? null;
+}
+
+function distanceToSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  if (dx === 0 && dy === 0) return Math.hypot(px - x1, py - y1);
+  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)));
+  const x = x1 + t * dx;
+  const y = y1 + t * dy;
+  return Math.hypot(px - x, py - y);
 }
 
 function drawRectangles() {
@@ -1099,27 +1147,69 @@ async function openSubpage(block) {
 
 function updateIterationButtons() {
   if (!currentPageBlock || !prevIterationButton || !nextIterationButton) return;
-
-  const previous = getPreviousBlock(currentPageBlock.id);
-  const next = getNextBlock(currentPageBlock.id);
-
-  prevIterationButton.disabled = !previous;
-  nextIterationButton.disabled = !next;
+  prevIterationButton.disabled = getPreviousBlocks(currentPageBlock.id).length === 0;
+  nextIterationButton.disabled = getNextBlocks(currentPageBlock.id).length === 0;
 }
 
-async function goToPreviousIteration() {
+async function goToPreviousIteration(event) {
   if (!currentPageBlock) return;
-  const previous = getPreviousBlock(currentPageBlock.id);
-  if (previous) await openSubpage(previous);
+  await handleIterationChoice(getPreviousBlocks(currentPageBlock.id), "Previous Iterations", event?.currentTarget);
 }
 
-async function goToNextIteration() {
+async function goToNextIteration(event) {
   if (!currentPageBlock) return;
-  const next = getNextBlock(currentPageBlock.id);
-  if (next) await openSubpage(next);
+  await handleIterationChoice(getNextBlocks(currentPageBlock.id), "Next Iterations", event?.currentTarget);
+}
+
+async function handleIterationChoice(blocks, title, anchorElement) {
+  if (!blocks.length) return;
+  if (blocks.length === 1) {
+    await openSubpage(blocks[0]);
+    return;
+  }
+  showIterationPicker(blocks, title, anchorElement);
+}
+
+function showIterationPicker(blocks, title, anchorElement) {
+  iterationPicker.innerHTML = "";
+  const heading = document.createElement("div");
+  heading.className = "iteration-picker-title";
+  heading.textContent = title;
+  iterationPicker.appendChild(heading);
+  blocks.forEach((block) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "iteration-choice";
+    const thumb = document.createElement("div");
+    thumb.className = "iteration-choice-thumb";
+    if (block.image_path) thumb.style.backgroundImage = `url("${getPublicCoverUrl(block.image_path)}")`;
+    const textWrap = document.createElement("div");
+    const titleElement = document.createElement("div");
+    titleElement.className = "iteration-choice-title";
+    titleElement.textContent = block.title || "Untitled";
+    const sub = document.createElement("div");
+    sub.className = "iteration-choice-sub";
+    sub.textContent = "Open card";
+    textWrap.append(titleElement, sub);
+    button.append(thumb, textWrap);
+    button.addEventListener("click", async () => {
+      hideIterationPicker();
+      await openSubpage(block);
+    });
+    iterationPicker.appendChild(button);
+  });
+  const rect = anchorElement?.getBoundingClientRect?.() ?? { left: 24, bottom: 88 };
+  iterationPicker.style.left = `${Math.max(14, Math.min(rect.left, window.innerWidth - 540))}px`;
+  iterationPicker.style.top = `${Math.max(14, Math.min(rect.bottom + 12, window.innerHeight - 540))}px`;
+  iterationPicker.hidden = false;
+}
+
+function hideIterationPicker() {
+  iterationPicker.hidden = true;
 }
 
 function closeSubpage() {
+  hideIterationPicker();
   subpage.classList.remove("is-open");
   subpage.setAttribute("aria-hidden", "true");
   currentPageBlock = null;
@@ -1688,7 +1778,7 @@ canvas.addEventListener("pointerup", async (event) => {
     const hit = getConnectorHit(event.clientX, event.clientY);
 
     if (hit?.side === "left" && hit.block.id !== linking.fromBlock.id) {
-      await createOrReplaceLink(linking.fromBlock, hit.block);
+      await createLink(linking.fromBlock, hit.block);
     }
 
     linking.active = false;
@@ -1754,15 +1844,22 @@ window.addEventListener("wheel", (event) => {
   zoomAt(event.clientX, event.clientY, camera.zoom * zoomFactor);
 }, { passive: false });
 
-window.addEventListener("contextmenu", (event) => {
+window.addEventListener("contextmenu", async (event) => {
   if (event.target.closest(".home-button") || event.target.closest(".action-menu") || event.target.closest(".edit-panel") || event.target.closest(".subpage")) {
     return;
   }
 
   event.preventDefault();
 
-  const hit = getRectangleAt(event.clientX, event.clientY);
+  const linkHit = getLinkHit(event.clientX, event.clientY);
   hideMenu();
+
+  if (linkHit) {
+    await deleteLink(linkHit);
+    return;
+  }
+
+  const hit = getRectangleAt(event.clientX, event.clientY);
 
   if (hit) {
     openEditor(hit);
@@ -1809,6 +1906,12 @@ window.addEventListener("mouseenter", () => {
 });
 
 window.addEventListener("mousemove", updateCanvasCursor);
+
+window.addEventListener("click", (event) => {
+  if (!iterationPicker.hidden && !iterationPicker.contains(event.target) && !event.target.closest(".iteration-button")) {
+    hideIterationPicker();
+  }
+});
 
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
