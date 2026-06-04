@@ -1,6 +1,6 @@
 /* ===== Supabase ===== */
-const SB_URL  = window.SUPABASE_URL  ?? "https://ntlsmrzpatcultvsrpll.supabase.co";
-const SB_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
+const SB_URL = window.SUPABASE_URL ?? "httpssupabase.co";
+const SB_ANON = window.SUPABASE_ANON ?? "..5sggDXSK-";
 const sb = window.supabase.createClient(SB_URL, SB_ANON);
 
 const TABLE_NAME = "tech_blocks";
@@ -1089,6 +1089,7 @@ async function openSubpage(block) {
 
   currentPageData = await loadPage(block);
   pageEditor.innerHTML = currentPageData?.body_text ?? "";
+  normalizeEditorLines();
 
   setStatus("Saved");
   subpage.classList.add("is-open");
@@ -1162,8 +1163,166 @@ function insertImageIntoEditor(path) {
   img.src = getPublicCoverUrl(path);
   img.alt = "Inserted image";
   img.dataset.path = path;
-  insertNodeAtCaret(img);
+
+  const line = document.createElement("div");
+  applyIndentClass(line, Number(getCurrentEditorLine()?.dataset?.indent || 0));
+  line.appendChild(img);
+
+  insertNodeAtCaret(line);
 }
+
+
+function ensureEditorHasLine() {
+  if (pageEditor.innerHTML.trim() !== "") return;
+
+  const line = document.createElement("div");
+  line.className = "note-line indent-0";
+  line.dataset.indent = "0";
+  line.innerHTML = "<br>";
+  pageEditor.appendChild(line);
+
+  placeCaretAtEnd(line);
+}
+
+function getCurrentEditorLine() {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return null;
+
+  let node = selection.anchorNode;
+  if (!node) return null;
+
+  if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+  if (!node || !pageEditor.contains(node)) return null;
+
+  let line = node.closest?.(".note-line");
+  if (line && pageEditor.contains(line)) return line;
+
+  let block = node.closest?.("div,p");
+  if (!block || block === pageEditor || !pageEditor.contains(block)) {
+    block = document.createElement("div");
+    block.className = "note-line indent-0";
+    block.dataset.indent = "0";
+
+    const range = selection.getRangeAt(0);
+    range.insertNode(block);
+    block.innerHTML = "<br>";
+    placeCaretAtEnd(block);
+    return block;
+  }
+
+  applyIndentClass(block, Number(block.dataset.indent || 0));
+  return block;
+}
+
+function applyIndentClass(line, depth) {
+  depth = Math.max(0, Math.min(8, Number(depth) || 0));
+
+  line.classList.add("note-line");
+  line.dataset.indent = String(depth);
+
+  for (let i = 0; i <= 8; i++) {
+    line.classList.remove(`indent-${i}`);
+  }
+
+  line.classList.add(`indent-${depth}`);
+}
+
+function indentCurrentLine(direction) {
+  ensureEditorHasLine();
+
+  const line = getCurrentEditorLine();
+  if (!line) return;
+
+  const current = Number(line.dataset.indent || 0);
+  const next = Math.max(0, Math.min(8, current + direction));
+
+  applyIndentClass(line, next);
+  placeCaretAtEnd(line);
+  schedulePageSave();
+}
+
+function placeCaretAtEnd(element) {
+  const range = document.createRange();
+  const selection = window.getSelection();
+
+  range.selectNodeContents(element);
+  range.collapse(false);
+
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function lineCaretIsAtStart(line) {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return false;
+
+  const range = selection.getRangeAt(0);
+  if (!line.contains(range.startContainer) || !range.collapsed) return false;
+
+  const before = range.cloneRange();
+  before.selectNodeContents(line);
+  before.setEnd(range.startContainer, range.startOffset);
+
+  return before.toString().length === 0;
+}
+
+function normalizeEditorLines() {
+  const childNodes = [...pageEditor.childNodes];
+
+  if (childNodes.length === 0) {
+    ensureEditorHasLine();
+    return;
+  }
+
+  childNodes.forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== "") {
+      const line = document.createElement("div");
+      line.textContent = node.textContent;
+      applyIndentClass(line, 0);
+      node.replaceWith(line);
+      return;
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+    if (node.tagName === "IMG") {
+      const wrapper = document.createElement("div");
+      applyIndentClass(wrapper, 0);
+      node.replaceWith(wrapper);
+      wrapper.appendChild(node);
+      return;
+    }
+
+    if (node === pageEditor) return;
+
+    if (!node.classList.contains("note-line") && ["DIV", "P"].includes(node.tagName)) {
+      applyIndentClass(node, Number(node.dataset.indent || 0));
+    }
+  });
+}
+
+function setActiveEditorLine() {
+  pageEditor.querySelectorAll(".is-active-line").forEach((line) => {
+    line.classList.remove("is-active-line");
+  });
+
+  const line = getCurrentEditorLine();
+  if (line) line.classList.add("is-active-line");
+}
+
+function setupNewLineIndent(previousLine) {
+  const previousIndent = Number(previousLine?.dataset?.indent || 0);
+
+  window.setTimeout(() => {
+    const line = getCurrentEditorLine();
+    if (!line) return;
+
+    applyIndentClass(line, previousIndent);
+    setActiveEditorLine();
+    schedulePageSave();
+  }, 0);
+}
+
 
 async function addImagesIntoEditor(files) {
   if (!currentPageBlock || !files?.length) return;
@@ -1472,7 +1631,40 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
-pageEditor.addEventListener("input", schedulePageSave);
+pageEditor.addEventListener("input", () => {
+  normalizeEditorLines();
+  setActiveEditorLine();
+  schedulePageSave();
+});
+
+pageEditor.addEventListener("focus", ensureEditorHasLine);
+pageEditor.addEventListener("click", setActiveEditorLine);
+pageEditor.addEventListener("keyup", setActiveEditorLine);
+
+pageEditor.addEventListener("keydown", (event) => {
+  if (event.key === "Tab") {
+    event.preventDefault();
+    indentCurrentLine(event.shiftKey ? -1 : 1);
+    return;
+  }
+
+  if (event.key === "Enter") {
+    const currentLine = getCurrentEditorLine();
+    setupNewLineIndent(currentLine);
+    return;
+  }
+
+  if (event.key === "Backspace") {
+    const line = getCurrentEditorLine();
+    const indent = Number(line?.dataset?.indent || 0);
+
+    if (line && indent > 0 && lineCaretIsAtStart(line)) {
+      event.preventDefault();
+      applyIndentClass(line, indent - 1);
+      schedulePageSave();
+    }
+  }
+});
 
 subpageTitle.addEventListener("input", () => {
   if (!currentPageBlock) return;

@@ -483,3 +483,55 @@ canvas {
     justify-content: center;
   }
 }
+
+
+/* ===== VS-Code-ish note indentation ===== */
+.page-editor {
+  tab-size: 4;
+  white-space: pre-wrap;
+}
+
+.page-editor .note-line {
+  position: relative;
+  min-height: 1.65em;
+  padding: 1px 0;
+  border-radius: 8px;
+}
+
+.page-editor .note-line:focus {
+  outline: none;
+}
+
+.page-editor .note-line:not(.indent-0) {
+  padding-left: 14px;
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.page-editor .note-line:not(.indent-0)::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 0.25em;
+  bottom: 0.25em;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.08);
+}
+
+.page-editor .indent-0 { margin-left: 0; }
+.page-editor .indent-1 { margin-left: 24px; }
+.page-editor .indent-2 { margin-left: 48px; }
+.page-editor .indent-3 { margin-left: 72px; }
+.page-editor .indent-4 { margin-left: 96px; }
+.page-editor .indent-5 { margin-left: 120px; }
+.page-editor .indent-6 { margin-left: 144px; }
+.page-editor .indent-7 { margin-left: 168px; }
+.page-editor .indent-8 { margin-left: 192px; }
+
+.page-editor .note-line img {
+  margin-left: 0;
+}
+
+.page-editor .note-line.is-active-line {
+  background: rgba(255, 255, 255, 0.035);
+}
