@@ -47,6 +47,8 @@ let mobileModalTitle = null;
 let mobileModalInput = null;
 let mobileModalSaveBtn = null;
 let mobileModalCancelBtn = null;
+let mobileModalRecurring = null;
+let mobileModalRecurringList = null;
 let isSavingEditor = false;
 let selectedLoopMode = null;
 let isGeneratingLoop = false;
@@ -407,7 +409,17 @@ function ensureMobileModal()
                 <h3 class="calendar_mobile_modal_title"></h3>
             </div>
 
+            <section class="calendar_mobile_recurring" hidden>
+                <div class="calendar_mobile_recurring_heading">
+                    <strong>For Loop tasks</strong>
+                    <span>Manage these from the For Loop button.</span>
+                </div>
+                <div class="calendar_mobile_recurring_list"></div>
+            </section>
+
+            <label class="calendar_mobile_manual_label" for="calendarMobileNoteInput">Manual note</label>
             <textarea
+                id="calendarMobileNoteInput"
                 class="calendar_mobile_modal_input"
                 placeholder="Write something..."
             ></textarea>
@@ -428,6 +440,8 @@ function ensureMobileModal()
 
     mobileModalTitle = mobileModal.querySelector(".calendar_mobile_modal_title");
     mobileModalInput = mobileModal.querySelector(".calendar_mobile_modal_input");
+    mobileModalRecurring = mobileModal.querySelector(".calendar_mobile_recurring");
+    mobileModalRecurringList = mobileModal.querySelector(".calendar_mobile_recurring_list");
 
     const backdrop = mobileModal.querySelector(".calendar_mobile_backdrop");
     mobileModalCancelBtn = mobileModal.querySelector(".calendar_mobile_btn_ghost");
@@ -469,6 +483,37 @@ function ensureMobileModal()
     });
 }
 
+function renderMobileRecurringTasks(dateKey)
+{
+    if (!mobileModalRecurring || !mobileModalRecurringList)
+    {
+        return;
+    }
+
+    const tasks = getRecurringTasks(dateKey);
+    mobileModalRecurringList.replaceChildren();
+
+    for (const occurrence of tasks)
+    {
+        const item = document.createElement("div");
+        item.className = "calendar_mobile_recurring_item";
+        item.textContent = `↻ ${occurrence.taskText}`;
+        mobileModalRecurringList.appendChild(item);
+    }
+
+    mobileModalRecurring.hidden = tasks.length === 0;
+}
+
+function updateCellActivityClasses(cell, dateKey)
+{
+    const hasManualNote = getNote(dateKey).length > 0;
+    const hasRecurringNote = getRecurringTasks(dateKey).length > 0;
+
+    cell.classList.toggle("has-manual-note", hasManualNote);
+    cell.classList.toggle("has-recurring-note", hasRecurringNote);
+    cell.classList.toggle("has-note", hasManualNote || hasRecurringNote);
+}
+
 function openMobileEditorForCell(cell)
 {
     const dateKey = cell.dataset.date;
@@ -485,6 +530,7 @@ function openMobileEditorForCell(cell)
     cell.classList.add("calendar_day_selected");
 
     mobileModalTitle.textContent = formatPrettyDate(dateKey);
+    renderMobileRecurringTasks(dateKey);
     mobileModalInput.value = getNote(dateKey);
 
     activeEditor = {
@@ -536,7 +582,7 @@ function refreshCellsForDate(dateKey)
 
         const noteText = getDisplayNote(dateKey);
         noteBlock.textContent = noteText;
-        cell.classList.toggle("has-note", noteText.length > 0);
+        updateCellActivityClasses(cell, dateKey);
         cell.classList.remove("calendar_day_selected");
     });
 }
@@ -1358,10 +1404,7 @@ function createMonthBlock(month, year)
         noteBlock.textContent = getDisplayNote(dateKey);
         dayCell.appendChild(noteBlock);
 
-        if (getDisplayNote(dateKey).length > 0)
-        {
-            dayCell.classList.add("has-note");
-        }
+        updateCellActivityClasses(dayCell, dateKey);
 
         dayCell.addEventListener("click", function ()
         {

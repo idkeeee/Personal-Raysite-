@@ -437,6 +437,67 @@
     margin-bottom: 12px;
 }
 
+.calendar_mobile_recurring
+{
+    margin-bottom: 14px;
+    padding: 12px;
+    border: 1px solid rgba(156, 220, 255, 0.24);
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(120, 190, 255, 0.10), rgba(255, 214, 102, 0.06));
+}
+
+.calendar_mobile_recurring[hidden]
+{
+    display: none;
+}
+
+.calendar_mobile_recurring_heading
+{
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 9px;
+}
+
+.calendar_mobile_recurring_heading strong
+{
+    color: rgb(226, 231, 192);
+    font-size: 0.92rem;
+}
+
+.calendar_mobile_recurring_heading span
+{
+    color: rgba(226, 231, 192, 0.62);
+    font-size: 0.76rem;
+}
+
+.calendar_mobile_recurring_list
+{
+    display: grid;
+    gap: 7px;
+}
+
+.calendar_mobile_recurring_item
+{
+    padding: 8px 9px;
+    border-radius: 9px;
+    background-color: rgba(0, 0, 0, 0.16);
+    color: rgba(226, 231, 192, 0.92);
+    font-size: 0.88rem;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.calendar_mobile_manual_label
+{
+    display: block;
+    margin: 0 0 7px 2px;
+    color: rgba(226, 231, 192, 0.76);
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
 .calendar_mobile_modal_title
 {
     margin: 0;
@@ -505,8 +566,10 @@
     .calendar_day.has-note .calendar_day_note::before
     {
         content: "!";
-        width: 22px;
+        min-width: 22px;
         height: 22px;
+        padding: 0 4px;
+        box-sizing: border-box;
         border-radius: 999px;
         display: inline-flex;
         align-items: center;
@@ -517,6 +580,23 @@
         font-size: 0.95rem;
         font-weight: 800;
         line-height: 1;
+    }
+
+    .calendar_day.has-recurring-note:not(.has-manual-note) .calendar_day_note::before
+    {
+        content: "↻";
+        border-color: rgba(156, 220, 255, 0.46);
+        background-color: rgba(120, 190, 255, 0.14);
+        color: rgb(156, 220, 255);
+    }
+
+    .calendar_day.has-recurring-note.has-manual-note .calendar_day_note::before
+    {
+        content: "↻+";
+        border-color: rgba(156, 220, 255, 0.42);
+        background: linear-gradient(135deg, rgba(120, 190, 255, 0.14), rgba(255, 214, 102, 0.14));
+        color: rgb(226, 231, 192);
+        font-size: 0.78rem;
     }
 }
 
