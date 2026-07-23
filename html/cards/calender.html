@@ -14,7 +14,7 @@
         <link rel="stylesheet" href="css/sidebar.css?v=3">
         <link rel="stylesheet" href="css/general_styles.css?v=3">
         <link rel="stylesheet" href="css/cards.css?v=3">
-        <link rel="stylesheet" href="css/cards/calender.css?v=1">
+        <link rel="stylesheet" href="css/cards/calender.css?v=2">
     </head>
 
     <body>
@@ -42,6 +42,7 @@
                     </div>
 
                     <div class="calendar_header_actions">
+                        <button id="forLoopBtn" class="calendar_action_btn calendar_loop_btn" type="button">For Loop</button>
                         <button id="jumpTodayBtn" class="calendar_action_btn" type="button">Today</button>
                         <button id="prevActivityBtn" class="calendar_action_btn" type="button">Last Activity</button>
                         <button id="nextActivityBtn" class="calendar_action_btn" type="button">Next Activity</button>
@@ -70,9 +71,74 @@
         </section>
     </main>
 
+        <div id="forLoopOverlay" class="calendar_loop_overlay" aria-hidden="true">
+            <div class="calendar_loop_backdrop" data-loop-close></div>
+
+            <section
+                class="calendar_loop_modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="forLoopTitle"
+            >
+                <div class="calendar_loop_modal_header">
+                    <div>
+                        <h2 id="forLoopTitle">For Loop</h2>
+                        <p>Pick a rhythm, write the task, and clone it across six months.</p>
+                    </div>
+
+                    <button id="forLoopCloseBtn" class="calendar_loop_close" type="button" aria-label="Close For Loop">×</button>
+                </div>
+
+                <div class="calendar_loop_options" role="group" aria-label="Repeat pattern">
+                    <button class="calendar_loop_option" type="button" data-loop-mode="month-end">
+                        <strong>Every end of month</strong>
+                        <span>The final day of each month</span>
+                    </button>
+
+                    <button class="calendar_loop_option" type="button" data-loop-mode="month-start">
+                        <strong>Every start of month</strong>
+                        <span>The 1st of each month</span>
+                    </button>
+
+                    <button class="calendar_loop_option" type="button" data-loop-mode="half-month">
+                        <strong>Every half-month</strong>
+                        <span>The 1st and 15th of each month</span>
+                    </button>
+
+                    <button class="calendar_loop_option" type="button" data-loop-mode="custom">
+                        <strong>Custom interval</strong>
+                        <span>Restart the count from each month’s 1st</span>
+                    </button>
+                </div>
+
+                <form id="forLoopForm" class="calendar_loop_form" hidden>
+                    <div id="forLoopSelectionLabel" class="calendar_loop_selection"></div>
+
+                    <label class="calendar_loop_field">
+                        <span>Task</span>
+                        <textarea id="forLoopTaskInput" placeholder="Type the repeating task..." required></textarea>
+                    </label>
+
+                    <label id="forLoopIntervalField" class="calendar_loop_field calendar_loop_interval_field" hidden>
+                        <span>Repeat every how many days?</span>
+                        <input id="forLoopIntervalInput" type="number" min="1" max="30" step="1" inputmode="numeric" placeholder="Example: 5">
+                        <small>Example: 5 creates days 6, 11, 16, 21... then resets next month.</small>
+                    </label>
+
+                    <div id="forLoopPreview" class="calendar_loop_preview"></div>
+                    <div id="forLoopStatus" class="calendar_loop_status" aria-live="polite"></div>
+
+                    <div class="calendar_loop_form_actions">
+                        <button id="forLoopBackBtn" class="calendar_mobile_btn calendar_mobile_btn_ghost" type="button">Change pattern</button>
+                        <button id="forLoopGenerateBtn" class="calendar_mobile_btn calendar_loop_generate_btn" type="submit">Generate 6 months</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+
 
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="js/cards/calender.js?v=2"></script>
+        <script src="js/cards/calender.js?v=3"></script>
         <script src="js/generals.js"></script>
         <script src="js/navbar.js"></script>
     </body>

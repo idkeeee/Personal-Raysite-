@@ -12,6 +12,19 @@ const stickyMonthLabel = document.getElementById("stickyMonthLabel");
 const jumpTodayBtn     = document.getElementById("jumpTodayBtn");
 const prevActivityBtn  = document.getElementById("prevActivityBtn");
 const nextActivityBtn  = document.getElementById("nextActivityBtn");
+const forLoopBtn       = document.getElementById("forLoopBtn");
+const forLoopOverlay   = document.getElementById("forLoopOverlay");
+const forLoopCloseBtn  = document.getElementById("forLoopCloseBtn");
+const forLoopForm      = document.getElementById("forLoopForm");
+const forLoopTaskInput = document.getElementById("forLoopTaskInput");
+const forLoopIntervalField = document.getElementById("forLoopIntervalField");
+const forLoopIntervalInput = document.getElementById("forLoopIntervalInput");
+const forLoopSelectionLabel = document.getElementById("forLoopSelectionLabel");
+const forLoopPreview = document.getElementById("forLoopPreview");
+const forLoopStatus = document.getElementById("forLoopStatus");
+const forLoopBackBtn = document.getElementById("forLoopBackBtn");
+const forLoopGenerateBtn = document.getElementById("forLoopGenerateBtn");
+const forLoopOptionButtons = Array.from(document.querySelectorAll(".calendar_loop_option"));
 
 const monthNames = [
     "January", "February", "March", "April", "May", "June",
@@ -32,6 +45,8 @@ let mobileModalInput = null;
 let mobileModalSaveBtn = null;
 let mobileModalCancelBtn = null;
 let isSavingEditor = false;
+let selectedLoopMode = null;
+let isGeneratingLoop = false;
 
 const MOBILE_BREAKPOINT = 700;
 
@@ -90,6 +105,35 @@ async function saveNoteToSupabase(dateKey, noteText)
     if (error)
     {
         console.error("Failed to save calendar note:", error);
+        return false;
+    }
+
+    return true;
+}
+
+async function saveNotesBatchToSupabase(noteEntries)
+{
+    if (noteEntries.length === 0)
+    {
+        return true;
+    }
+
+    const rows = noteEntries.map(function (entry)
+    {
+        return {
+            calendar_code: CALENDAR_CODE,
+            note_date: entry.dateKey,
+            note_text: entry.noteText
+        };
+    });
+
+    const { error } = await sb
+        .from("calendar_notes_shared")
+        .upsert(rows, { onConflict: "calendar_code,note_date" });
+
+    if (error)
+    {
+        console.error("Failed to save recurring calendar notes:", error);
         return false;
     }
 
@@ -482,6 +526,356 @@ async function closeActiveEditor(shouldSave)
     isSavingEditor = false;
 }
 
+
+/* ===== For Loop recurring-task maker ===== */
+const LOOP_MONTHS_AHEAD = 6;
+
+const loopModeDetails = {
+    "month-end": {
+        label: "Every end of month",
+        description: "The task will land on the final day of each month."
+    },
+    "month-start": {
+        label: "Every start of month",
+        description: "The task will land on the 1st of each month."
+    },
+    "half-month": {
+        label: "Every half-month",
+        description: "The task will land on the 1st and 15th of each month."
+    },
+    "custom": {
+        label: "Custom interval",
+        description: "The count restarts from the 1st of every month instead of cascading forever."
+    }
+};
+
+function setLoopStatus(message, type = "")
+{
+    forLoopStatus.textContent = message;
+    forLoopStatus.classList.remove("is-error", "is-success");
+
+    if (type === "error")
+    {
+        forLoopStatus.classList.add("is-error");
+    }
+    else if (type === "success")
+    {
+        forLoopStatus.classList.add("is-success");
+    }
+}
+
+function resetLoopModal()
+{
+    selectedLoopMode = null;
+    isGeneratingLoop = false;
+    forLoopForm.hidden = true;
+    forLoopTaskInput.value = "";
+    forLoopIntervalInput.value = "";
+    forLoopIntervalField.hidden = true;
+    forLoopSelectionLabel.textContent = "";
+    forLoopPreview.textContent = "";
+    setLoopStatus("");
+    forLoopGenerateBtn.disabled = false;
+    forLoopBackBtn.disabled = false;
+    forLoopGenerateBtn.textContent = "Generate 6 months";
+
+    forLoopOptionButtons.forEach(function (button)
+    {
+        button.classList.remove("is-selected");
+    });
+}
+
+async function openForLoopModal()
+{
+    await closeActiveEditor(true);
+    resetLoopModal();
+    forLoopOverlay.classList.add("is-open");
+    forLoopOverlay.setAttribute("aria-hidden", "false");
+    document.body.classList.add("calendar_loop_open");
+
+    window.setTimeout(function ()
+    {
+        forLoopOptionButtons[0]?.focus();
+    }, 20);
+}
+
+function closeForLoopModal()
+{
+    if (isGeneratingLoop)
+    {
+        return;
+    }
+
+    forLoopOverlay.classList.remove("is-open");
+    forLoopOverlay.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("calendar_loop_open");
+    forLoopBtn.focus();
+}
+
+function selectLoopMode(mode)
+{
+    if (!loopModeDetails[mode])
+    {
+        return;
+    }
+
+    selectedLoopMode = mode;
+
+    forLoopOptionButtons.forEach(function (button)
+    {
+        button.classList.toggle("is-selected", button.dataset.loopMode === mode);
+    });
+
+    const detail = loopModeDetails[mode];
+    forLoopSelectionLabel.textContent = `${detail.label}: ${detail.description}`;
+    forLoopIntervalField.hidden = mode !== "custom";
+    forLoopForm.hidden = false;
+    setLoopStatus("");
+    updateLoopPreview();
+
+    window.setTimeout(function ()
+    {
+        if (mode === "custom")
+        {
+            forLoopIntervalInput.focus();
+        }
+        else
+        {
+            forLoopTaskInput.focus();
+        }
+    }, 20);
+}
+
+function getMonthYearWithOffset(offset)
+{
+    const date = new Date(todayYear, todayMonth + offset, 1);
+
+    return {
+        year: date.getFullYear(),
+        month: date.getMonth()
+    };
+}
+
+function getLoopDateKeys(mode, customInterval)
+{
+    const dateKeys = [];
+    const todayKey = formatDateKey(todayYear, todayMonth, todayDate);
+    const loopEndDate = new Date(todayYear, todayMonth + LOOP_MONTHS_AHEAD, todayDate);
+    const loopEndKey = formatDateKey(
+        loopEndDate.getFullYear(),
+        loopEndDate.getMonth(),
+        loopEndDate.getDate()
+    );
+
+    for (let offset = 0; offset <= LOOP_MONTHS_AHEAD; offset++)
+    {
+        const { year, month } = getMonthYearWithOffset(offset);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        let days = [];
+
+        if (mode === "month-end")
+        {
+            days = [daysInMonth];
+        }
+        else if (mode === "month-start")
+        {
+            days = [1];
+        }
+        else if (mode === "half-month")
+        {
+            days = [1, 15];
+        }
+        else if (mode === "custom")
+        {
+            const interval = Number(customInterval);
+
+            if (!Number.isInteger(interval) || interval < 1 || interval > 30)
+            {
+                return [];
+            }
+
+            for (let day = 1 + interval; day <= daysInMonth; day += interval)
+            {
+                days.push(day);
+            }
+        }
+
+        for (const day of days)
+        {
+            const dateKey = formatDateKey(year, month, day);
+
+            if (dateKey >= todayKey && dateKey <= loopEndKey)
+            {
+                dateKeys.push(dateKey);
+            }
+        }
+    }
+
+    return Array.from(new Set(dateKeys)).sort();
+}
+
+function formatCompactDate(dateKey)
+{
+    const [year, month, day] = dateKey.split("-").map(Number);
+
+    return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+    });
+}
+
+function updateLoopPreview()
+{
+    if (!selectedLoopMode)
+    {
+        forLoopPreview.textContent = "";
+        return;
+    }
+
+    if (selectedLoopMode === "custom")
+    {
+        const interval = Number(forLoopIntervalInput.value);
+
+        if (!Number.isInteger(interval) || interval < 1 || interval > 30)
+        {
+            forLoopPreview.textContent = "Enter a whole number from 1 to 30 to preview the dates.";
+            return;
+        }
+    }
+
+    const dateKeys = getLoopDateKeys(selectedLoopMode, forLoopIntervalInput.value);
+
+    if (dateKeys.length === 0)
+    {
+        forLoopPreview.textContent = "No future dates were produced.";
+        return;
+    }
+
+    const previewDates = dateKeys.slice(0, 8).map(formatCompactDate).join(", ");
+    const remainingCount = Math.max(dateKeys.length - 8, 0);
+    const extraText = remainingCount > 0 ? `, plus ${remainingCount} more` : "";
+
+    forLoopPreview.textContent = `${dateKeys.length} date${dateKeys.length === 1 ? "" : "s"}: ${previewDates}${extraText}. Past dates are skipped.`;
+}
+
+function mergeRecurringTask(existingNote, taskText)
+{
+    const existing = String(existingNote ?? "").replace(/\r\n/g, "\n").trim();
+    const task = String(taskText ?? "").replace(/\r\n/g, "\n").trim();
+
+    if (existing.length === 0)
+    {
+        return task;
+    }
+
+    const existingBlocks = existing
+        .split(/\n{2,}/)
+        .map(function (block)
+        {
+            return block.trim();
+        });
+
+    if (existingBlocks.includes(task))
+    {
+        return existing;
+    }
+
+    return `${existing}\n\n${task}`;
+}
+
+async function generateRecurringTasks()
+{
+    if (isGeneratingLoop || !selectedLoopMode)
+    {
+        return;
+    }
+
+    const taskText = forLoopTaskInput.value.trim();
+
+    if (taskText.length === 0)
+    {
+        setLoopStatus("Type the task first. The loop needs something to clone.", "error");
+        forLoopTaskInput.focus();
+        return;
+    }
+
+    let customInterval = null;
+
+    if (selectedLoopMode === "custom")
+    {
+        customInterval = Number(forLoopIntervalInput.value);
+
+        if (!Number.isInteger(customInterval) || customInterval < 1 || customInterval > 30)
+        {
+            setLoopStatus("Use a whole-number interval from 1 to 30 days.", "error");
+            forLoopIntervalInput.focus();
+            return;
+        }
+    }
+
+    const dateKeys = getLoopDateKeys(selectedLoopMode, customInterval);
+
+    if (dateKeys.length === 0)
+    {
+        setLoopStatus("That pattern did not create any future dates.", "error");
+        return;
+    }
+
+    const changes = [];
+
+    for (const dateKey of dateKeys)
+    {
+        const mergedText = mergeRecurringTask(calendarNotes[dateKey], taskText);
+
+        if (mergedText !== (calendarNotes[dateKey] ?? "").trim())
+        {
+            changes.push({
+                dateKey: dateKey,
+                noteText: mergedText
+            });
+        }
+    }
+
+    if (changes.length === 0)
+    {
+        setLoopStatus("That exact task is already sitting on every generated date.", "success");
+        return;
+    }
+
+    isGeneratingLoop = true;
+    forLoopGenerateBtn.disabled = true;
+    forLoopBackBtn.disabled = true;
+    forLoopGenerateBtn.textContent = "Generating...";
+    setLoopStatus(`Writing ${changes.length} calendar entr${changes.length === 1 ? "y" : "ies"}...`);
+
+    const didSave = await saveNotesBatchToSupabase(changes);
+
+    if (!didSave)
+    {
+        isGeneratingLoop = false;
+        forLoopGenerateBtn.disabled = false;
+        forLoopBackBtn.disabled = false;
+        forLoopGenerateBtn.textContent = "Generate 6 months";
+        setLoopStatus("The save failed, so nothing was changed. Try again.", "error");
+        return;
+    }
+
+    for (const change of changes)
+    {
+        calendarNotes[change.dateKey] = change.noteText;
+        refreshCellsForDate(change.dateKey);
+    }
+
+    updateActivityButtons();
+
+    isGeneratingLoop = false;
+    forLoopGenerateBtn.disabled = false;
+    forLoopBackBtn.disabled = false;
+    forLoopGenerateBtn.textContent = "Generate 6 months";
+    setLoopStatus(`Done. Added the task to ${changes.length} date${changes.length === 1 ? "" : "s"}.`, "success");
+}
+
 /* ===== Calendar creation ===== */
 function createMonthBlock(month, year)
 {
@@ -789,6 +1183,73 @@ function updateActivityButtons()
 
 
 /* ===== Events ===== */
+forLoopBtn.addEventListener("click", function ()
+{
+    openForLoopModal();
+});
+
+forLoopCloseBtn.addEventListener("click", function ()
+{
+    closeForLoopModal();
+});
+
+forLoopOverlay.querySelectorAll("[data-loop-close]").forEach(function (element)
+{
+    element.addEventListener("click", function ()
+    {
+        closeForLoopModal();
+    });
+});
+
+forLoopOptionButtons.forEach(function (button)
+{
+    button.addEventListener("click", function ()
+    {
+        selectLoopMode(button.dataset.loopMode);
+    });
+});
+
+forLoopBackBtn.addEventListener("click", function ()
+{
+    selectedLoopMode = null;
+    forLoopForm.hidden = true;
+    forLoopIntervalField.hidden = true;
+    setLoopStatus("");
+
+    forLoopOptionButtons.forEach(function (button)
+    {
+        button.classList.remove("is-selected");
+    });
+
+    forLoopOptionButtons[0]?.focus();
+});
+
+forLoopIntervalInput.addEventListener("input", function ()
+{
+    setLoopStatus("");
+    updateLoopPreview();
+});
+
+forLoopTaskInput.addEventListener("input", function ()
+{
+    setLoopStatus("");
+});
+
+forLoopForm.addEventListener("submit", function (event)
+{
+    event.preventDefault();
+    generateRecurringTasks();
+});
+
+document.addEventListener("keydown", function (event)
+{
+    if (event.key === "Escape" && forLoopOverlay.classList.contains("is-open"))
+    {
+        event.preventDefault();
+        closeForLoopModal();
+    }
+});
+
 jumpTodayBtn.addEventListener("click", function ()
 {
     jumpToToday(true);
