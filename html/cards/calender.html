@@ -14,7 +14,7 @@
         <link rel="stylesheet" href="css/sidebar.css?v=3">
         <link rel="stylesheet" href="css/general_styles.css?v=3">
         <link rel="stylesheet" href="css/cards.css?v=3">
-        <link rel="stylesheet" href="css/cards/calender.css?v=2">
+        <link rel="stylesheet" href="css/cards/calender.css?v=3">
     </head>
 
     <body>
@@ -83,10 +83,28 @@
                 <div class="calendar_loop_modal_header">
                     <div>
                         <h2 id="forLoopTitle">For Loop</h2>
-                        <p>Pick a rhythm, write the task, and clone it across six months.</p>
+                        <p>Recurring rules live in Supabase and keep a rolling six-month runway filled.</p>
                     </div>
 
                     <button id="forLoopCloseBtn" class="calendar_loop_close" type="button" aria-label="Close For Loop">×</button>
+                </div>
+
+                <section class="calendar_loop_saved" aria-labelledby="savedForLoopsTitle">
+                    <div class="calendar_loop_saved_header">
+                        <div>
+                            <h3 id="savedForLoopsTitle">Active For Loops</h3>
+                            <p>Switch a loop off to remove future occurrences. Past occurrences stay as history.</p>
+                        </div>
+                        <button id="forLoopRefreshBtn" class="calendar_loop_refresh" type="button">Refresh</button>
+                    </div>
+
+                    <div id="forLoopRulesStatus" class="calendar_loop_rules_status" aria-live="polite"></div>
+                    <div id="forLoopRulesList" class="calendar_loop_rules_list"></div>
+                </section>
+
+                <div class="calendar_loop_new_heading">
+                    <h3>Create a new For Loop</h3>
+                    <p>Choose the monthly rhythm, then write the task.</p>
                 </div>
 
                 <div class="calendar_loop_options" role="group" aria-label="Repeat pattern">
@@ -122,7 +140,7 @@
                     <label id="forLoopIntervalField" class="calendar_loop_field calendar_loop_interval_field" hidden>
                         <span>Repeat every how many days?</span>
                         <input id="forLoopIntervalInput" type="number" min="1" max="30" step="1" inputmode="numeric" placeholder="Example: 5">
-                        <small>Example: 5 creates days 6, 11, 16, 21... then resets next month.</small>
+                        <small>Example: 5 creates days 6, 11, 16, 21... then resets after the next month starts.</small>
                     </label>
 
                     <div id="forLoopPreview" class="calendar_loop_preview"></div>
@@ -130,7 +148,7 @@
 
                     <div class="calendar_loop_form_actions">
                         <button id="forLoopBackBtn" class="calendar_mobile_btn calendar_mobile_btn_ghost" type="button">Change pattern</button>
-                        <button id="forLoopGenerateBtn" class="calendar_mobile_btn calendar_loop_generate_btn" type="submit">Generate 6 months</button>
+                        <button id="forLoopGenerateBtn" class="calendar_mobile_btn calendar_loop_generate_btn" type="submit">Create For Loop</button>
                     </div>
                 </form>
             </section>
@@ -138,7 +156,7 @@
 
 
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="js/cards/calender.js?v=3"></script>
+        <script src="js/cards/calender.js?v=4"></script>
         <script src="js/generals.js"></script>
         <script src="js/navbar.js"></script>
     </body>

@@ -25,6 +25,9 @@ const forLoopStatus = document.getElementById("forLoopStatus");
 const forLoopBackBtn = document.getElementById("forLoopBackBtn");
 const forLoopGenerateBtn = document.getElementById("forLoopGenerateBtn");
 const forLoopOptionButtons = Array.from(document.querySelectorAll(".calendar_loop_option"));
+const forLoopRulesList = document.getElementById("forLoopRulesList");
+const forLoopRulesStatus = document.getElementById("forLoopRulesStatus");
+const forLoopRefreshBtn = document.getElementById("forLoopRefreshBtn");
 
 const monthNames = [
     "January", "February", "March", "April", "May", "June",
@@ -47,6 +50,11 @@ let mobileModalCancelBtn = null;
 let isSavingEditor = false;
 let selectedLoopMode = null;
 let isGeneratingLoop = false;
+let recurringRules = [];
+let recurringOccurrences = {};
+let recurringStorageAvailable = true;
+let recurringStorageError = "";
+let isRefreshingLoops = false;
 
 const MOBILE_BREAKPOINT = 700;
 
@@ -141,6 +149,163 @@ async function saveNotesBatchToSupabase(noteEntries)
 }
 
 
+/* ===== Recurring-rule storage ===== */
+async function loadRecurringRulesFromSupabase()
+{
+    const { data, error } = await sb
+        .from("calendar_recurring_rules_shared")
+        .select("id, task_text, repeat_mode, interval_days, is_active, created_at, updated_at")
+        .eq("calendar_code", CALENDAR_CODE)
+        .order("created_at", { ascending: true });
+
+    if (error)
+    {
+        recurringStorageAvailable = false;
+        recurringStorageError = error.message ?? "Recurring-rule tables are unavailable.";
+        console.error("Failed to load recurring calendar rules:", error);
+        return [];
+    }
+
+    recurringStorageAvailable = true;
+    recurringStorageError = "";
+    return data ?? [];
+}
+
+async function loadRecurringOccurrencesFromSupabase()
+{
+    if (!recurringStorageAvailable)
+    {
+        return {};
+    }
+
+    const rangeStart = `${todayYear - 1}-01-01`;
+    const rangeEnd = `${todayYear + 1}-12-31`;
+
+    const { data, error } = await sb
+        .from("calendar_recurring_occurrences_shared")
+        .select("rule_id, occurrence_date, task_text")
+        .eq("calendar_code", CALENDAR_CODE)
+        .gte("occurrence_date", rangeStart)
+        .lte("occurrence_date", rangeEnd)
+        .order("occurrence_date", { ascending: true });
+
+    if (error)
+    {
+        recurringStorageAvailable = false;
+        recurringStorageError = error.message ?? "Recurring-occurrence table is unavailable.";
+        console.error("Failed to load recurring calendar occurrences:", error);
+        return {};
+    }
+
+    const occurrenceObject = {};
+
+    for (const row of data ?? [])
+    {
+        const taskText = String(row.task_text ?? "").trim();
+
+        if (taskText.length === 0)
+        {
+            continue;
+        }
+
+        if (!occurrenceObject[row.occurrence_date])
+        {
+            occurrenceObject[row.occurrence_date] = [];
+        }
+
+        occurrenceObject[row.occurrence_date].push({
+            ruleId: row.rule_id,
+            taskText: taskText
+        });
+    }
+
+    return occurrenceObject;
+}
+
+async function insertRecurringRule(ruleData)
+{
+    const { data, error } = await sb
+        .from("calendar_recurring_rules_shared")
+        .insert({
+            calendar_code: CALENDAR_CODE,
+            task_text: ruleData.taskText,
+            repeat_mode: ruleData.repeatMode,
+            interval_days: ruleData.intervalDays,
+            is_active: true
+        })
+        .select("id, task_text, repeat_mode, interval_days, is_active, created_at, updated_at")
+        .single();
+
+    if (error)
+    {
+        console.error("Failed to create recurring calendar rule:", error);
+        return null;
+    }
+
+    return data;
+}
+
+async function updateRecurringRuleState(ruleId, isActive)
+{
+    const { error } = await sb
+        .from("calendar_recurring_rules_shared")
+        .update({
+            is_active: isActive,
+            updated_at: new Date().toISOString()
+        })
+        .eq("id", ruleId)
+        .eq("calendar_code", CALENDAR_CODE);
+
+    if (error)
+    {
+        console.error("Failed to update recurring calendar rule:", error);
+        return false;
+    }
+
+    return true;
+}
+
+async function upsertRecurringOccurrences(rows)
+{
+    if (rows.length === 0)
+    {
+        return true;
+    }
+
+    const { error } = await sb
+        .from("calendar_recurring_occurrences_shared")
+        .upsert(rows, { onConflict: "rule_id,occurrence_date" });
+
+    if (error)
+    {
+        console.error("Failed to generate recurring calendar occurrences:", error);
+        return false;
+    }
+
+    return true;
+}
+
+async function removeFutureRecurringOccurrences(ruleId)
+{
+    const todayKey = formatDateKey(todayYear, todayMonth, todayDate);
+
+    const { error } = await sb
+        .from("calendar_recurring_occurrences_shared")
+        .delete()
+        .eq("calendar_code", CALENDAR_CODE)
+        .eq("rule_id", ruleId)
+        .gt("occurrence_date", todayKey);
+
+    if (error)
+    {
+        console.error("Failed to remove future recurring occurrences:", error);
+        return false;
+    }
+
+    return true;
+}
+
+
 /* ===== Helpers ===== */
 function formatDateKey(year, month, day)
 {
@@ -152,6 +317,29 @@ function formatDateKey(year, month, day)
 function getNote(dateKey)
 {
     return (calendarNotes[dateKey] ?? "").trim();
+}
+
+function getRecurringTasks(dateKey)
+{
+    return recurringOccurrences[dateKey] ?? [];
+}
+
+function getDisplayNote(dateKey)
+{
+    const parts = [];
+    const manualNote = getNote(dateKey);
+
+    if (manualNote.length > 0)
+    {
+        parts.push(manualNote);
+    }
+
+    for (const occurrence of getRecurringTasks(dateKey))
+    {
+        parts.push(`↻ ${occurrence.taskText}`);
+    }
+
+    return parts.join("\n\n").trim();
 }
 
 function clearSelectedCells()
@@ -346,11 +534,26 @@ function refreshCellsForDate(dateKey)
             cell.appendChild(noteBlock);
         }
 
-        const noteText = getNote(dateKey);
+        const noteText = getDisplayNote(dateKey);
         noteBlock.textContent = noteText;
         cell.classList.toggle("has-note", noteText.length > 0);
         cell.classList.remove("calendar_day_selected");
     });
+}
+
+function refreshAllCalendarCells()
+{
+    const dateKeys = new Set();
+
+    document.querySelectorAll(".calendar_day[data-date]").forEach(function (cell)
+    {
+        dateKeys.add(cell.dataset.date);
+    });
+
+    for (const dateKey of dateKeys)
+    {
+        refreshCellsForDate(dateKey);
+    }
 }
 
 function openEditorForCell(cell)
@@ -533,19 +736,19 @@ const LOOP_MONTHS_AHEAD = 6;
 const loopModeDetails = {
     "month-end": {
         label: "Every end of month",
-        description: "The task will land on the final day of each month."
+        description: "The task lands on the final day of each month."
     },
     "month-start": {
         label: "Every start of month",
-        description: "The task will land on the 1st of each month."
+        description: "The task lands on the 1st of each month."
     },
     "half-month": {
         label: "Every half-month",
-        description: "The task will land on the 1st and 15th of each month."
+        description: "The task lands on the 1st and 15th of each month."
     },
     "custom": {
         label: "Custom interval",
-        description: "The count restarts from the 1st of every month instead of cascading forever."
+        description: "The count restarts after every month begins instead of cascading forever."
     }
 };
 
@@ -564,6 +767,12 @@ function setLoopStatus(message, type = "")
     }
 }
 
+function setRulesStatus(message, isError = false)
+{
+    forLoopRulesStatus.textContent = message;
+    forLoopRulesStatus.classList.toggle("is-error", isError);
+}
+
 function resetLoopModal()
 {
     selectedLoopMode = null;
@@ -577,12 +786,76 @@ function resetLoopModal()
     setLoopStatus("");
     forLoopGenerateBtn.disabled = false;
     forLoopBackBtn.disabled = false;
-    forLoopGenerateBtn.textContent = "Generate 6 months";
+    forLoopGenerateBtn.textContent = "Create For Loop";
 
     forLoopOptionButtons.forEach(function (button)
     {
         button.classList.remove("is-selected");
     });
+}
+
+function formatLoopRuleSchedule(rule)
+{
+    if (rule.repeat_mode === "custom")
+    {
+        return `Every ${rule.interval_days} day${rule.interval_days === 1 ? "" : "s"} after each month starts`;
+    }
+
+    return loopModeDetails[rule.repeat_mode]?.label ?? "Unknown rhythm";
+}
+
+function renderRecurringRulesList()
+{
+    forLoopRulesList.innerHTML = "";
+
+    if (!recurringStorageAvailable)
+    {
+        setRulesStatus("Run the included Supabase SQL setup first, then press Refresh.", true);
+        return;
+    }
+
+    setRulesStatus(`${recurringRules.length} saved loop${recurringRules.length === 1 ? "" : "s"}.`);
+
+    if (recurringRules.length === 0)
+    {
+        const empty = document.createElement("div");
+        empty.className = "calendar_loop_empty";
+        empty.textContent = "No loops yet. The machine is peacefully idle.";
+        forLoopRulesList.appendChild(empty);
+        return;
+    }
+
+    for (const rule of recurringRules)
+    {
+        const row = document.createElement("div");
+        row.className = "calendar_loop_rule";
+        row.classList.toggle("is-off", !rule.is_active);
+
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "calendar_loop_rule_toggle";
+        toggle.classList.toggle("is-on", rule.is_active);
+        toggle.dataset.ruleId = rule.id;
+        toggle.dataset.ruleActive = String(rule.is_active);
+        toggle.setAttribute("aria-pressed", String(rule.is_active));
+        toggle.textContent = rule.is_active ? "ON" : "OFF";
+        toggle.setAttribute("aria-label", `${rule.is_active ? "Turn off" : "Turn on"} ${rule.task_text}`);
+
+        const text = document.createElement("div");
+        text.className = "calendar_loop_rule_text";
+
+        const task = document.createElement("div");
+        task.className = "calendar_loop_rule_task";
+        task.textContent = rule.task_text;
+
+        const schedule = document.createElement("div");
+        schedule.className = "calendar_loop_rule_schedule";
+        schedule.textContent = `${formatLoopRuleSchedule(rule)} · ${rule.is_active ? "future runway enabled" : "future occurrences paused"}`;
+
+        text.append(task, schedule);
+        row.append(toggle, text);
+        forLoopRulesList.appendChild(row);
+    }
 }
 
 async function openForLoopModal()
@@ -592,6 +865,8 @@ async function openForLoopModal()
     forLoopOverlay.classList.add("is-open");
     forLoopOverlay.setAttribute("aria-hidden", "false");
     document.body.classList.add("calendar_loop_open");
+    renderRecurringRulesList();
+    refreshForLoops();
 
     window.setTimeout(function ()
     {
@@ -714,6 +989,70 @@ function getLoopDateKeys(mode, customInterval)
     return Array.from(new Set(dateKeys)).sort();
 }
 
+function buildOccurrenceRowsForRule(rule)
+{
+    const dateKeys = getLoopDateKeys(rule.repeat_mode, rule.interval_days);
+
+    return dateKeys.map(function (dateKey)
+    {
+        return {
+            rule_id: rule.id,
+            calendar_code: CALENDAR_CODE,
+            occurrence_date: dateKey,
+            task_text: rule.task_text
+        };
+    });
+}
+
+async function syncActiveRecurringRules()
+{
+    if (!recurringStorageAvailable)
+    {
+        return false;
+    }
+
+    const rows = [];
+
+    for (const rule of recurringRules)
+    {
+        if (rule.is_active)
+        {
+            rows.push(...buildOccurrenceRowsForRule(rule));
+        }
+    }
+
+    return upsertRecurringOccurrences(rows);
+}
+
+async function reloadRecurringSystem(options = {})
+{
+    const shouldSync = options.syncActive !== false;
+    const shouldRefreshCells = options.refreshCells !== false;
+
+    recurringRules = await loadRecurringRulesFromSupabase();
+
+    if (recurringStorageAvailable && shouldSync)
+    {
+        const didSync = await syncActiveRecurringRules();
+
+        if (!didSync)
+        {
+            recurringStorageAvailable = false;
+            recurringStorageError = "Could not generate the rolling recurring-task runway.";
+        }
+    }
+
+    recurringOccurrences = await loadRecurringOccurrencesFromSupabase();
+
+    if (shouldRefreshCells)
+    {
+        refreshAllCalendarCells();
+        updateActivityButtons();
+    }
+
+    renderRecurringRulesList();
+}
+
 function formatCompactDate(dateKey)
 {
     const [year, month, day] = dateKey.split("-").map(Number);
@@ -756,38 +1095,19 @@ function updateLoopPreview()
     const remainingCount = Math.max(dateKeys.length - 8, 0);
     const extraText = remainingCount > 0 ? `, plus ${remainingCount} more` : "";
 
-    forLoopPreview.textContent = `${dateKeys.length} date${dateKeys.length === 1 ? "" : "s"}: ${previewDates}${extraText}. Past dates are skipped.`;
+    forLoopPreview.textContent = `${dateKeys.length} rolling date${dateKeys.length === 1 ? "" : "s"}: ${previewDates}${extraText}. The runway refills whenever the calendar opens.`;
 }
 
-function mergeRecurringTask(existingNote, taskText)
-{
-    const existing = String(existingNote ?? "").replace(/\r\n/g, "\n").trim();
-    const task = String(taskText ?? "").replace(/\r\n/g, "\n").trim();
-
-    if (existing.length === 0)
-    {
-        return task;
-    }
-
-    const existingBlocks = existing
-        .split(/\n{2,}/)
-        .map(function (block)
-        {
-            return block.trim();
-        });
-
-    if (existingBlocks.includes(task))
-    {
-        return existing;
-    }
-
-    return `${existing}\n\n${task}`;
-}
-
-async function generateRecurringTasks()
+async function createRecurringRule()
 {
     if (isGeneratingLoop || !selectedLoopMode)
     {
+        return;
+    }
+
+    if (!recurringStorageAvailable)
+    {
+        setLoopStatus("Run the included Supabase SQL setup first, then press Refresh.", "error");
         return;
     }
 
@@ -795,18 +1115,18 @@ async function generateRecurringTasks()
 
     if (taskText.length === 0)
     {
-        setLoopStatus("Type the task first. The loop needs something to clone.", "error");
+        setLoopStatus("Type the task first. The loop needs something to repeat.", "error");
         forLoopTaskInput.focus();
         return;
     }
 
-    let customInterval = null;
+    let intervalDays = null;
 
     if (selectedLoopMode === "custom")
     {
-        customInterval = Number(forLoopIntervalInput.value);
+        intervalDays = Number(forLoopIntervalInput.value);
 
-        if (!Number.isInteger(customInterval) || customInterval < 1 || customInterval > 30)
+        if (!Number.isInteger(intervalDays) || intervalDays < 1 || intervalDays > 30)
         {
             setLoopStatus("Use a whole-number interval from 1 to 30 days.", "error");
             forLoopIntervalInput.focus();
@@ -814,66 +1134,132 @@ async function generateRecurringTasks()
         }
     }
 
-    const dateKeys = getLoopDateKeys(selectedLoopMode, customInterval);
-
-    if (dateKeys.length === 0)
-    {
-        setLoopStatus("That pattern did not create any future dates.", "error");
-        return;
-    }
-
-    const changes = [];
-
-    for (const dateKey of dateKeys)
-    {
-        const mergedText = mergeRecurringTask(calendarNotes[dateKey], taskText);
-
-        if (mergedText !== (calendarNotes[dateKey] ?? "").trim())
-        {
-            changes.push({
-                dateKey: dateKey,
-                noteText: mergedText
-            });
-        }
-    }
-
-    if (changes.length === 0)
-    {
-        setLoopStatus("That exact task is already sitting on every generated date.", "success");
-        return;
-    }
-
     isGeneratingLoop = true;
     forLoopGenerateBtn.disabled = true;
     forLoopBackBtn.disabled = true;
-    forLoopGenerateBtn.textContent = "Generating...";
-    setLoopStatus(`Writing ${changes.length} calendar entr${changes.length === 1 ? "y" : "ies"}...`);
+    forLoopGenerateBtn.textContent = "Creating...";
+    setLoopStatus("Saving the rule and filling its six-month runway...");
 
-    const didSave = await saveNotesBatchToSupabase(changes);
+    const newRule = await insertRecurringRule({
+        taskText: taskText,
+        repeatMode: selectedLoopMode,
+        intervalDays: intervalDays
+    });
 
-    if (!didSave)
+    if (!newRule)
     {
         isGeneratingLoop = false;
         forLoopGenerateBtn.disabled = false;
         forLoopBackBtn.disabled = false;
-        forLoopGenerateBtn.textContent = "Generate 6 months";
-        setLoopStatus("The save failed, so nothing was changed. Try again.", "error");
+        forLoopGenerateBtn.textContent = "Create For Loop";
+        setLoopStatus("The rule could not be saved. Check the SQL setup and try again.", "error");
         return;
     }
 
-    for (const change of changes)
+    const didGenerate = await upsertRecurringOccurrences(buildOccurrenceRowsForRule(newRule));
+
+    if (!didGenerate)
     {
-        calendarNotes[change.dateKey] = change.noteText;
-        refreshCellsForDate(change.dateKey);
+        await updateRecurringRuleState(newRule.id, false);
+        isGeneratingLoop = false;
+        forLoopGenerateBtn.disabled = false;
+        forLoopBackBtn.disabled = false;
+        forLoopGenerateBtn.textContent = "Create For Loop";
+        setLoopStatus("The rule saved, but its dates failed to generate. It was switched off for safety.", "error");
+        await reloadRecurringSystem({ syncActive: false });
+        return;
     }
 
-    updateActivityButtons();
+    await reloadRecurringSystem({ syncActive: false });
 
     isGeneratingLoop = false;
     forLoopGenerateBtn.disabled = false;
     forLoopBackBtn.disabled = false;
-    forLoopGenerateBtn.textContent = "Generate 6 months";
-    setLoopStatus(`Done. Added the task to ${changes.length} date${changes.length === 1 ? "" : "s"}.`, "success");
+    forLoopGenerateBtn.textContent = "Create For Loop";
+    forLoopTaskInput.value = "";
+    setLoopStatus("Created. It now syncs across devices and refills its rolling runway automatically.", "success");
+}
+
+async function toggleRecurringRule(ruleId, shouldActivate, button)
+{
+    button.disabled = true;
+    button.textContent = "...";
+    setRulesStatus(shouldActivate ? "Turning the loop on..." : "Pausing future occurrences...");
+
+    const didUpdate = await updateRecurringRuleState(ruleId, shouldActivate);
+
+    if (!didUpdate)
+    {
+        button.disabled = false;
+        renderRecurringRulesList();
+        setRulesStatus("That switch failed. Try again.", true);
+        return;
+    }
+
+    if (shouldActivate)
+    {
+        const rule = recurringRules.find(function (item)
+        {
+            return item.id === ruleId;
+        });
+
+        if (rule)
+        {
+            rule.is_active = true;
+            const didGenerate = await upsertRecurringOccurrences(buildOccurrenceRowsForRule(rule));
+
+            if (!didGenerate)
+            {
+                await updateRecurringRuleState(ruleId, false);
+                setRulesStatus("The loop could not refill its dates, so it was left off.", true);
+                await reloadRecurringSystem({ syncActive: false });
+                return;
+            }
+        }
+    }
+    else
+    {
+        const didRemove = await removeFutureRecurringOccurrences(ruleId);
+
+        if (!didRemove)
+        {
+            await updateRecurringRuleState(ruleId, true);
+            setRulesStatus("Future dates could not be removed, so the loop stayed on.", true);
+            await reloadRecurringSystem({ syncActive: false });
+            return;
+        }
+    }
+
+    await reloadRecurringSystem({ syncActive: false });
+    setRulesStatus(shouldActivate ? "Loop resumed." : "Loop paused. Past occurrences were kept.");
+}
+
+async function refreshForLoops()
+{
+    if (isRefreshingLoops)
+    {
+        return;
+    }
+
+    isRefreshingLoops = true;
+    forLoopRefreshBtn.disabled = true;
+    forLoopRefreshBtn.textContent = "Refreshing...";
+    setRulesStatus("Checking Supabase and refilling active runways...");
+
+    await reloadRecurringSystem({ syncActive: true });
+
+    isRefreshingLoops = false;
+    forLoopRefreshBtn.disabled = false;
+    forLoopRefreshBtn.textContent = "Refresh";
+
+    if (recurringStorageAvailable)
+    {
+        setRulesStatus(`${recurringRules.length} saved loop${recurringRules.length === 1 ? "" : "s"}. Everything is synced.`);
+    }
+    else
+    {
+        setRulesStatus("Run the included Supabase SQL setup first, then press Refresh.", true);
+    }
 }
 
 /* ===== Calendar creation ===== */
@@ -969,10 +1355,10 @@ function createMonthBlock(month, year)
 
         const noteBlock = document.createElement("div");
         noteBlock.classList.add("calendar_day_note");
-        noteBlock.textContent = getNote(dateKey);
+        noteBlock.textContent = getDisplayNote(dateKey);
         dayCell.appendChild(noteBlock);
 
-        if (getNote(dateKey).length > 0)
+        if (getDisplayNote(dateKey).length > 0)
         {
             dayCell.classList.add("has-note");
         }
@@ -1172,11 +1558,17 @@ function jumpToActivity(direction)
 
 function updateActivityButtons()
 {
-    const hasActivities = Object.values(calendarNotes).some(function (value)
+    const hasManualActivities = Object.values(calendarNotes).some(function (value)
     {
         return String(value).trim().length > 0;
     });
 
+    const hasRecurringActivities = Object.values(recurringOccurrences).some(function (items)
+    {
+        return Array.isArray(items) && items.length > 0;
+    });
+
+    const hasActivities = hasManualActivities || hasRecurringActivities;
     prevActivityBtn.disabled = !hasActivities;
     nextActivityBtn.disabled = !hasActivities;
 }
@@ -1214,6 +1606,7 @@ forLoopBackBtn.addEventListener("click", function ()
     selectedLoopMode = null;
     forLoopForm.hidden = true;
     forLoopIntervalField.hidden = true;
+    forLoopPreview.textContent = "";
     setLoopStatus("");
 
     forLoopOptionButtons.forEach(function (button)
@@ -1238,7 +1631,26 @@ forLoopTaskInput.addEventListener("input", function ()
 forLoopForm.addEventListener("submit", function (event)
 {
     event.preventDefault();
-    generateRecurringTasks();
+    createRecurringRule();
+});
+
+forLoopRulesList.addEventListener("click", function (event)
+{
+    const button = event.target.closest(".calendar_loop_rule_toggle");
+
+    if (!button)
+    {
+        return;
+    }
+
+    const ruleId = button.dataset.ruleId;
+    const isActive = button.dataset.ruleActive === "true";
+    toggleRecurringRule(ruleId, !isActive, button);
+});
+
+forLoopRefreshBtn.addEventListener("click", function ()
+{
+    refreshForLoops();
 });
 
 document.addEventListener("keydown", function (event)
@@ -1277,5 +1689,14 @@ initCalendar();
 async function initCalendar()
 {
     calendarNotes = await loadNotesFromSupabase();
+    recurringRules = await loadRecurringRulesFromSupabase();
+
+    if (recurringStorageAvailable)
+    {
+        await syncActiveRecurringRules();
+        recurringOccurrences = await loadRecurringOccurrencesFromSupabase();
+    }
+
     renderScrollableCalendar();
+    renderRecurringRulesList();
 }
