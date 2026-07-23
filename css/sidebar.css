@@ -1,93 +1,330 @@
-/* ---DEFAULTS--- */
-    :root{ --drawer-width: 25vw; }  /* take Desktop's default for width */
-/**/
+:root
+{
+    --drawer-width: clamp(340px, 36vw, 560px);
+}
 
+/* Notification drawer */
+.side_menu
+{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: var(--drawer-width);
+    height: 100dvh;
+    min-height: 100vh;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background:
+        radial-gradient(circle at 0 0, rgba(209, 233, 52, 0.08), transparent 34%),
+        #2b282c;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0 18px 18px 0;
+    box-shadow: 8px 0 34px rgba(0, 0, 0, 0.46);
+    z-index: 1000;
+    transform: translateX(-105%);
+    transition: transform 250ms ease;
+    will-change: transform;
+}
 
-/* ---------- Drawer container ---------- */
+.side_menu.open
+{
+    transform: translateX(0);
+}
+
+.side_menu::-webkit-scrollbar
+{
+    width: 8px;
+}
+
+.side_menu::-webkit-scrollbar-thumb
+{
+    border-radius: 999px;
+    background: rgba(226, 231, 192, 0.20);
+}
+
+/* Dim page behind the drawer */
+.backdrop
+{
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.58);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 900;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms ease;
+}
+
+.backdrop.show
+{
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.side_menu_header
+{
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(226, 231, 192, 0.12);
+}
+
+.side_menu_header h2
+{
+    margin: 2px 0 6px;
+    color: rgb(226, 231, 192);
+    font-size: clamp(1.55rem, 2.6vw, 2rem);
+    line-height: 1.05;
+}
+
+.notification_eyebrow
+{
+    margin: 0;
+    color: rgb(209, 233, 52);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+}
+
+.notification_date_label
+{
+    margin: 0;
+    color: rgba(226, 231, 192, 0.68);
+    font-size: 0.9rem;
+}
+
+.side_menu-close-button
+{
+    flex: 0 0 auto;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border: 1px solid rgba(226, 231, 192, 0.14);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    color: rgb(209, 233, 52);
+    font-size: 30px;
+    line-height: 1;
+    cursor: pointer;
+    transition: 160ms ease;
+}
+
+.side_menu-close-button:hover,
+.side_menu-close-button:focus-visible
+{
+    color: orange;
+    border-color: rgba(255, 165, 0, 0.38);
+    background: rgba(255, 165, 0, 0.08);
+    outline: none;
+}
+
+.notification_toolbar
+{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: rgba(226, 231, 192, 0.82);
+    font-size: 0.88rem;
+}
+
+.notification_refresh_button
+{
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid rgba(98, 225, 255, 0.26);
+    border-radius: 10px;
+    background: rgba(98, 225, 255, 0.06);
+    color: rgb(226, 231, 192);
+    cursor: pointer;
+}
+
+.notification_refresh_button:hover,
+.notification_refresh_button:focus-visible
+{
+    border-color: rgba(98, 225, 255, 0.60);
+    background: rgba(98, 225, 255, 0.11);
+    outline: none;
+}
+
+.notification_refresh_button:disabled
+{
+    opacity: 0.5;
+    cursor: wait;
+}
+
+.notification_status
+{
+    min-height: 58px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    padding: 14px;
+    border: 1px dashed rgba(226, 231, 192, 0.16);
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.10);
+    color: rgba(226, 231, 192, 0.68);
+    font-size: 0.92rem;
+}
+
+.notification_status.is-empty
+{
+    min-height: 120px;
+    justify-content: center;
+    text-align: center;
+}
+
+.notification_status.is-error
+{
+    color: #ffaaa4;
+    border-color: rgba(255, 90, 80, 0.30);
+}
+
+.notification_status[hidden]
+{
+    display: none;
+}
+
+.notification_list
+{
+    display: grid;
+    gap: 11px;
+}
+
+.notification_item
+{
+    display: block;
+    padding: 14px;
+    border: 1px solid rgba(226, 231, 192, 0.13);
+    border-radius: 15px;
+    background: rgba(63, 63, 71, 0.82);
+    color: inherit;
+    text-decoration: none;
+    box-shadow: 0 7px 18px rgba(0, 0, 0, 0.14);
+    transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.notification_item:hover,
+.notification_item:focus-visible
+{
+    transform: translateX(4px);
+    border-color: rgba(209, 233, 52, 0.42);
+    background: rgba(72, 72, 81, 0.96);
+    outline: none;
+}
+
+.notification_item_topline
+{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 9px;
+}
+
+.notification_source
+{
+    color: rgb(209, 233, 52);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.notification_kind
+{
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(98, 225, 255, 0.09);
+    color: rgba(196, 242, 255, 0.90);
+    font-size: 0.7rem;
+}
+
+.notification_item_text
+{
+    margin: 0;
+    color: rgb(226, 231, 192);
+    font-size: 1rem;
+    line-height: 1.42;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.notification_item_footer
+{
+    margin-top: 10px;
+    color: rgba(226, 231, 192, 0.52);
+    font-size: 0.78rem;
+}
+
+.notification_calendar_link
+{
+    margin-top: auto;
+    min-height: 48px;
+    padding: 0 16px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid rgba(209, 233, 52, 0.24);
+    border-radius: 14px;
+    background: rgba(209, 233, 52, 0.06);
+    color: rgb(226, 231, 192);
+    text-decoration: none;
+    font-weight: 700;
+    transition: 160ms ease;
+}
+
+.notification_calendar_link:hover,
+.notification_calendar_link:focus-visible
+{
+    border-color: rgba(209, 233, 52, 0.55);
+    background: rgba(209, 233, 52, 0.11);
+    outline: none;
+}
+
+/* Mobile drawer needs enough width for actual words */
+@media (max-width: 768px)
+{
+    :root
+    {
+        --drawer-width: min(91vw, 430px);
+    }
+
     .side_menu
     {
-        position : fixed ;                  /*stays put while scrolling*/
-        background: #2b282c;
-        top: 0 ;
-        left: 0 ;
-        height: 100vh ;                     /* full viewport height */
-        width : var(--drawer-width);
-        
-
-        border-radius: 0 12px 12px 0px;     /*rounded edge*/
-        /* top-left=0, top-right=12px, bottom-right=12px, bottom-left=0 */
-
-
-
-        /* ask chat what all these below mean later (7 lines) */
-        border-right: 1px solid rgba(255,255,255,0.08);
-        box-shadow: 2px 0 20px rgba(0,0,0,0.35);
-        z-index: 1000;
-
-        /* Start hidden, off-canvas to the left */
-            transform: translateX(-100%);
-            transition: transform 250ms ease;
-            will-change: transform ;         /* smoother animation hint */
-            padding: 16px 20px ;
+        gap: 12px;
+        padding: max(16px, env(safe-area-inset-top)) 15px max(18px, env(safe-area-inset-bottom));
+        border-radius: 0 16px 16px 0;
     }
-/**/
-/* When open, slide into view */
-    .side_menu.open 
+
+    .side_menu_header h2
     {
-    transform: translateX(0);
+        font-size: 1.65rem;
     }
-/**/
 
-
-/* ---------- Backdrop (dim background) ---------- */
-    .backdrop
+    .notification_item
     {
-        position:fixed ;
-        inset: 0;                           /* top:0 right:0 bottom:0 left:0 */
-        background: rgba(0,0,0,0.5);
-        z-index: 900;                       /* behind the drawer */
-        opacity: 0;
-        pointer-events: none;               /* clicks pass through when hidden */
-        transition: opacity 200ms ease;
+        padding: 13px;
     }
-    .backdrop.show
+}
+
+@media (prefers-reduced-motion: reduce)
+{
+    .side_menu,
+    .backdrop,
+    .notification_item
     {
-        opacity: 1;
-        pointer-events: auto;
+        transition: none;
     }
-/**/
-
-
-/* ---------- Close button (X) ---------- */
-    .side_menu-close-button
-    {
-        background: transparent ;
-        border: none ;
-        color : rgb(209, 233, 52);
-        font-size: 28px ;
-        line-height: 1;
-        cursor: pointer;
-        padding: 8px ;
-        margin: -4px 0 12px -4px;     /* tuck into the corner a bit */
-    }
-/**/
-
-
-
-
-
-
-/* PC SPECIFIC 💻*/
-    @media (min-width: 769px) 
-    {
-        :root { --drawer-width: 35vw; }
-    }
-/**/
-
-
-/* MOBILE SPECIFIC 📳 */
-    @media (max-width:768px) 
-    {
-        :root { --drawer-width: 50vw; }
-    }
-/**/
+}

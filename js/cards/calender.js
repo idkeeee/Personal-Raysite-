@@ -316,6 +316,14 @@ function formatDateKey(year, month, day)
     return `${year}-${mm}-${dd}`;
 }
 
+function refreshSiteNotificationCenter()
+{
+    if (typeof window.refreshCalendarNotifications === "function")
+    {
+        window.refreshCalendarNotifications({ silent: true });
+    }
+}
+
 function getNote(dateKey)
 {
     return (calendarNotes[dateKey] ?? "").trim();
@@ -738,6 +746,8 @@ async function closeActiveEditor(shouldSave)
         {
             mobileModal.classList.remove("is-open");
         }
+
+        refreshSiteNotificationCenter();
     }
     else
     {
@@ -1097,6 +1107,7 @@ async function reloadRecurringSystem(options = {})
     }
 
     renderRecurringRulesList();
+    refreshSiteNotificationCenter();
 }
 
 function formatCompactDate(dateKey)
@@ -1548,6 +1559,47 @@ function jumpToToday(smooth = true)
     }
 }
 
+function getRequestedDateFromUrl()
+{
+    const requestedDate = new URLSearchParams(window.location.search).get("date");
+
+    if (!requestedDate || !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate))
+    {
+        return null;
+    }
+
+    const [year, month, day] = requestedDate.split("-").map(Number);
+    const parsedDate = new Date(year, month - 1, day);
+
+    const isRealDate =
+        parsedDate.getFullYear() === year &&
+        parsedDate.getMonth() === month - 1 &&
+        parsedDate.getDate() === day;
+
+    return isRealDate ? requestedDate : null;
+}
+
+function jumpToRequestedDateFromUrl()
+{
+    const requestedDate = getRequestedDateFromUrl();
+
+    if (!requestedDate)
+    {
+        return false;
+    }
+
+    const requestedCell = getCanonicalCellByDate(requestedDate);
+
+    if (!requestedCell)
+    {
+        return false;
+    }
+
+    scrollToCell(requestedCell, false);
+    return true;
+}
+
+
 function getActivityCells()
 {
     const cells = Array.from(
@@ -1742,4 +1794,9 @@ async function initCalendar()
 
     renderScrollableCalendar();
     renderRecurringRulesList();
+
+    window.requestAnimationFrame(function ()
+    {
+        jumpToRequestedDateFromUrl();
+    });
 }

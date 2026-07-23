@@ -1,116 +1,190 @@
-/*Loading cyberpunk font*/
-    @font-face 
-    {
-        font-family: "Cyberfont";
-        src: url("/Personal-Raysite-/assets/fonts/Cyberpunk-Regular.woff2") format("woff2"),
-                  url("/Personal-Raysite-/assets/fonts/Cyberpunk-Regular.woff") format("woff"),
-                  url("/Personal-Raysite-/assets/fonts/Cyberpunk-Regular.ttf") format("truetype");
-        font-weight:400;     /*is normal, could be bold or smth*/
-        font-style: normal;     /*could be italic or smth*/
-        font-display : swap ;
-    }
-/**/
-
-
-
-
-
-/* Basic styling */
-    .navbar
-    {
-        margin: 0;
-        font-family: "Cyberfont", sans-serif;
-    }
-/**/
-
+/* Loading cyberpunk font */
+@font-face
+{
+    font-family: "Cyberfont";
+    src: url("/Personal-Raysite-/assets/fonts/Cyberpunk-Regular.woff2") format("woff2"),
+         url("/Personal-Raysite-/assets/fonts/Cyberpunk-Regular.woff") format("woff"),
+         url("/Personal-Raysite-/assets/fonts/Cyberpunk-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
 
 /* Navbar container */
-    .navbar 
-    {
-        display: flex;
-        justify-content: flex-start;
-        align-items: center;                /* ensures vertical centering */
-        background-color: #1b191c;
-        padding: 10px 15px;                 /* top&bottom=10   left&right=20 */
-        position: relative;                 /* lets us absolutely position children */
-    }
-/**/
+.navbar
+{
+    margin: 0;
+    width: 100%;
+    min-height: 64px;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    background-color: rgba(27, 25, 28, 0.97);
+    padding: 10px 15px;
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    z-index: 850;
+    font-family: "Cyberfont", sans-serif;
+    border-bottom: 1px solid rgba(209, 233, 52, 0.10);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
 
+/* Hamburger and iPhone-style badge */
+.hamburger
+{
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: rgb(209, 233, 52);
+    cursor: pointer;
+    font: inherit;
+    transition: color 160ms ease, background-color 160ms ease, transform 160ms ease;
+    z-index: 2;
+}
 
+.hamburger_icon
+{
+    display: block;
+    font-family: Arial, sans-serif;
+    font-size: 36px;
+    line-height: 1;
+    transform: translateY(-1px);
+}
 
+.hamburger:hover,
+.hamburger:focus-visible
+{
+    color: orange;
+    background-color: rgba(255, 255, 255, 0.06);
+    outline: none;
+}
 
-/* hamburger styling  (on that left side)  🍔  */
-    .hamburger 
-    {
-        display: block;    
-        font-size: 36px;   
-        cursor: pointer;
-        color: rgb(209, 233, 52);
-    }
+.hamburger:active
+{
+    transform: scale(0.96);
+}
 
-    .hamburger:hover 
-    {
-        color: orange;
-    }
-/**/
+.notification_badge
+{
+    position: absolute;
+    top: -2px;
+    right: -5px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    border: 2px solid #1b191c;
+    background: #ff3b30;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    box-shadow: 0 3px 10px rgba(255, 59, 48, 0.42);
+    pointer-events: none;
+}
+
+.notification_badge[hidden]
+{
+    display: none;
+}
 
 /* The title */
-    .ray_title 
+.ray_title
+{
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(100% - 130px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: "Cyberfont", sans-serif;
+    color: rgb(209, 233, 52);
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 1;
+}
+
+/* Mobile */
+@media (max-width: 768px)
+{
+    .navbar
     {
-        position: absolute;   /* ignore flexbox spacing */
-        left: 50%;            /* move to middle horizontally */
-        transform: translateX(-50%); /* shift back by half its width */
-        font-family: "Cyberfont", sans-serif; /* use cyberpunk font */
-        color: rgb(209, 233, 52);   /* matches your body text color */
-        pointer-events: none;
-        white-space: nowrap;
-        z-index: 1;
+        min-height: 58px;
+        padding: 7px 10px;
     }
-/**/
 
-
-
-
-
-
-
-
-/* Media Query for smaller screens (mobile) 📳 */  
-    @media (max-width: 768px) 
+    .hamburger
     {
-        .nav-links 
-        {
-            display: none; /* Hide links on mobile */
-            width: 100%;
-            text-align: center;
-        }
-
-        .nav-links.active 
-        {
-            display: block; /* Show links when hamburger is clicked */
-        }
-
-
-        /* title : "Ray's super cracked web" or smth */ 
-            .ray_title { font-size: 20px; }
-            .ray_title::after { content: "BALLS 🔥💯💀🥀"; }
-                /* will show only on mobile  ,  to overide the main code kinda*/
+        width: 44px;
+        height: 44px;
     }
-/**/
 
-
-/* Media Query for bigger screens (PC) 💻 */ 
-    @media (min-width: 769px) 
+    .hamburger_icon
     {
-        .navbar 
-        {
-            padding: 15px 20px;  
-            /* top/bottom = 20px, left/right = 40px */
-        }
-
-
-        /* title : "Ray's super cracked web" or smth */ 
-             .ray_title { font-size: 35px; }
-             .ray_title::after { content: "Ray's Super Cracked Fire Website 💯🔥"; }
+        font-size: 34px;
     }
-/**/
+
+    .notification_badge
+    {
+        top: -1px;
+        right: -3px;
+    }
+
+    .nav-links
+    {
+        display: none;
+        width: 100%;
+        text-align: center;
+    }
+
+    .nav-links.active
+    {
+        display: block;
+    }
+
+    .ray_title
+    {
+        font-size: 20px;
+    }
+
+    .ray_title::after
+    {
+        content: "BALLS 🔥💯💀🥀";
+    }
+}
+
+/* Desktop */
+@media (min-width: 769px)
+{
+    .navbar
+    {
+        padding: 12px 20px;
+    }
+
+    .ray_title
+    {
+        font-size: 35px;
+    }
+
+    .ray_title::after
+    {
+        content: "Ray's Super Cracked Fire Website 💯🔥";
+    }
+}

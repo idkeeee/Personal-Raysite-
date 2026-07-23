@@ -10,8 +10,8 @@
         <base href="https://idkeeee.github.io/Personal-Raysite-/">
 
         <title> 🔥 </title>  
-        <link rel="stylesheet" href="css/navbar.css?v=3">
-        <link rel="stylesheet" href="css/sidebar.css?v=3">
+        <link rel="stylesheet" href="css/navbar.css?v=4">
+        <link rel="stylesheet" href="css/sidebar.css?v=4">
         <link rel="stylesheet" href="css/general_styles.css?v=3">
         <link rel="stylesheet" href="css/cards.css?v=3">
         <link rel="stylesheet" href="css/cards/to_do_list.css?v=4">
@@ -20,13 +20,39 @@
     <body>
         <!-- Navbar ⬆️ -->
          <nav class="navbar">
-            <div class="hamburger" onclick="toggleMenu()">&#9776;</div>
+            <button class="hamburger" id="notificationMenuButton" type="button" onclick="toggleMenu()" aria-label="Open notification center">
+                <span class="hamburger_icon" aria-hidden="true">&#9776;</span>
+                <span class="notification_badge" id="notificationBadge" hidden>0</span>
+            </button>
             <div class="ray_title"> <!-- the title is in navbar.css --></div>                 <!-- title -->
         </nav>
 
         <!-- Sidebar ⬅️ -->
-         <aside class="side_menu" id="sideMenu" aria-hidden="true">
-            <button class="side_menu-close-button" aria-label="Close" onclick="toggleMenu()">x</button> <!-- close button -->
+         <aside class="side_menu" id="sideMenu" aria-hidden="true" aria-label="Notification center">
+            <div class="side_menu_header">
+                <div>
+                    <p class="notification_eyebrow">TODAY</p>
+                    <h2>Notification Center</h2>
+                    <p id="notificationDateLabel" class="notification_date_label">Checking the calendar...</p>
+                </div>
+                <button class="side_menu-close-button" aria-label="Close notification center" onclick="toggleMenu()">×</button>
+            </div>
+
+            <div class="notification_toolbar">
+                <span id="notificationSummary">Loading today’s tasks...</span>
+                <button id="notificationRefreshButton" class="notification_refresh_button" type="button">Refresh</button>
+            </div>
+
+            <div id="notificationStatus" class="notification_status" role="status" aria-live="polite">
+                Connecting to Calender...
+            </div>
+
+            <div id="notificationList" class="notification_list"></div>
+
+            <a id="notificationCalendarLink" class="notification_calendar_link" href="html/cards/calender.html">
+                Open Calender
+                <span aria-hidden="true">→</span>
+            </a>
         </aside>
         <div class="backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>   <!-- darkens page when sidemenu opens , in generals.js -->
 
@@ -122,7 +148,7 @@
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         <script src="js/cards/to_do.js?v=6"></script>
         <script src="js/generals.js"></script>
-        <script src="js/navbar.js"></script>
+        <script src="js/navbar.js?v=2"></script>
     </body>
 
 </html>
