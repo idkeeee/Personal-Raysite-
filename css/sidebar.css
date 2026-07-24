@@ -328,3 +328,122 @@
         transition: none;
     }
 }
+
+/* Per-notification clearing */
+.notification_swipe_shell
+{
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+    border-radius: 15px;
+    transition: opacity 180ms ease, transform 180ms ease, max-height 180ms ease, margin 180ms ease;
+}
+
+.notification_swipe_shell.is-clearing
+{
+    opacity: 0;
+    transform: translateX(-18px) scale(0.98);
+    pointer-events: none;
+}
+
+.notification_swipe_action
+{
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: 126px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 15px;
+    background: #b93232;
+    color: #ffffff;
+    font-size: 0.86rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.notification_clear_button
+{
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    z-index: 3;
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid rgba(255, 112, 104, 0.34);
+    border-radius: 10px;
+    background: rgba(255, 72, 62, 0.09);
+    color: #ffb0aa;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 750;
+    cursor: pointer;
+    transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.notification_clear_button:hover,
+.notification_clear_button:focus-visible
+{
+    border-color: rgba(255, 112, 104, 0.74);
+    background: rgba(255, 72, 62, 0.17);
+    color: #ffd0cc;
+    outline: none;
+}
+
+.notification_clear_button:active
+{
+    transform: scale(0.96);
+}
+
+.notification_clear_button:disabled
+{
+    opacity: 0.55;
+    cursor: wait;
+}
+
+.notification_swipe_shell .notification_item
+{
+    position: relative;
+    z-index: 2;
+    padding-right: 94px;
+    touch-action: pan-y;
+    will-change: transform;
+}
+
+@media (max-width: 768px)
+{
+    .notification_swipe_action
+    {
+        display: flex;
+    }
+
+    .notification_clear_button
+    {
+        display: none;
+    }
+
+    .notification_swipe_shell .notification_item
+    {
+        padding-right: 13px;
+    }
+
+    .notification_swipe_shell.is-swipe-ready .notification_swipe_action
+    {
+        background: #d33b34;
+    }
+
+    .notification_item_footer::after
+    {
+        content: " · Swipe left to clear";
+    }
+}
+
+@media (prefers-reduced-motion: reduce)
+{
+    .notification_swipe_shell,
+    .notification_clear_button
+    {
+        transition: none;
+    }
+}
