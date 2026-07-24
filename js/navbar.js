@@ -17,7 +17,7 @@
     }
 
     const SUPABASE_URL = window.SUPABASE_URL ?? "https://ntlsmrzpatcultvsrpll.supabase.co";
-    const SUPABASE_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJudGxzbXJ6cGF0Y3VsdHZzcnBsbCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzU4NDQ2NDA1LCJleHAiOjIwNzQwMjI0MDV9.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
+    const SUPABASE_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
     const CALENDAR_CODE = "bagas-main-calendar-v1";
     const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
