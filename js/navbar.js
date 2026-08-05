@@ -10,6 +10,7 @@
     const dateLabel = document.getElementById("notificationDateLabel");
     const refreshButton = document.getElementById("notificationRefreshButton");
     const calendarLink = document.getElementById("notificationCalendarLink");
+    const toolbar = document.querySelector(".notification_toolbar");
 
     if (!badge || !menuButton || !list || !status || !summary || !dateLabel || !refreshButton || !calendarLink)
     {
@@ -23,6 +24,7 @@
     const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
     const SWIPE_CLEAR_THRESHOLD = 76;
     const SWIPE_MAX_DISTANCE = 126;
+    const APP_BADGE_SERVICE_WORKER_VERSION = "1";
 
     let client = null;
     let isLoading = false;
@@ -31,6 +33,130 @@
     let currentDateKey = "";
     let currentHadPartialError = false;
     let dismissalStoreAvailable = true;
+
+    function isStandaloneWebApp()
+    {
+        return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    }
+
+    function supportsHomeScreenBadge()
+    {
+        return typeof navigator.setAppBadge === "function";
+    }
+
+    async function registerAppServiceWorker()
+    {
+        if (!("serviceWorker" in navigator))
+        {
+            return;
+        }
+
+        try
+        {
+            const serviceWorkerUrl = new URL(
+                `service-worker.js?v=${APP_BADGE_SERVICE_WORKER_VERSION}`,
+                document.baseURI
+            );
+            const scopeUrl = new URL("./", document.baseURI);
+
+            await navigator.serviceWorker.register(serviceWorkerUrl.href, {
+                scope: scopeUrl.pathname
+            });
+        }
+        catch (error)
+        {
+            console.warn("Ray app service worker could not register:", error);
+        }
+    }
+
+    async function syncHomeScreenBadge(count)
+    {
+        if (!supportsHomeScreenBadge())
+        {
+            return;
+        }
+
+        try
+        {
+            const safeCount = Math.max(0, Math.floor(Number(count) || 0));
+
+            if (safeCount > 0)
+            {
+                await navigator.setAppBadge(safeCount);
+            }
+            else if (typeof navigator.clearAppBadge === "function")
+            {
+                await navigator.clearAppBadge();
+            }
+            else
+            {
+                await navigator.setAppBadge(0);
+            }
+        }
+        catch (error)
+        {
+            console.warn("Could not update the home-screen app badge:", error);
+        }
+    }
+
+    function setupBadgePermissionButton()
+    {
+        if (!toolbar || !isStandaloneWebApp() || !supportsHomeScreenBadge() || !("Notification" in window))
+        {
+            return;
+        }
+
+        const permissionButton = document.createElement("button");
+        permissionButton.className = "notification_refresh_button notification_badge_permission_button";
+        permissionButton.type = "button";
+        permissionButton.textContent = "Enable badge";
+        permissionButton.setAttribute("aria-label", "Enable the notification count on the Ray app icon");
+        refreshButton.before(permissionButton);
+
+        function refreshPermissionButton()
+        {
+            if (Notification.permission === "granted")
+            {
+                permissionButton.hidden = true;
+                void syncHomeScreenBadge(lastRenderedCount);
+                return;
+            }
+
+            permissionButton.hidden = false;
+
+            if (Notification.permission === "denied")
+            {
+                permissionButton.textContent = "Badge blocked";
+                permissionButton.disabled = true;
+                permissionButton.title = "Turn on notifications and badges for Ray in iPhone Settings.";
+                return;
+            }
+
+            permissionButton.textContent = "Enable badge";
+            permissionButton.disabled = false;
+            permissionButton.title = "Allow iOS to show the red notification count on this app icon.";
+        }
+
+        permissionButton.addEventListener("click", async function ()
+        {
+            permissionButton.disabled = true;
+            permissionButton.textContent = "Asking...";
+
+            try
+            {
+                await Notification.requestPermission();
+            }
+            catch (error)
+            {
+                console.warn("Notification permission request failed:", error);
+            }
+
+            refreshPermissionButton();
+        });
+
+        window.addEventListener("pageshow", refreshPermissionButton);
+        refreshPermissionButton();
+    }
 
     function getLocalDateKey(date = new Date())
     {
@@ -206,6 +332,7 @@
         lastRenderedCount = count;
         badge.hidden = count === 0;
         badge.textContent = count > 99 ? "99+" : String(count);
+        void syncHomeScreenBadge(count);
 
         if (count === 0)
         {
@@ -677,5 +804,7 @@
     }, REFRESH_INTERVAL_MS);
 
     window.refreshCalendarNotifications = loadCalendarNotifications;
+    void registerAppServiceWorker();
+    setupBadgePermissionButton();
     loadCalendarNotifications();
 })();
