@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <!-- Make all relative links resolve from your repo root 
+         ya gotta do this one cuz... git stuff idk... -->
+        <base href="https://idkeeee.github.io/Personal-Raysite-/">
+
+        <title> 🔥 </title>  
+        <meta name="theme-color" content="#111111">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="Ray">
+        <link rel="manifest" href="manifest.webmanifest?v=1">
+        <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icons/ray-fire-180.png?v=1">
+        <link rel="stylesheet" href="css/navbar.css?v=4">
+        <link rel="stylesheet" href="css/sidebar.css?v=6">
+        <link rel="stylesheet" href="css/general_styles.css?v=3">
+        <link rel="stylesheet" href="css/cards.css?v=3">
+    </head>
+
+    <body>
+        <!-- Navbar ⬆️ -->
+         <nav class="navbar">
+            <button class="hamburger" id="notificationMenuButton" type="button" onclick="toggleMenu()" aria-label="Open notification center">
+                <span class="hamburger_icon" aria-hidden="true">&#9776;</span>
+                <span class="notification_badge" id="notificationBadge" hidden>0</span>
+            </button>
+            <div class="ray_title"> <!-- the title is in navbar.css --></div>                 <!-- title -->
+        </nav>
+
+        <!-- Sidebar  ⬅️ -->
+         <aside class="side_menu" id="sideMenu" aria-hidden="true" aria-label="Notification center">
+            <div class="side_menu_header">
+                <div>
+                    <p class="notification_eyebrow">TODAY</p>
+                    <h2>Notification Center</h2>
+                    <p id="notificationDateLabel" class="notification_date_label">Checking the calendar...</p>
+                </div>
+                <button class="side_menu-close-button" aria-label="Close notification center" onclick="toggleMenu()">×</button>
+            </div>
+
+            <div class="notification_toolbar">
+                <span id="notificationSummary">Loading today’s tasks...</span>
+                <button id="notificationRefreshButton" class="notification_refresh_button" type="button">Refresh</button>
+            </div>
+
+            <div id="notificationStatus" class="notification_status" role="status" aria-live="polite">
+                Connecting to Calender...
+            </div>
+
+            <div id="notificationList" class="notification_list"></div>
+
+            <a id="notificationCalendarLink" class="notification_calendar_link" href="html/cards/calender.html">
+                Open Calender
+                <span aria-hidden="true">→</span>
+            </a>
+        </aside>
+        <div class="backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>   <!-- darkens page when sidemenu opens , in generals.js -->
+
+
+        <!-- Cards 🎴🃏🎴🃏 (was about to call em boxes but cards sounds cooler) -->
+        <section class="card-grid"> 
+
+            <!-- wake up 💥 -->
+             <article class="cards">
+                <a href="html/cards/wakeup.html">
+                    <div class="card_contents">
+                        <img src="assets/pics for cards/wakeup.jpg">
+                        <h1>Wake Up</h1>
+                    </div>
+                </a>
+            </article>
+
+
+
+            <!-- Mornings ☀️ -->
+             <article class="cards">
+                <a href="html/cards/mornings.html">
+                    <div class="card_contents">
+                        <img src="assets/pics for cards/Baby_Sun.webp">
+                        <h1>Mornings</h1>
+                    </div>
+                </a>
+            </article>
+
+
+
+            <!-- Nights 🌃 -->
+             <article class="cards">
+                <a href="html/cards/nights.html">
+                    <div class="card_contents">
+                        <img src="assets/pics for cards/nights.png">
+                        <h1>Nights</h1>
+                    </div>
+                </a>
+            </article>
+
+
+
+            <!-- to-do list 📃 -->
+             <article class="cards">
+                <a href="html/cards/to_do_list.html">
+                     <div class="card_contents">
+                        <img src="assets/pics for cards/phineas.jpg">
+                        <h1>To-do list</h1>
+                    </div>
+                </a>   
+            </article>
+
+
+
+            <!-- to-do spin-the-wheel 🎡 -->
+             <article class="cards">
+                <a href="html/cards/task_spin_the_wheel.html">
+                    <div class="card_contents">
+                        <img src="assets/pics for cards/spin_the_wheel.png">
+                        <h1>Task spin-the-wheel</h1>
+                    </div>
+                </a>
+            </article>
+
+
+
+            <!-- money counter 💰 -->
+             <article class="cards">
+                <div class="card_contents">
+                    <img src="assets/pics for cards/stonks.webp">
+                    <h1>Money Tracker</h1>
+                </div>
+            </article>
+
+
+
+            <!-- water counter  💧 -->
+             <article class="cards">
+                <div class="card_contents">
+                    <img src="assets/pics for cards/i_need_water.jpg">
+                    <h1>Water Counter</h1>
+                </div>
+            </article>
+
+
+            <!-- calender  🗓️  -->
+             <article class="cards">
+                <a href="html/cards/calender.html">
+                    <div class="card_contents">
+                        <img src="assets/pics for cards/time bunny.png">
+                        <h1>Calender</h1>
+                    </div>
+                </a>
+            </article>
+
+
+            <!-- Chinese trainer   我爱中国 -->
+             <article class="cards">
+                <a href="html/cards/chinese.html">
+                    <div class="card_contents">
+                        <img src="assets/pics for cards/social credits.png">
+                        <h1>Chinese Trainer</h1>
+                    </div>
+                </a>
+            </article>
+
+
+
+            <!-- My bag 🎒 -->
+             <article class="cards">
+                <a href="html/cards/my_bag.html">
+                    <div class="card_contents">
+                        <img src="assets/pics for cards/bag.png">
+                        <h1>My Bag</h1>
+                    </div>
+                </a>
+            </article>
+            
+
+
+            <!-- Shit to tell yourself 🗣️ -->
+             <article class="cards">
+                <a href="html/cards/words.html"> 
+                    <div class="card_contents">
+                        <img src="assets/pics for cards/SunTzu.png">
+                        <h1>Shit to tell yourself</h1>
+                    </div>
+                </a>
+            </article>
+             
+
+
+            <!-- GYM 💪🏋️ -->
+             <article class="cards">
+                <a href="html/cards/gym.html">
+                    <div class="card_contents">
+                        <img src="assets/pics for cards/zyzz.webp">
+                        <h1>GYM</h1>
+                    </div>
+                </a>
+            </article>
+
+
+
+
+
+            <!-- TECH PROJECTS 🧠🧠🧠 -->
+             <article class="cards">
+                <a href="personal_projects/tech_index.html">
+                    <div class="card_contents">
+                        <img src="assets/pics for cards/ironman.jpg">
+                        <h1>TECH PROJECTS</h1>
+                    </div>
+                </a>
+            </article>
+
+
+
+            <!-- to be filled -->
+             <article class="cards">
+                <div class="card_contents">
+                    <img src="">
+                    <h1>box66</h1>
+                </div>
+            </article>
+
+        </section>
+        <!-- end of cards -->
+
+
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        <script src="js/generals.js"></script>
+        <script src="js/navbar.js?v=6"></script>
+    </body>
+
+</html>
