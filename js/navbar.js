@@ -2,6 +2,12 @@
 {
     "use strict";
 
+    const navbarScriptUrl = new URL(
+        document.currentScript?.src ?? "js/navbar.js",
+        document.baseURI
+    );
+    const appRootUrl = new URL("../", navbarScriptUrl);
+
     const badge = document.getElementById("notificationBadge");
     const menuButton = document.getElementById("notificationMenuButton");
     const list = document.getElementById("notificationList");
@@ -24,7 +30,10 @@
     const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
     const SWIPE_CLEAR_THRESHOLD = 76;
     const SWIPE_MAX_DISTANCE = 126;
-    const APP_BADGE_SERVICE_WORKER_VERSION = "1";
+    const APP_BADGE_SERVICE_WORKER_VERSION = "2";
+    const VAPID_PUBLIC_KEY = "BOZxsHa3g2oBVzf3lO_zuVWreO-VhHAiAFSrBOMHuhi3xmcH5MvGEAH6RccWiBOj7wem0EPSOejS3mMJQgQPcX4";
+    const SAVE_PUSH_SUBSCRIPTION_RPC = "save_calendar_push_subscription";
+    const DISABLE_PUSH_SUBSCRIPTION_RPC = "disable_calendar_push_subscription";
 
     let client = null;
     let isLoading = false;
@@ -33,6 +42,7 @@
     let currentDateKey = "";
     let currentHadPartialError = false;
     let dismissalStoreAvailable = true;
+    let serviceWorkerRegistrationPromise = null;
 
     function isStandaloneWebApp()
     {
@@ -48,25 +58,34 @@
     {
         if (!("serviceWorker" in navigator))
         {
-            return;
+            return null;
         }
 
-        try
+        if (!serviceWorkerRegistrationPromise)
         {
-            const serviceWorkerUrl = new URL(
-                `service-worker.js?v=${APP_BADGE_SERVICE_WORKER_VERSION}`,
-                document.baseURI
-            );
-            const scopeUrl = new URL("./", document.baseURI);
+            serviceWorkerRegistrationPromise = (async function ()
+            {
+                const serviceWorkerUrl = new URL(
+                    `service-worker.js?v=${APP_BADGE_SERVICE_WORKER_VERSION}`,
+                    appRootUrl
+                );
 
-            await navigator.serviceWorker.register(serviceWorkerUrl.href, {
-                scope: scopeUrl.pathname
+                const registration = await navigator.serviceWorker.register(
+                    serviceWorkerUrl.href,
+                    { scope: appRootUrl.pathname }
+                );
+
+                await navigator.serviceWorker.ready;
+                return registration;
+            })().catch(function (error)
+            {
+                serviceWorkerRegistrationPromise = null;
+                console.warn("Ray app service worker could not register:", error);
+                return null;
             });
         }
-        catch (error)
-        {
-            console.warn("Ray app service worker could not register:", error);
-        }
+
+        return serviceWorkerRegistrationPromise;
     }
 
     async function syncHomeScreenBadge(count)
@@ -99,63 +118,284 @@
         }
     }
 
-    function setupBadgePermissionButton()
+    function urlBase64ToUint8Array(value)
     {
-        if (!toolbar || !isStandaloneWebApp() || !supportsHomeScreenBadge() || !("Notification" in window))
+        const padding = "=".repeat((4 - value.length % 4) % 4);
+        const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+        const rawData = window.atob(base64);
+        return Uint8Array.from(rawData, function (character)
+        {
+            return character.charCodeAt(0);
+        });
+    }
+
+    function supportsHourlyPushReminders()
+    {
+        return (
+            isStandaloneWebApp()
+            && "serviceWorker" in navigator
+            && "PushManager" in window
+            && "Notification" in window
+        );
+    }
+
+    async function savePushSubscription(subscription)
+    {
+        const supabaseClient = getClient();
+
+        if (!supabaseClient)
+        {
+            throw new Error("Supabase is unavailable.");
+        }
+
+        const serialized = subscription.toJSON();
+        const endpoint = String(serialized.endpoint ?? "");
+        const p256dh = String(serialized.keys?.p256dh ?? "");
+        const auth = String(serialized.keys?.auth ?? "");
+
+        if (!endpoint || !p256dh || !auth)
+        {
+            throw new Error("The push subscription is missing required keys.");
+        }
+
+        const { error } = await supabaseClient.rpc(SAVE_PUSH_SUBSCRIPTION_RPC, {
+            p_calendar_code: CALENDAR_CODE,
+            p_endpoint: endpoint,
+            p_p256dh: p256dh,
+            p_auth: auth,
+            p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Shanghai",
+            p_user_agent: navigator.userAgent
+        });
+
+        if (error)
+        {
+            throw error;
+        }
+    }
+
+    async function disablePushSubscription(subscription)
+    {
+        const supabaseClient = getClient();
+
+        if (!supabaseClient)
+        {
+            throw new Error("Supabase is unavailable.");
+        }
+
+        const { error } = await supabaseClient.rpc(DISABLE_PUSH_SUBSCRIPTION_RPC, {
+            p_calendar_code: CALENDAR_CODE,
+            p_endpoint: subscription.endpoint
+        });
+
+        if (error)
+        {
+            throw error;
+        }
+
+        await subscription.unsubscribe();
+    }
+
+    function setupHourlyReminderButton()
+    {
+        if (!toolbar || !isStandaloneWebApp())
         {
             return;
         }
 
-        const permissionButton = document.createElement("button");
-        permissionButton.className = "notification_refresh_button notification_badge_permission_button";
-        permissionButton.type = "button";
-        permissionButton.textContent = "Enable badge";
-        permissionButton.setAttribute("aria-label", "Enable the notification count on the Ray app icon");
-        refreshButton.before(permissionButton);
+        const reminderButton = document.createElement("button");
+        reminderButton.className = "notification_refresh_button notification_hourly_button";
+        reminderButton.type = "button";
+        reminderButton.textContent = "Checking hourly...";
+        reminderButton.disabled = true;
+        reminderButton.setAttribute("aria-label", "Configure hourly calendar push reminders");
+        refreshButton.before(reminderButton);
 
-        function refreshPermissionButton()
+        let currentSubscription = null;
+        let buttonBusy = false;
+
+        function setButtonState(state)
         {
-            if (Notification.permission === "granted")
+            reminderButton.classList.toggle("is-enabled", state === "enabled");
+            reminderButton.classList.toggle("is-error", state === "error");
+
+            if (state === "enabled")
             {
-                permissionButton.hidden = true;
-                void syncHomeScreenBadge(lastRenderedCount);
+                reminderButton.textContent = "Hourly: ON";
+                reminderButton.disabled = false;
+                reminderButton.title = "Tap to turn off hourly calendar push reminders.";
+                reminderButton.setAttribute("aria-label", "Hourly calendar reminders are on. Tap to turn them off.");
                 return;
             }
 
-            permissionButton.hidden = false;
+            if (state === "blocked")
+            {
+                reminderButton.textContent = "Push blocked";
+                reminderButton.disabled = true;
+                reminderButton.title = "Turn on notifications for Ray in iPhone Settings.";
+                return;
+            }
+
+            if (state === "unsupported")
+            {
+                reminderButton.textContent = "Push unavailable";
+                reminderButton.disabled = true;
+                reminderButton.title = "Hourly reminders require the installed Home Screen web app.";
+                return;
+            }
+
+            if (state === "error")
+            {
+                reminderButton.textContent = "Setup failed";
+                reminderButton.disabled = false;
+                reminderButton.title = "The push setup could not reach Supabase. Run the hourly-push SQL and try again.";
+                return;
+            }
+
+            reminderButton.textContent = "Enable hourly";
+            reminderButton.disabled = false;
+            reminderButton.title = "Receive a visible reminder every hour while calendar tasks remain.";
+            reminderButton.setAttribute("aria-label", "Enable hourly calendar push reminders");
+        }
+
+        async function refreshReminderState()
+        {
+            if (buttonBusy)
+            {
+                return;
+            }
+
+            if (!supportsHourlyPushReminders())
+            {
+                setButtonState("unsupported");
+                return;
+            }
 
             if (Notification.permission === "denied")
             {
-                permissionButton.textContent = "Badge blocked";
-                permissionButton.disabled = true;
-                permissionButton.title = "Turn on notifications and badges for Ray in iPhone Settings.";
+                setButtonState("blocked");
                 return;
             }
 
-            permissionButton.textContent = "Enable badge";
-            permissionButton.disabled = false;
-            permissionButton.title = "Allow iOS to show the red notification count on this app icon.";
-        }
+            const registration = await registerAppServiceWorker();
 
-        permissionButton.addEventListener("click", async function ()
-        {
-            permissionButton.disabled = true;
-            permissionButton.textContent = "Asking...";
+            if (!registration)
+            {
+                setButtonState("unsupported");
+                return;
+            }
 
             try
             {
-                await Notification.requestPermission();
+                currentSubscription = await registration.pushManager.getSubscription();
+
+                if (currentSubscription)
+                {
+                    setButtonState("enabled");
+
+                    /*
+                        Re-save an existing subscription when the app opens. Push services
+                        can rotate subscription details, and this keeps Supabase fresh.
+                    */
+                    savePushSubscription(currentSubscription).catch(function (error)
+                    {
+                        console.warn("Could not refresh the hourly push subscription:", error);
+                    });
+                }
+                else
+                {
+                    setButtonState("disabled");
+                }
             }
             catch (error)
             {
-                console.warn("Notification permission request failed:", error);
+                console.warn("Could not inspect the hourly push subscription:", error);
+                setButtonState("error");
+            }
+        }
+
+        reminderButton.addEventListener("click", async function ()
+        {
+            if (buttonBusy)
+            {
+                return;
             }
 
-            refreshPermissionButton();
+            buttonBusy = true;
+            reminderButton.disabled = true;
+            reminderButton.classList.remove("is-error");
+            reminderButton.textContent = currentSubscription ? "Turning off..." : "Connecting...";
+
+            try
+            {
+                const registration = await registerAppServiceWorker();
+
+                if (!registration)
+                {
+                    throw new Error("Service worker registration failed.");
+                }
+
+                currentSubscription = await registration.pushManager.getSubscription();
+
+                if (currentSubscription)
+                {
+                    await disablePushSubscription(currentSubscription);
+                    currentSubscription = null;
+                    setButtonState("disabled");
+                    return;
+                }
+
+                if (Notification.permission !== "granted")
+                {
+                    const permission = await Notification.requestPermission();
+
+                    if (permission !== "granted")
+                    {
+                        setButtonState(permission === "denied" ? "blocked" : "disabled");
+                        return;
+                    }
+                }
+
+                const newSubscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                });
+
+                try
+                {
+                    await savePushSubscription(newSubscription);
+                }
+                catch (error)
+                {
+                    await newSubscription.unsubscribe().catch(function () {});
+                    throw error;
+                }
+
+                currentSubscription = newSubscription;
+                setButtonState("enabled");
+                void syncHomeScreenBadge(lastRenderedCount);
+            }
+            catch (error)
+            {
+                console.error("Hourly push reminder setup failed:", error);
+                currentSubscription = null;
+                setButtonState("error");
+            }
+            finally
+            {
+                buttonBusy = false;
+            }
         });
 
-        window.addEventListener("pageshow", refreshPermissionButton);
-        refreshPermissionButton();
+        window.addEventListener("pageshow", refreshReminderState);
+        document.addEventListener("visibilitychange", function ()
+        {
+            if (!document.hidden)
+            {
+                refreshReminderState();
+            }
+        });
+
+        refreshReminderState();
     }
 
     function getLocalDateKey(date = new Date())
@@ -805,6 +1045,6 @@
 
     window.refreshCalendarNotifications = loadCalendarNotifications;
     void registerAppServiceWorker();
-    setupBadgePermissionButton();
+    setupHourlyReminderButton();
     loadCalendarNotifications();
 })();

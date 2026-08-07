@@ -131,7 +131,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 9px;
     color: rgba(226, 231, 192, 0.82);
     font-size: 0.88rem;
 }
@@ -145,6 +146,26 @@
     background: rgba(98, 225, 255, 0.06);
     color: rgb(226, 231, 192);
     cursor: pointer;
+}
+
+
+.notification_toolbar > span
+{
+    flex: 1 1 150px;
+}
+
+.notification_hourly_button.is-enabled
+{
+    border-color: rgba(109, 255, 151, 0.42);
+    background: rgba(109, 255, 151, 0.10);
+    color: rgb(189, 255, 207);
+}
+
+.notification_hourly_button.is-error
+{
+    border-color: rgba(255, 90, 80, 0.38);
+    background: rgba(255, 90, 80, 0.08);
+    color: #ffb0aa;
 }
 
 .notification_refresh_button:hover,

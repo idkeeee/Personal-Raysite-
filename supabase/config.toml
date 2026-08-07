@@ -1,0 +1,2 @@
+[functions.hourly-calendar-push]
+verify_jwt = false
