@@ -398,6 +398,94 @@
         refreshReminderState();
     }
 
+    function setupLocalNotificationTestButton()
+    {
+        if (!toolbar || !isStandaloneWebApp() || !("Notification" in window))
+        {
+            return;
+        }
+
+        const testButton = document.createElement("button");
+        testButton.className = "notification_refresh_button notification_local_test_button";
+        testButton.type = "button";
+        testButton.textContent = "Test local";
+        testButton.title = "Display a notification directly from this iPhone, without Supabase or Apple Web Push.";
+        testButton.setAttribute("aria-label", "Test local Ray notification display");
+        refreshButton.before(testButton);
+
+        let busy = false;
+
+        testButton.addEventListener("click", async function ()
+        {
+            if (busy)
+            {
+                return;
+            }
+
+            busy = true;
+            testButton.disabled = true;
+            testButton.textContent = "Testing...";
+
+            try
+            {
+                if (Notification.permission !== "granted")
+                {
+                    const permission = await Notification.requestPermission();
+
+                    if (permission !== "granted")
+                    {
+                        throw new Error(`Notification permission is ${permission}.`);
+                    }
+                }
+
+                const registration = await registerAppServiceWorker();
+
+                if (!registration)
+                {
+                    throw new Error("Service worker registration is unavailable.");
+                }
+
+                const iconUrl = new URL("assets/app-icons/ray-fire-192.png", appRootUrl).href;
+
+                await registration.showNotification("Ray local test", {
+                    body: "If you can see this, iPhone + service worker notification display works.",
+                    icon: iconUrl,
+                    tag: `ray-local-test-${Date.now()}`,
+                    renotify: true,
+                    data: {
+                        url: appRootUrl.href,
+                        badgeCount: lastRenderedCount
+                    }
+                });
+
+                testButton.textContent = "Local sent";
+                testButton.title = "A local test notification was requested from this device.";
+
+                window.setTimeout(function ()
+                {
+                    testButton.textContent = "Test local";
+                    testButton.title = "Display a notification directly from this iPhone, without Supabase or Apple Web Push.";
+                }, 2500);
+            }
+            catch (error)
+            {
+                console.error("Local Ray notification test failed:", error);
+                testButton.textContent = "Local failed";
+                testButton.title = String(error?.message || error || "Local notification test failed.");
+
+                window.setTimeout(function ()
+                {
+                    testButton.textContent = "Test local";
+                }, 3500);
+            }
+            finally
+            {
+                busy = false;
+                testButton.disabled = false;
+            }
+        });
+    }
+
     function getLocalDateKey(date = new Date())
     {
         const year = date.getFullYear();
@@ -1046,5 +1134,6 @@
     window.refreshCalendarNotifications = loadCalendarNotifications;
     void registerAppServiceWorker();
     setupHourlyReminderButton();
+    setupLocalNotificationTestButton();
     loadCalendarNotifications();
 })();
