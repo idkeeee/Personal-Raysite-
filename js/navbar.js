@@ -30,7 +30,7 @@
     const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
     const SWIPE_CLEAR_THRESHOLD = 76;
     const SWIPE_MAX_DISTANCE = 126;
-    const APP_BADGE_SERVICE_WORKER_VERSION = "2";
+    const APP_BADGE_SERVICE_WORKER_VERSION = "3";
     const VAPID_PUBLIC_KEY = "BOZxsHa3g2oBVzf3lO_zuVWreO-VhHAiAFSrBOMHuhi3xmcH5MvGEAH6RccWiBOj7wem0EPSOejS3mMJQgQPcX4";
     const SAVE_PUSH_SUBSCRIPTION_RPC = "save_calendar_push_subscription";
     const DISABLE_PUSH_SUBSCRIPTION_RPC = "disable_calendar_push_subscription";
@@ -482,6 +482,129 @@
             {
                 busy = false;
                 testButton.disabled = false;
+            }
+        });
+    }
+
+
+    function setupPushEventDiagnosticButton()
+    {
+        if (!toolbar || !isStandaloneWebApp() || !("serviceWorker" in navigator))
+        {
+            return;
+        }
+
+        const diagnosticButton = document.createElement("button");
+        diagnosticButton.className = "notification_refresh_button notification_push_diag_button";
+        diagnosticButton.type = "button";
+        diagnosticButton.textContent = "Push log";
+        diagnosticButton.title = "Show whether a remote Web Push event actually reached this iPhone.";
+        diagnosticButton.setAttribute("aria-label", "Show remote push diagnostic log");
+        refreshButton.before(diagnosticButton);
+
+        async function askServiceWorker(type)
+        {
+            const registration = await registerAppServiceWorker();
+
+            if (!registration)
+            {
+                throw new Error("Service worker registration is unavailable.");
+            }
+
+            const worker =
+                registration.active
+                || navigator.serviceWorker.controller
+                || registration.waiting
+                || registration.installing;
+
+            if (!worker)
+            {
+                throw new Error("No active Ray service worker was found.");
+            }
+
+            return new Promise(function (resolve, reject)
+            {
+                const channel = new MessageChannel();
+                const timer = window.setTimeout(function ()
+                {
+                    reject(new Error("The service worker did not answer in time."));
+                }, 5000);
+
+                channel.port1.onmessage = function (event)
+                {
+                    window.clearTimeout(timer);
+                    resolve(event.data || {});
+                };
+
+                worker.postMessage({ type }, [channel.port2]);
+            });
+        }
+
+        diagnosticButton.addEventListener("click", async function ()
+        {
+            diagnosticButton.disabled = true;
+            diagnosticButton.textContent = "Reading...";
+
+            try
+            {
+                const result = await askServiceWorker("RAY_GET_PUSH_DEBUG");
+                const entries = Array.isArray(result.entries) ? result.entries : [];
+
+                if (entries.length === 0)
+                {
+                    window.alert(
+                        "Ray Push Log\n\n" +
+                        "No remote push event has been recorded by this iPhone yet.\n\n" +
+                        "If Supabase says sent: 1 / statusCode: 201 after a remote test, " +
+                        "but this log stays empty, the push is not reaching Ray's service worker."
+                    );
+                }
+                else
+                {
+                    const lines = entries.slice(-12).map(function (entry)
+                    {
+                        const stamp = String(entry.stamp || "");
+                        const kind = String(entry.kind || "unknown");
+                        let extra = "";
+
+                        if (entry.details && typeof entry.details === "object")
+                        {
+                            if ("hasData" in entry.details)
+                            {
+                                extra += ` | data=${entry.details.hasData ? "yes" : "no"}`;
+                            }
+
+                            if (entry.details.payloadMode)
+                            {
+                                extra += ` | ${entry.details.payloadMode}`;
+                            }
+
+                            if (entry.details.message)
+                            {
+                                extra += ` | ${entry.details.message}`;
+                            }
+                        }
+
+                        return `${stamp}\n${kind}${extra}`;
+                    });
+
+                    window.alert(
+                        "Ray Push Log\n\n" +
+                        lines.join("\n\n")
+                    );
+                }
+            }
+            catch (error)
+            {
+                window.alert(
+                    "Ray Push Log\n\nCould not read the service-worker log:\n" +
+                    String(error?.message || error)
+                );
+            }
+            finally
+            {
+                diagnosticButton.disabled = false;
+                diagnosticButton.textContent = "Push log";
             }
         });
     }
@@ -1135,5 +1258,6 @@
     void registerAppServiceWorker();
     setupHourlyReminderButton();
     setupLocalNotificationTestButton();
+    setupPushEventDiagnosticButton();
     loadCalendarNotifications();
 })();

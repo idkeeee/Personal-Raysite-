@@ -1,0 +1,50 @@
+Ray remote push event diagnostic
+
+Purpose
+-------
+This patch records remote `push` events INSIDE the iPhone service worker.
+It answers one question:
+
+    Did Apple's remote Web Push ever reach Ray's service worker?
+
+No SQL changes.
+No Supabase Edge Function changes.
+No new secrets.
+
+Install
+-------
+Push the files in this package to GitHub Pages.
+The navbar cache version and service-worker URL version were bumped so iOS
+fetches the diagnostic code.
+
+Test
+----
+1. After GitHub Pages finishes deploying, open Ray from the Home Screen.
+2. Open the hamburger Notification Center.
+3. Tap "Push log" once. Initially it should say no remote push has been recorded.
+4. Put Ray in the background and lock the iPhone. Keep the phone powered ON.
+5. In Supabase, run your existing remote test. `{"emptyTest": true}` is fine.
+6. Wait ~15 seconds.
+7. Open Ray -> hamburger -> Push log.
+
+Interpretation
+--------------
+A) Push log is STILL EMPTY:
+   Apple accepted the sender request but the remote push did not reach Ray's
+   service worker on this iPhone.
+
+B) Push log contains:
+   "push-event-received"
+   followed by "notification-show-success":
+   The remote push reached WebKit and Ray requested a visible notification.
+   The remaining issue is iOS notification presentation.
+
+C) Push log contains:
+   "push-event-received"
+   followed by "notification-show-failure":
+   The event arrived, but showNotification threw an error. The log will show it.
+
+Note
+----
+If you literally power the iPhone all the way OFF, it cannot receive the push
+immediately. For this diagnostic, keep the phone ON and only lock the screen.
