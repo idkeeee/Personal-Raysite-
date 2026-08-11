@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <base href="https://idkeeee.github.io/Personal-Raysite-/">
+
+        <title>💸 Ray Money Tracker</title>
+        <link rel="stylesheet" href="css/navbar.css?v=4">
+        <link rel="stylesheet" href="css/sidebar.css?v=6">
+        <link rel="stylesheet" href="css/general_styles.css?v=3">
+        <link rel="stylesheet" href="css/cards.css?v=3">
+        <link rel="stylesheet" href="css/cards/money_tracker.css?v=1">
+    </head>
+
+    <body>
+        <nav class="navbar">
+            <button class="hamburger" id="notificationMenuButton" type="button" onclick="toggleMenu()" aria-label="Open notification center">
+                <span class="hamburger_icon" aria-hidden="true">&#9776;</span>
+                <span class="notification_badge" id="notificationBadge" hidden>0</span>
+            </button>
+            <div class="ray_title"></div>
+        </nav>
+
+        <aside class="side_menu" id="sideMenu" aria-hidden="true" aria-label="Notification center">
+            <div class="side_menu_header">
+                <div>
+                    <p class="notification_eyebrow">TODAY</p>
+                    <h2>Notification Center</h2>
+                    <p id="notificationDateLabel" class="notification_date_label">Checking today's stuff...</p>
+                </div>
+                <button class="side_menu-close-button" aria-label="Close notification center" onclick="toggleMenu()">×</button>
+            </div>
+
+            <div class="notification_toolbar">
+                <span id="notificationSummary">Loading today's notifications...</span>
+                <button id="notificationRefreshButton" class="notification_refresh_button" type="button">Refresh</button>
+            </div>
+
+            <div id="notificationStatus" class="notification_status" role="status" aria-live="polite">
+                Connecting to Ray...
+            </div>
+
+            <div id="notificationList" class="notification_list"></div>
+
+            <a id="notificationCalendarLink" class="notification_calendar_link" href="html/cards/calender.html">
+                Open Calender
+                <span aria-hidden="true">→</span>
+            </a>
+        </aside>
+        <div class="backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>
+
+        <main class="money_page">
+            <section class="money_shell">
+                <header class="money_header">
+                    <div>
+                        <p class="money_eyebrow">DAILY ALLOWANCE ENGINE</p>
+                        <h1>Money Tracker</h1>
+                        <p class="money_intro">Spend heavy today, spend light tomorrow. The tracker cares about the runway, not one scary grocery receipt.</p>
+                    </div>
+                    <div id="moneyTodayDate" class="money_date_chip">Today</div>
+                </header>
+
+                <section class="money_budget_panel">
+                    <div>
+                        <p class="money_label">Daily budget</p>
+                        <div class="money_budget_value" id="moneyBudgetDisplay">¥0.00</div>
+                        <p class="money_muted">Changing this affects today and future days. Old days keep their original budget snapshot.</p>
+                    </div>
+
+                    <form id="moneyBudgetForm" class="money_budget_form">
+                        <label for="moneyBudgetInput">Change budget</label>
+                        <div class="money_inline_input">
+                            <span>¥</span>
+                            <input id="moneyBudgetInput" type="number" min="0" step="0.01" inputmode="decimal" placeholder="40">
+                            <button type="submit">Update</button>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="money_today_panel">
+                    <div class="money_today_heading">
+                        <div>
+                            <p class="money_label">Today</p>
+                            <h2 id="moneyTodaySpent">¥0.00 spent</h2>
+                            <p id="moneyTodayBalance" class="money_balance money_positive">¥0.00 remaining</p>
+                        </div>
+                        <div id="moneySubmittedBadge" class="money_submit_badge is-missing">NOT FILLED</div>
+                    </div>
+
+                    <form id="moneyAddForm" class="money_entry_form">
+                        <label for="moneyAmountInput">Add spending</label>
+                        <div class="money_inline_input money_spend_input">
+                            <span>¥</span>
+                            <input id="moneyAmountInput" type="number" min="0" step="0.01" inputmode="decimal" placeholder="10">
+                            <button type="submit">Add</button>
+                        </div>
+                        <p class="money_hint">Entering <strong>0</strong> counts as filling today's record.</p>
+                    </form>
+
+                    <details class="money_correction">
+                        <summary>Typed something wrong? Set today's exact total</summary>
+                        <form id="moneyCorrectForm" class="money_correction_form">
+                            <div class="money_inline_input">
+                                <span>¥</span>
+                                <input id="moneyCorrectInput" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Exact total">
+                                <button type="submit">Set total</button>
+                            </div>
+                        </form>
+                    </details>
+
+                    <div id="moneyStatus" class="money_status" role="status" aria-live="polite"></div>
+                </section>
+
+                <section class="money_stats_grid" aria-label="Spending balance summaries">
+                    <article class="money_stat_card">
+                        <p>Yesterday</p>
+                        <strong id="moneyYesterdayDelta">—</strong>
+                        <span id="moneyYesterdayMeta">Loading...</span>
+                    </article>
+
+                    <article class="money_stat_card">
+                        <p>This week</p>
+                        <strong id="moneyWeekDelta">—</strong>
+                        <span id="moneyWeekMeta">Loading...</span>
+                    </article>
+
+                    <article class="money_stat_card">
+                        <p>This month</p>
+                        <strong id="moneyMonthDelta">—</strong>
+                        <span id="moneyMonthMeta">Loading...</span>
+                    </article>
+                </section>
+
+                <section class="money_history_panel">
+                    <div class="money_history_header">
+                        <div>
+                            <p class="money_label">Permanent history</p>
+                            <h2>Monthly History</h2>
+                        </div>
+                        <span>Only completed months are kept here</span>
+                    </div>
+
+                    <div id="moneyHistoryList" class="money_history_list">
+                        <div class="money_history_empty">Loading monthly history...</div>
+                    </div>
+                </section>
+            </section>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        <script src="js/cards/money_tracker.js?v=1"></script>
+        <script src="js/generals.js"></script>
+        <script src="js/navbar.js?v=9"></script>
+    </body>
+</html>

@@ -27,6 +27,8 @@
     const SUPABASE_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
     const CALENDAR_CODE = "bagas-main-calendar-v1";
     const DISMISSALS_TABLE = "calendar_notification_dismissals_shared";
+    const MONEY_TRACKER_CODE = "bagas-main-money-v1";
+    const MONEY_DAILY_TABLE = "money_daily_records_shared";
     const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
     const SWIPE_CLEAR_THRESHOLD = 76;
     const SWIPE_MAX_DISTANCE = 126;
@@ -692,7 +694,7 @@
         return false;
     }
 
-    function buildNotifications(manualRows, occurrenceRows, activeRules, dismissedKeys, date)
+    function buildNotifications(manualRows, occurrenceRows, activeRules, dismissedKeys, date, moneyRow, moneyAvailable)
     {
         const notifications = [];
         const dateKey = getLocalDateKey(date);
@@ -770,6 +772,23 @@
         }
 
         notifications.push(...recurringByKey.values());
+
+        const moneyReminderHourReached = date.getHours() >= 11;
+        const moneySubmitted = Boolean(moneyRow?.submitted);
+
+        if (moneyAvailable && moneyReminderHourReached && !moneySubmitted)
+        {
+            notifications.push({
+                id: "money-daily-spending",
+                dismissKey: "money:daily-spending",
+                type: "money",
+                sourceLabel: "From card: Money Tracker",
+                kindLabel: "Daily spending",
+                text: "Today’s spending record still hasn’t been filled.",
+                href: "html/cards/money_tracker.html",
+                footerText: "Tap to fill today’s spending"
+            });
+        }
 
         return notifications.filter(function (notification)
         {
@@ -1032,14 +1051,14 @@
 
         const item = document.createElement("a");
         item.className = "notification_item";
-        item.href = `html/cards/calender.html?date=${encodeURIComponent(dateKey)}`;
+        item.href = notification.href ?? `html/cards/calender.html?date=${encodeURIComponent(dateKey)}`;
 
         const topLine = document.createElement("div");
         topLine.className = "notification_item_topline";
 
         const source = document.createElement("span");
         source.className = "notification_source";
-        source.textContent = "From card: Calender";
+        source.textContent = notification.sourceLabel ?? "From card: Calender";
 
         const kind = document.createElement("span");
         kind.className = "notification_kind";
@@ -1051,7 +1070,7 @@
 
         const footer = document.createElement("div");
         footer.className = "notification_item_footer";
-        footer.textContent = "Tap to jump to today in Calender";
+        footer.textContent = notification.footerText ?? "Tap to jump to today in Calender";
 
         const clearButton = document.createElement("button");
         clearButton.className = "notification_clear_button";
@@ -1127,7 +1146,7 @@
         {
             status.hidden = false;
             status.className = "notification_status";
-            status.textContent = "Checking today’s Calender tasks...";
+            status.textContent = "Checking today’s notifications...";
         }
 
         const supabaseClient = getClient();
@@ -1136,7 +1155,7 @@
         {
             list.innerHTML = "";
             setBadge(0);
-            summary.textContent = "Calendar unavailable";
+            summary.textContent = "Notifications unavailable";
             status.hidden = false;
             status.className = "notification_status is-error";
             status.textContent = "Supabase did not load, so today’s notifications could not be checked.";
@@ -1148,7 +1167,7 @@
 
         try
         {
-            const [manualResult, occurrenceResult, rulesResult, dismissalResult] = await Promise.all([
+            const [manualResult, occurrenceResult, rulesResult, dismissalResult, moneyResult] = await Promise.all([
                 supabaseClient
                     .from("calendar_notes_shared")
                     .select("note_text")
@@ -1168,13 +1187,21 @@
                     .from(DISMISSALS_TABLE)
                     .select("notification_key, notification_date")
                     .eq("calendar_code", CALENDAR_CODE)
-                    .eq("notification_date", dateKey)
+                    .eq("notification_date", dateKey),
+                supabaseClient
+                    .from(MONEY_DAILY_TABLE)
+                    .select("submitted")
+                    .eq("tracker_code", MONEY_TRACKER_CODE)
+                    .eq("record_date", dateKey)
+                    .limit(1)
             ]);
 
             const manualRows = manualResult.error ? [] : (manualResult.data ?? []);
             const occurrenceRows = occurrenceResult.error ? [] : (occurrenceResult.data ?? []);
             const activeRules = rulesResult.error ? [] : (rulesResult.data ?? []);
             const dismissalRows = dismissalResult.error ? [] : (dismissalResult.data ?? []);
+            const moneyRow = moneyResult.error ? null : (moneyResult.data?.[0] ?? null);
+            const moneyAvailable = !moneyResult.error;
             dismissalStoreAvailable = !dismissalResult.error;
 
             const dismissedKeys = new Set();
@@ -1191,7 +1218,7 @@
             }
 
             const allFailed = Boolean(manualResult.error && occurrenceResult.error && rulesResult.error);
-            const hadPartialError = Boolean(manualResult.error || occurrenceResult.error || rulesResult.error);
+            const hadPartialError = Boolean(manualResult.error || occurrenceResult.error || rulesResult.error || moneyResult.error);
 
             if (allFailed)
             {
@@ -1203,7 +1230,7 @@
                 console.warn("Notification dismissals are unavailable until the SQL update is run:", dismissalResult.error);
             }
 
-            const notifications = buildNotifications(manualRows, occurrenceRows, activeRules, dismissedKeys, now);
+            const notifications = buildNotifications(manualRows, occurrenceRows, activeRules, dismissedKeys, now, moneyRow, moneyAvailable);
             renderNotifications(notifications, dateKey, hadPartialError);
         }
         catch (error)
@@ -1213,10 +1240,10 @@
             currentNotifications = [];
             currentDateKey = dateKey;
             setBadge(0);
-            summary.textContent = "Could not check Calender";
+            summary.textContent = "Could not check notifications";
             status.hidden = false;
             status.className = "notification_status is-error";
-            status.textContent = "The notification center could not reach the calendar. Check your connection and press Refresh.";
+            status.textContent = "The notification center could not reach Ray’s notification sources. Check your connection and press Refresh.";
         }
         finally
         {
