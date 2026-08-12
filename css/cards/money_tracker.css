@@ -28,6 +28,7 @@
 .money_budget_panel,
 .money_today_panel,
 .money_history_panel,
+.money_reminder_panel,
 .money_stat_card {
     border: 1px solid var(--money-border);
     background: var(--money-panel);
@@ -98,7 +99,8 @@
 
 .money_budget_panel,
 .money_today_panel,
-.money_history_panel {
+.money_history_panel,
+.money_reminder_panel {
     border-radius: 22px;
     padding: 22px;
 }
@@ -363,13 +365,15 @@
     .money_header,
     .money_budget_panel,
     .money_today_panel,
-    .money_history_panel {
+    .money_history_panel,
+    .money_reminder_panel {
         padding: 18px;
         border-radius: 18px;
     }
 
     .money_header,
-    .money_budget_panel {
+    .money_budget_panel,
+    .money_reminder_panel {
         grid-template-columns: 1fr;
     }
 
@@ -414,5 +418,15 @@
     .money_inline_input button {
         min-width: 78px;
         padding-inline: 12px;
+    }
+}
+
+@media (max-width: 560px) {
+    .money_reminder_form {
+        grid-template-columns: 1fr;
+    }
+
+    .money_reminder_form button {
+        grid-column: auto;
     }
 }

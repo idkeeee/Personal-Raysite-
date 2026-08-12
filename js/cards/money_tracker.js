@@ -18,6 +18,9 @@
         budgetDisplay: $("#moneyBudgetDisplay"),
         budgetForm: $("#moneyBudgetForm"),
         budgetInput: $("#moneyBudgetInput"),
+        reminderForm: $("#moneyReminderForm"),
+        reminderOneInput: $("#moneyReminderOneInput"),
+        reminderTwoInput: $("#moneyReminderTwoInput"),
         todaySpent: $("#moneyTodaySpent"),
         todayBalance: $("#moneyTodayBalance"),
         submittedBadge: $("#moneySubmittedBadge"),
@@ -175,6 +178,8 @@
         elements.todayDate.textContent = formatPrettyDate(todayKey);
         elements.budgetDisplay.textContent = formatMoney(settings.daily_budget);
         elements.budgetInput.placeholder = String(Number(settings.daily_budget) || 0);
+        elements.reminderOneInput.value = String(settings.reminder_time_1 || "23:00").slice(0, 5);
+        elements.reminderTwoInput.value = String(settings.reminder_time_2 || "23:30").slice(0, 5);
         elements.todaySpent.textContent = `${formatMoney(spent)} spent`;
 
         elements.todayBalance.className = "money_balance";
@@ -307,7 +312,7 @@
             const [settingsResult, dailyResult, historyResult] = await Promise.all([
                 supabaseClient
                     .from("money_settings_shared")
-                    .select("daily_budget, currency, timezone")
+                    .select("daily_budget, currency, timezone, reminder_time_1, reminder_time_2")
                     .eq("tracker_code", TRACKER_CODE)
                     .single(),
                 supabaseClient
@@ -399,6 +404,39 @@
             if (error) throw error;
             elements.budgetInput.value = "";
         }, `Daily budget is now ${formatMoney(value)} from today onward.`);
+    });
+
+
+    elements.reminderForm.addEventListener("submit", function (event)
+    {
+        event.preventDefault();
+
+        const firstTime = String(elements.reminderOneInput.value || "").trim();
+        const secondTime = String(elements.reminderTwoInput.value || "").trim();
+        const button = elements.reminderForm.querySelector("button");
+
+        if (!/^\d{2}:\d{2}$/.test(firstTime) || !/^\d{2}:\d{2}$/.test(secondTime))
+        {
+            setStatus("Pick both reminder times.", "error");
+            return;
+        }
+
+        if (secondTime <= firstTime)
+        {
+            setStatus("Second reminder has to be later than the first one.", "error");
+            return;
+        }
+
+        runForm(button, async function ()
+        {
+            const { error } = await supabaseClient.rpc("money_set_reminder_times", {
+                p_tracker_code: TRACKER_CODE,
+                p_reminder_time_1: `${firstTime}:00`,
+                p_reminder_time_2: `${secondTime}:00`
+            });
+
+            if (error) throw error;
+        }, `Reminder times saved: ${firstTime} and ${secondTime}.`);
     });
 
     elements.addForm.addEventListener("submit", function (event)

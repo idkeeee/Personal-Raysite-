@@ -29,6 +29,7 @@
     const DISMISSALS_TABLE = "calendar_notification_dismissals_shared";
     const MONEY_TRACKER_CODE = "bagas-main-money-v1";
     const MONEY_DAILY_TABLE = "money_daily_records_shared";
+    const MONEY_SETTINGS_TABLE = "money_settings_shared";
     const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
     const SWIPE_CLEAR_THRESHOLD = 76;
     const SWIPE_MAX_DISTANCE = 126;
@@ -694,7 +695,21 @@
         return false;
     }
 
-    function buildNotifications(manualRows, occurrenceRows, activeRules, dismissedKeys, date, moneyRow, moneyAvailable)
+
+    function timeHasBeenReached(date, timeValue)
+    {
+        const normalized = String(timeValue || "23:00").slice(0, 5);
+        const [hour, minute] = normalized.split(":").map(Number);
+
+        if (!Number.isInteger(hour) || !Number.isInteger(minute))
+        {
+            return false;
+        }
+
+        return (date.getHours() * 60 + date.getMinutes()) >= (hour * 60 + minute);
+    }
+
+    function buildNotifications(manualRows, occurrenceRows, activeRules, dismissedKeys, date, moneyRow, moneySettings, moneyAvailable)
     {
         const notifications = [];
         const dateKey = getLocalDateKey(date);
@@ -773,10 +788,10 @@
 
         notifications.push(...recurringByKey.values());
 
-        const moneyReminderHourReached = date.getHours() >= 11;
+        const moneyReminderTimeReached = timeHasBeenReached(date, moneySettings?.reminder_time_1 || "23:00");
         const moneySubmitted = Boolean(moneyRow?.submitted);
 
-        if (moneyAvailable && moneyReminderHourReached && !moneySubmitted)
+        if (moneyAvailable && moneyReminderTimeReached && !moneySubmitted)
         {
             notifications.push({
                 id: "money-daily-spending",
@@ -1167,7 +1182,7 @@
 
         try
         {
-            const [manualResult, occurrenceResult, rulesResult, dismissalResult, moneyResult] = await Promise.all([
+            const [manualResult, occurrenceResult, rulesResult, dismissalResult, moneyResult, moneySettingsResult] = await Promise.all([
                 supabaseClient
                     .from("calendar_notes_shared")
                     .select("note_text")
@@ -1193,6 +1208,11 @@
                     .select("submitted")
                     .eq("tracker_code", MONEY_TRACKER_CODE)
                     .eq("record_date", dateKey)
+                    .limit(1),
+                supabaseClient
+                    .from(MONEY_SETTINGS_TABLE)
+                    .select("reminder_time_1, reminder_time_2")
+                    .eq("tracker_code", MONEY_TRACKER_CODE)
                     .limit(1)
             ]);
 
@@ -1201,7 +1221,8 @@
             const activeRules = rulesResult.error ? [] : (rulesResult.data ?? []);
             const dismissalRows = dismissalResult.error ? [] : (dismissalResult.data ?? []);
             const moneyRow = moneyResult.error ? null : (moneyResult.data?.[0] ?? null);
-            const moneyAvailable = !moneyResult.error;
+            const moneySettings = moneySettingsResult.error ? null : (moneySettingsResult.data?.[0] ?? null);
+            const moneyAvailable = !moneyResult.error && !moneySettingsResult.error;
             dismissalStoreAvailable = !dismissalResult.error;
 
             const dismissedKeys = new Set();
@@ -1218,7 +1239,7 @@
             }
 
             const allFailed = Boolean(manualResult.error && occurrenceResult.error && rulesResult.error);
-            const hadPartialError = Boolean(manualResult.error || occurrenceResult.error || rulesResult.error || moneyResult.error);
+            const hadPartialError = Boolean(manualResult.error || occurrenceResult.error || rulesResult.error || moneyResult.error || moneySettingsResult.error);
 
             if (allFailed)
             {
@@ -1230,7 +1251,7 @@
                 console.warn("Notification dismissals are unavailable until the SQL update is run:", dismissalResult.error);
             }
 
-            const notifications = buildNotifications(manualRows, occurrenceRows, activeRules, dismissedKeys, now, moneyRow, moneyAvailable);
+            const notifications = buildNotifications(manualRows, occurrenceRows, activeRules, dismissedKeys, now, moneyRow, moneySettings, moneyAvailable);
             renderNotifications(notifications, dateKey, hadPartialError);
         }
         catch (error)

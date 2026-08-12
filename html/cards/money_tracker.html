@@ -11,7 +11,7 @@
         <link rel="stylesheet" href="css/sidebar.css?v=6">
         <link rel="stylesheet" href="css/general_styles.css?v=3">
         <link rel="stylesheet" href="css/cards.css?v=3">
-        <link rel="stylesheet" href="css/cards/money_tracker.css?v=1">
+        <link rel="stylesheet" href="css/cards/money_tracker.css?v=2">
     </head>
 
     <body>
@@ -76,6 +76,32 @@
                             <input id="moneyBudgetInput" type="number" min="0" step="0.01" inputmode="decimal" placeholder="40">
                             <button type="submit">Update</button>
                         </div>
+                    </form>
+                </section>
+
+
+                <section class="money_reminder_panel">
+                    <div class="money_reminder_copy">
+                        <p class="money_label">Spending reminders</p>
+                        <h2>Daily nag times</h2>
+                        <p class="money_muted">
+                            Pick both reminder times. If today is already filled, Ray stays quiet.
+                            Times use Beijing / Shanghai time.
+                        </p>
+                    </div>
+
+                    <form id="moneyReminderForm" class="money_reminder_form">
+                        <label>
+                            <span>First reminder</span>
+                            <input id="moneyReminderOneInput" type="time" required>
+                        </label>
+
+                        <label>
+                            <span>Second reminder</span>
+                            <input id="moneyReminderTwoInput" type="time" required>
+                        </label>
+
+                        <button type="submit">Save reminder times</button>
                     </form>
                 </section>
 
@@ -150,8 +176,8 @@
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="js/cards/money_tracker.js?v=1"></script>
+        <script src="js/cards/money_tracker.js?v=2"></script>
         <script src="js/generals.js"></script>
-        <script src="js/navbar.js?v=9"></script>
+        <script src="js/navbar.js?v=10"></script>
     </body>
 </html>
