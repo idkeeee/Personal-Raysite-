@@ -244,6 +244,90 @@
     font-size: 0.9rem;
 }
 
+
+.money_transactions {
+    max-width: 760px;
+    display: grid;
+    gap: 12px;
+    border-top: 1px solid var(--money-border);
+    padding-top: 16px;
+}
+
+.money_transactions_header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.money_transactions_header h3 {
+    margin: 2px 0 0;
+    color: var(--money-text);
+    font-size: 1.1rem;
+}
+
+.money_transactions_header > span {
+    color: var(--money-muted);
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.money_transactions_list {
+    display: grid;
+    gap: 8px;
+}
+
+.money_transaction_row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 12px;
+    align-items: center;
+    min-height: 48px;
+    padding: 8px 9px 8px 14px;
+    border-radius: 13px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--money-panel-soft);
+}
+
+.money_transaction_amount {
+    color: var(--money-text);
+    font-size: 1.02rem;
+    font-weight: 900;
+}
+
+.money_transaction_time {
+    color: var(--money-muted);
+    font-size: 0.82rem;
+}
+
+.money_transaction_delete {
+    min-width: 70px;
+    min-height: 34px;
+    border: 1px solid rgba(255, 111, 127, 0.42);
+    border-radius: 10px;
+    background: rgba(255, 111, 127, 0.09);
+    color: var(--money-bad);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.money_transaction_delete:hover {
+    background: rgba(255, 111, 127, 0.16);
+}
+
+.money_transaction_delete:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+.money_transactions_empty {
+    padding: 12px 2px 4px;
+    color: var(--money-muted);
+    font-size: 0.92rem;
+}
+
 .money_correction {
     max-width: 660px;
     border-top: 1px solid var(--money-border);
@@ -271,7 +355,7 @@
 
 .money_stats_grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 16px;
 }
 
@@ -428,5 +512,36 @@
 
     .money_reminder_form button {
         grid-column: auto;
+    }
+}
+
+
+@media (max-width: 1050px) and (min-width: 801px) {
+    .money_stats_grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+
+@media (max-width: 520px) {
+    .money_transactions_header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .money_transaction_row {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .money_transaction_time {
+        grid-column: 1;
+        grid-row: 2;
+    }
+
+    .money_transaction_delete {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        align-self: stretch;
     }
 }

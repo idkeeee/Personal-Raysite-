@@ -35,6 +35,9 @@
         weekMeta: $("#moneyWeekMeta"),
         monthDelta: $("#moneyMonthDelta"),
         monthMeta: $("#moneyMonthMeta"),
+        allTimeDelta: $("#moneyAllTimeDelta"),
+        allTimeMeta: $("#moneyAllTimeMeta"),
+        transactionsList: $("#moneyTransactionsList"),
         historyList: $("#moneyHistoryList")
     };
 
@@ -162,7 +165,64 @@
         }, { budget: 0, spent: 0 });
     }
 
-    function renderCurrent(settings, rows, history, todayKey)
+
+    function formatTransactionTime(value)
+    {
+        if (!value) return "";
+
+        try
+        {
+            return new Intl.DateTimeFormat("en-US", {
+                timeZone: TIME_ZONE,
+                hour: "numeric",
+                minute: "2-digit"
+            }).format(new Date(value));
+        }
+        catch (error)
+        {
+            return "";
+        }
+    }
+
+    function renderTransactions(transactions)
+    {
+        elements.transactionsList.innerHTML = "";
+
+        if (!transactions.length)
+        {
+            const empty = document.createElement("div");
+            empty.className = "money_transactions_empty";
+            empty.textContent = "No transactions yet today.";
+            elements.transactionsList.appendChild(empty);
+            return;
+        }
+
+        for (const transaction of transactions)
+        {
+            const row = document.createElement("div");
+            row.className = "money_transaction_row";
+
+            const amount = document.createElement("div");
+            amount.className = "money_transaction_amount";
+            amount.textContent = formatMoney(transaction.amount);
+
+            const time = document.createElement("div");
+            time.className = "money_transaction_time";
+            time.textContent = formatTransactionTime(transaction.created_at);
+
+            const removeButton = document.createElement("button");
+            removeButton.type = "button";
+            removeButton.className = "money_transaction_delete";
+            removeButton.textContent = "Delete";
+            removeButton.dataset.transactionId = String(transaction.id);
+            removeButton.setAttribute("aria-label", `Delete ${formatMoney(transaction.amount)} transaction`);
+
+            row.append(amount, time, removeButton);
+            elements.transactionsList.appendChild(row);
+        }
+    }
+
+    function renderCurrent(settings, rows, history, transactions, allTimeBalance, todayKey)
     {
         const byDate = new Map(rows.map((row) => [String(row.record_date), row]));
         const todayRow = byDate.get(todayKey) ?? {
@@ -233,6 +293,12 @@
 
         setDeltaElement(elements.monthDelta, monthTotals.budget - monthTotals.spent);
         elements.monthMeta.textContent = `${formatMoney(monthTotals.spent)} spent / ${formatMoney(monthTotals.budget)} budget across ${monthRows.length} day${monthRows.length === 1 ? "" : "s"}`;
+
+
+        setDeltaElement(elements.allTimeDelta, allTimeBalance);
+        elements.allTimeMeta.textContent = "Budget minus spending since Money Tracker started";
+
+        renderTransactions(transactions);
 
         renderHistory(history);
     }
@@ -309,7 +375,7 @@
 
             if (prepareResult.error) throw prepareResult.error;
 
-            const [settingsResult, dailyResult, historyResult] = await Promise.all([
+            const [settingsResult, dailyResult, historyResult, transactionsResult, allTimeResult] = await Promise.all([
                 supabaseClient
                     .from("money_settings_shared")
                     .select("daily_budget, currency, timezone, reminder_time_1, reminder_time_2")
@@ -327,16 +393,28 @@
                     .select("month_start, total_spent, total_budget, surplus_debt, tracked_days")
                     .eq("tracker_code", TRACKER_CODE)
                     .order("month_start", { ascending: false })
-                    .limit(24)
+                    .limit(24),
+                supabaseClient
+                    .from("money_today_transactions_shared")
+                    .select("id, amount, created_at")
+                    .eq("tracker_code", TRACKER_CODE)
+                    .eq("transaction_date", todayKey)
+                    .order("created_at", { ascending: true }),
+                supabaseClient.rpc("money_get_all_time_balance", {
+                    p_tracker_code: TRACKER_CODE,
+                    p_today: todayKey
+                })
             ]);
 
-            const error = settingsResult.error || dailyResult.error || historyResult.error;
+            const error = settingsResult.error || dailyResult.error || historyResult.error || transactionsResult.error || allTimeResult.error;
             if (error) throw error;
 
             renderCurrent(
                 settingsResult.data,
                 dailyResult.data ?? [],
                 historyResult.data ?? [],
+                transactionsResult.data ?? [],
+                Number(allTimeResult.data) || 0,
                 todayKey
             );
 
@@ -463,6 +541,47 @@
         }, value === 0 ? "Today is marked filled at ¥0." : `${formatMoney(value)} added to today.`);
     });
 
+
+    elements.transactionsList.addEventListener("click", async function (event)
+    {
+        const button = event.target.closest(".money_transaction_delete");
+        if (!button) return;
+
+        const transactionId = String(button.dataset.transactionId || "");
+        if (!transactionId) return;
+
+        const previousText = button.textContent;
+        button.disabled = true;
+        button.textContent = "Deleting...";
+        setStatus("Deleting transaction...");
+
+        try
+        {
+            const { error } = await supabaseClient.rpc("money_delete_transaction", {
+                p_tracker_code: TRACKER_CODE,
+                p_transaction_id: transactionId,
+                p_record_date: getShanghaiTodayKey()
+            });
+
+            if (error) throw error;
+
+            setStatus("Transaction deleted.", "success");
+            await loadMoney({ silent: true });
+
+            if (typeof window.refreshCalendarNotifications === "function")
+            {
+                void window.refreshCalendarNotifications({ silent: true });
+            }
+        }
+        catch (error)
+        {
+            console.error("Money Tracker delete failed:", error);
+            setStatus(`Delete failed: ${error.message || error}`, "error");
+            button.disabled = false;
+            button.textContent = previousText;
+        }
+    });
+
     elements.correctForm.addEventListener("submit", function (event)
     {
         event.preventDefault();
@@ -503,6 +622,7 @@
             .on("postgres_changes", { event: "*", schema: "public", table: "money_settings_shared" }, scheduleReload)
             .on("postgres_changes", { event: "*", schema: "public", table: "money_daily_records_shared" }, scheduleReload)
             .on("postgres_changes", { event: "*", schema: "public", table: "money_monthly_history_shared" }, scheduleReload)
+            .on("postgres_changes", { event: "*", schema: "public", table: "money_today_transactions_shared" }, scheduleReload)
             .subscribe();
     }
     catch (error)

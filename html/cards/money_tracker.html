@@ -11,7 +11,7 @@
         <link rel="stylesheet" href="css/sidebar.css?v=6">
         <link rel="stylesheet" href="css/general_styles.css?v=3">
         <link rel="stylesheet" href="css/cards.css?v=3">
-        <link rel="stylesheet" href="css/cards/money_tracker.css?v=2">
+        <link rel="stylesheet" href="css/cards/money_tracker.css?v=3">
     </head>
 
     <body>
@@ -125,8 +125,24 @@
                         <p class="money_hint">Entering <strong>0</strong> counts as filling today's record.</p>
                     </form>
 
+
+                    <section class="money_transactions" aria-labelledby="moneyTransactionsTitle">
+                        <div class="money_transactions_header">
+                            <div>
+                                <p class="money_label">Today's transactions</p>
+                                <h3 id="moneyTransactionsTitle">Little spending trail</h3>
+                            </div>
+                            <span>Auto-clears next day</span>
+                        </div>
+
+                        <div id="moneyTransactionsList" class="money_transactions_list">
+                            <div class="money_transactions_empty">No transactions yet today.</div>
+                        </div>
+                    </section>
+
                     <details class="money_correction">
                         <summary>Typed something wrong? Set today's exact total</summary>
+                        <p class="money_hint">This replaces today's transaction list with one corrected entry.</p>
                         <form id="moneyCorrectForm" class="money_correction_form">
                             <div class="money_inline_input">
                                 <span>¥</span>
@@ -157,6 +173,13 @@
                         <strong id="moneyMonthDelta">—</strong>
                         <span id="moneyMonthMeta">Loading...</span>
                     </article>
+
+
+                    <article class="money_stat_card">
+                        <p>All time</p>
+                        <strong id="moneyAllTimeDelta">—</strong>
+                        <span id="moneyAllTimeMeta">Since Money Tracker started</span>
+                    </article>
                 </section>
 
                 <section class="money_history_panel">
@@ -176,7 +199,7 @@
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="js/cards/money_tracker.js?v=2"></script>
+        <script src="js/cards/money_tracker.js?v=3"></script>
         <script src="js/generals.js"></script>
         <script src="js/navbar.js?v=10"></script>
     </body>
