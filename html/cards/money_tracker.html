@@ -11,7 +11,7 @@
         <link rel="stylesheet" href="css/sidebar.css?v=6">
         <link rel="stylesheet" href="css/general_styles.css?v=3">
         <link rel="stylesheet" href="css/cards.css?v=3">
-        <link rel="stylesheet" href="css/cards/money_tracker.css?v=3">
+        <link rel="stylesheet" href="css/cards/money_tracker.css?v=4">
     </head>
 
     <body>
@@ -175,10 +175,36 @@
                     </article>
 
 
-                    <article class="money_stat_card">
+                    <article class="money_stat_card money_all_time_card">
                         <p>All time</p>
                         <strong id="moneyAllTimeDelta">—</strong>
                         <span id="moneyAllTimeMeta">Since Money Tracker started</span>
+
+                        <details class="money_all_time_adjust">
+                            <summary>Set manually</summary>
+                            <p class="money_all_time_adjust_hint">
+                                Set the current all-time balance to any number.
+                                Future spending and budgets will keep moving it automatically.
+                                Positive = surplus, negative = debt.
+                            </p>
+
+                            <form id="moneyAllTimeForm" class="money_all_time_form">
+                                <div class="money_inline_input">
+                                    <span>¥</span>
+                                    <input
+                                        id="moneyAllTimeInput"
+                                        type="number"
+                                        step="0.01"
+                                        inputmode="decimal"
+                                        placeholder="0"
+                                    >
+                                    <button type="submit">Set</button>
+                                </div>
+                                <button id="moneyAllTimeResetButton" class="money_all_time_reset" type="button">
+                                    Reset to ¥0
+                                </button>
+                            </form>
+                        </details>
                     </article>
                 </section>
 
@@ -199,7 +225,7 @@
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="js/cards/money_tracker.js?v=3"></script>
+        <script src="js/cards/money_tracker.js?v=4"></script>
         <script src="js/generals.js"></script>
         <script src="js/navbar.js?v=10"></script>
     </body>

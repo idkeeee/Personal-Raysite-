@@ -37,6 +37,9 @@
         monthMeta: $("#moneyMonthMeta"),
         allTimeDelta: $("#moneyAllTimeDelta"),
         allTimeMeta: $("#moneyAllTimeMeta"),
+        allTimeForm: $("#moneyAllTimeForm"),
+        allTimeInput: $("#moneyAllTimeInput"),
+        allTimeResetButton: $("#moneyAllTimeResetButton"),
         transactionsList: $("#moneyTransactionsList"),
         historyList: $("#moneyHistoryList")
     };
@@ -515,6 +518,61 @@
 
             if (error) throw error;
         }, `Reminder times saved: ${firstTime} and ${secondTime}.`);
+    });
+
+
+    async function setAllTimeBalance(targetValue, button)
+    {
+        if (!Number.isFinite(targetValue))
+        {
+            setStatus("Give me a valid all-time balance.", "error");
+            return;
+        }
+
+        const previousText = button.textContent;
+        button.disabled = true;
+        button.textContent = "Saving...";
+        setStatus("Setting all-time balance...");
+
+        try
+        {
+            const { error } = await supabaseClient.rpc("money_set_all_time_balance", {
+                p_tracker_code: TRACKER_CODE,
+                p_target_balance: targetValue,
+                p_today: getShanghaiTodayKey()
+            });
+
+            if (error) throw error;
+
+            elements.allTimeInput.value = "";
+            setStatus(`All-time balance set to ${formatMoney(targetValue)}. Future activity will keep moving it.`, "success");
+            await loadMoney({ silent: true });
+        }
+        catch (error)
+        {
+            console.error("Money Tracker all-time balance save failed:", error);
+            setStatus(`Save failed: ${error.message || error}`, "error");
+        }
+        finally
+        {
+            button.disabled = false;
+            button.textContent = previousText;
+        }
+    }
+
+    elements.allTimeForm.addEventListener("submit", function (event)
+    {
+        event.preventDefault();
+
+        const value = Number(elements.allTimeInput.value);
+        const button = elements.allTimeForm.querySelector('button[type="submit"]');
+
+        void setAllTimeBalance(value, button);
+    });
+
+    elements.allTimeResetButton.addEventListener("click", function ()
+    {
+        void setAllTimeBalance(0, elements.allTimeResetButton);
     });
 
     elements.addForm.addEventListener("submit", function (event)

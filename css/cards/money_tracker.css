@@ -389,6 +389,58 @@
     font-size: 0.9rem;
 }
 
+
+.money_all_time_adjust {
+    margin-top: 14px;
+    padding-top: 11px;
+    border-top: 1px solid var(--money-border);
+}
+
+.money_all_time_adjust summary {
+    color: var(--money-cyan);
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 900;
+}
+
+.money_all_time_adjust_hint {
+    margin: 10px 0;
+    color: var(--money-muted);
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.money_all_time_form {
+    display: grid;
+    gap: 8px;
+}
+
+.money_all_time_form .money_inline_input {
+    min-width: 0;
+}
+
+.money_all_time_reset {
+    min-height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.045);
+    color: var(--money-text);
+    font: inherit;
+    font-size: 0.84rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.money_all_time_reset:hover {
+    border-color: rgba(82, 214, 255, 0.45);
+    background: rgba(82, 214, 255, 0.08);
+}
+
+.money_all_time_reset:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
 .money_history_header {
     display: flex;
     align-items: flex-end;
@@ -477,7 +529,59 @@
         grid-template-columns: 1fr;
     }
 
-    .money_history_header {
+    
+.money_all_time_adjust {
+    margin-top: 14px;
+    padding-top: 11px;
+    border-top: 1px solid var(--money-border);
+}
+
+.money_all_time_adjust summary {
+    color: var(--money-cyan);
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 900;
+}
+
+.money_all_time_adjust_hint {
+    margin: 10px 0;
+    color: var(--money-muted);
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.money_all_time_form {
+    display: grid;
+    gap: 8px;
+}
+
+.money_all_time_form .money_inline_input {
+    min-width: 0;
+}
+
+.money_all_time_reset {
+    min-height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.045);
+    color: var(--money-text);
+    font: inherit;
+    font-size: 0.84rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.money_all_time_reset:hover {
+    border-color: rgba(82, 214, 255, 0.45);
+    background: rgba(82, 214, 255, 0.08);
+}
+
+.money_all_time_reset:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+.money_history_header {
         align-items: flex-start;
         flex-direction: column;
     }
