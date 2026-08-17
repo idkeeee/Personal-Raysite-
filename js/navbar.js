@@ -37,6 +37,9 @@
     const VAPID_PUBLIC_KEY = "BOZxsHa3g2oBVzf3lO_zuVWreO-VhHAiAFSrBOMHuhi3xmcH5MvGEAH6RccWiBOj7wem0EPSOejS3mMJQgQPcX4";
     const SAVE_PUSH_SUBSCRIPTION_RPC = "save_calendar_push_subscription";
     const DISABLE_PUSH_SUBSCRIPTION_RPC = "disable_calendar_push_subscription";
+    const NOTIFICATION_SETTINGS_TABLE = "ray_notification_settings_shared";
+    const SAVE_QUIET_HOURS_RPC = "save_ray_notification_quiet_hours";
+    const QUIET_HOURS_TIME_ZONE = "Asia/Shanghai";
 
     let client = null;
     let isLoading = false;
@@ -609,6 +612,298 @@
                 diagnosticButton.disabled = false;
                 diagnosticButton.textContent = "Push log";
             }
+        });
+    }
+
+
+    function getTimeZoneMinutes(date, timeZone)
+    {
+        const parts = new Intl.DateTimeFormat("en-US", {
+            timeZone,
+            hour: "2-digit",
+            minute: "2-digit",
+            hourCycle: "h23"
+        }).formatToParts(date);
+
+        const values = Object.fromEntries(
+            parts
+                .filter(function (part) { return part.type !== "literal"; })
+                .map(function (part) { return [part.type, part.value]; })
+        );
+
+        return Number(values.hour) * 60 + Number(values.minute);
+    }
+
+    function timeTextToMinutes(value)
+    {
+        const match = /^(\d{2}):(\d{2})$/.exec(String(value || "").slice(0, 5));
+
+        if (!match)
+        {
+            return null;
+        }
+
+        const hour = Number(match[1]);
+        const minute = Number(match[2]);
+
+        if (
+            !Number.isInteger(hour)
+            || !Number.isInteger(minute)
+            || hour < 0
+            || hour > 23
+            || minute < 0
+            || minute > 59
+        )
+        {
+            return null;
+        }
+
+        return hour * 60 + minute;
+    }
+
+    function isInsideQuietHours(currentMinutes, startMinutes, endMinutes)
+    {
+        if (startMinutes === endMinutes)
+        {
+            return false;
+        }
+
+        if (startMinutes < endMinutes)
+        {
+            return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+        }
+
+        // Overnight range, e.g. 23:00 -> 08:00.
+        return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+    }
+
+    function setupQuietHoursPanel()
+    {
+        if (!toolbar)
+        {
+            return;
+        }
+
+        const panel = document.createElement("section");
+        panel.className = "notification_dnd_panel";
+        panel.setAttribute("aria-label", "Hourly notification do not disturb schedule");
+
+        panel.innerHTML = `
+            <div class="notification_dnd_heading">
+                <div>
+                    <p class="notification_dnd_eyebrow">HOURLY DND</p>
+                    <strong>Scheduled quiet hours</strong>
+                </div>
+
+                <label class="notification_dnd_switch">
+                    <input id="notificationDndEnabled" type="checkbox">
+                    <span aria-hidden="true"></span>
+                    <b id="notificationDndToggleText">ON</b>
+                </label>
+            </div>
+
+            <form id="notificationDndForm" class="notification_dnd_form">
+                <label>
+                    <span>Hourly off from</span>
+                    <input id="notificationDndStart" type="time" value="23:00" required>
+                </label>
+
+                <label>
+                    <span>Resume at</span>
+                    <input id="notificationDndEnd" type="time" value="08:00" required>
+                </label>
+
+                <button id="notificationDndSave" type="submit">Save DND</button>
+            </form>
+
+            <p id="notificationDndStatus" class="notification_dnd_status">
+                Loading quiet hours...
+            </p>
+
+            <p class="notification_dnd_note">
+                This only mutes the regular hourly unfinished-business push.
+                Explicit Money Tracker reminder times still fire.
+            </p>
+        `;
+
+        toolbar.insertAdjacentElement("afterend", panel);
+
+        const enabledInput = panel.querySelector("#notificationDndEnabled");
+        const startInput = panel.querySelector("#notificationDndStart");
+        const endInput = panel.querySelector("#notificationDndEnd");
+        const form = panel.querySelector("#notificationDndForm");
+        const saveButton = panel.querySelector("#notificationDndSave");
+        const statusText = panel.querySelector("#notificationDndStatus");
+        const toggleText = panel.querySelector("#notificationDndToggleText");
+
+        function updateToggleText()
+        {
+            toggleText.textContent = enabledInput.checked ? "ON" : "OFF";
+            panel.classList.toggle("is-enabled", enabledInput.checked);
+        }
+
+        function updateStatus()
+        {
+            updateToggleText();
+
+            const startMinutes = timeTextToMinutes(startInput.value);
+            const endMinutes = timeTextToMinutes(endInput.value);
+
+            if (!enabledInput.checked)
+            {
+                statusText.textContent = "DND is off. Hourly pushes can fire 24/7.";
+                statusText.className = "notification_dnd_status";
+                return;
+            }
+
+            if (startMinutes === null || endMinutes === null || startMinutes === endMinutes)
+            {
+                statusText.textContent = "Choose two different times.";
+                statusText.className = "notification_dnd_status is-error";
+                return;
+            }
+
+            const nowMinutes = getTimeZoneMinutes(new Date(), QUIET_HOURS_TIME_ZONE);
+            const quietNow = isInsideQuietHours(nowMinutes, startMinutes, endMinutes);
+
+            statusText.textContent = quietNow
+                ? `Quiet right now · hourly pushes muted ${startInput.value} → ${endInput.value}`
+                : `Hourly pushes allowed right now · quiet ${startInput.value} → ${endInput.value}`;
+
+            statusText.className = quietNow
+                ? "notification_dnd_status is-quiet"
+                : "notification_dnd_status";
+        }
+
+        async function loadQuietHours()
+        {
+            const supabaseClient = getClient();
+
+            if (!supabaseClient)
+            {
+                statusText.textContent = "Could not load DND settings: Supabase unavailable.";
+                statusText.className = "notification_dnd_status is-error";
+                return;
+            }
+
+            try
+            {
+                const { data, error } = await supabaseClient
+                    .from(NOTIFICATION_SETTINGS_TABLE)
+                    .select("quiet_hours_enabled, quiet_start, quiet_end")
+                    .eq("calendar_code", CALENDAR_CODE)
+                    .limit(1);
+
+                if (error)
+                {
+                    throw error;
+                }
+
+                const settings = data?.[0];
+
+                if (settings)
+                {
+                    enabledInput.checked = settings.quiet_hours_enabled !== false;
+                    startInput.value = String(settings.quiet_start || "23:00").slice(0, 5);
+                    endInput.value = String(settings.quiet_end || "08:00").slice(0, 5);
+                }
+                else
+                {
+                    enabledInput.checked = true;
+                    startInput.value = "23:00";
+                    endInput.value = "08:00";
+                }
+
+                updateStatus();
+            }
+            catch (error)
+            {
+                console.warn("Could not load hourly DND settings:", error);
+                statusText.textContent = "DND settings unavailable. Run the hourly DND SQL update.";
+                statusText.className = "notification_dnd_status is-error";
+            }
+        }
+
+        enabledInput.addEventListener("change", updateStatus);
+        startInput.addEventListener("input", updateStatus);
+        endInput.addEventListener("input", updateStatus);
+
+        form.addEventListener("submit", async function (event)
+        {
+            event.preventDefault();
+
+            const startMinutes = timeTextToMinutes(startInput.value);
+            const endMinutes = timeTextToMinutes(endInput.value);
+
+            if (startMinutes === null || endMinutes === null)
+            {
+                statusText.textContent = "Pick two valid times.";
+                statusText.className = "notification_dnd_status is-error";
+                return;
+            }
+
+            if (startMinutes === endMinutes)
+            {
+                statusText.textContent = "Start and resume time cannot be identical.";
+                statusText.className = "notification_dnd_status is-error";
+                return;
+            }
+
+            const supabaseClient = getClient();
+
+            if (!supabaseClient)
+            {
+                statusText.textContent = "Could not save DND: Supabase unavailable.";
+                statusText.className = "notification_dnd_status is-error";
+                return;
+            }
+
+            const previousText = saveButton.textContent;
+            saveButton.disabled = true;
+            saveButton.textContent = "Saving...";
+            statusText.textContent = "Saving quiet hours...";
+            statusText.className = "notification_dnd_status";
+
+            try
+            {
+                const { error } = await supabaseClient.rpc(SAVE_QUIET_HOURS_RPC, {
+                    p_calendar_code: CALENDAR_CODE,
+                    p_enabled: enabledInput.checked,
+                    p_quiet_start: `${startInput.value}:00`,
+                    p_quiet_end: `${endInput.value}:00`,
+                    p_timezone: QUIET_HOURS_TIME_ZONE
+                });
+
+                if (error)
+                {
+                    throw error;
+                }
+
+                updateStatus();
+
+                window.setTimeout(function ()
+                {
+                    updateStatus();
+                }, 900);
+            }
+            catch (error)
+            {
+                console.error("Could not save hourly DND settings:", error);
+                statusText.textContent = `Could not save DND: ${error.message || error}`;
+                statusText.className = "notification_dnd_status is-error";
+            }
+            finally
+            {
+                saveButton.disabled = false;
+                saveButton.textContent = previousText;
+            }
+        });
+
+        void loadQuietHours();
+
+        window.addEventListener("focus", function ()
+        {
+            void loadQuietHours();
         });
     }
 
@@ -1307,5 +1602,6 @@
     setupHourlyReminderButton();
     setupLocalNotificationTestButton();
     setupPushEventDiagnosticButton();
+    setupQuietHoursPanel();
     loadCalendarNotifications();
 })();
