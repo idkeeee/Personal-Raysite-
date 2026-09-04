@@ -282,3 +282,28 @@
 .btn.daily-toggle.done:hover{
   background:#2a3f33;
 }
+
+
+.btn.one-percent-send{
+  min-width:48px;
+  padding:6px 9px;
+  border-color:#ffd66b88;
+  color:#ffd66b;
+  font-weight:900;
+  white-space:nowrap;
+}
+.btn.one-percent-send:hover{ background:#3a3424; }
+.btn.one-percent-send.is-sent{
+  border-color:#8fffcd80;
+  color:#9fe96a;
+  background:#173021;
+}
+.btn.one-percent-send.is-sent:hover{ background:#294333; }
+
+@media (max-width:768px){
+  .btn.one-percent-send{
+    min-width:44px;
+    padding:6px 7px;
+    font-size:12px;
+  }
+}

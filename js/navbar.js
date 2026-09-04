@@ -39,6 +39,9 @@
     const DISABLE_PUSH_SUBSCRIPTION_RPC = "disable_calendar_push_subscription";
     const NOTIFICATION_SETTINGS_TABLE = "ray_notification_settings_shared";
     const SAVE_QUIET_HOURS_RPC = "save_ray_notification_quiet_hours";
+    const ONE_PERCENT_WORKSPACE_CODE = "bagas-main-one-percent-v1";
+    const ONE_PERCENT_SETTINGS_TABLE = "one_percent_settings_shared";
+    const ONE_PERCENT_TODO_SLUGS = ["todo-daily", "todo-super", "todo-short", "todo-long", "todo-school"];
     const QUIET_HOURS_TIME_ZONE = "Asia/Shanghai";
 
     let client = null;
@@ -991,6 +994,48 @@
     }
 
 
+
+    function dataRows(value)
+    {
+        if (Array.isArray(value)) return value;
+        if (Array.isArray(value?.items)) return value.items;
+        return [];
+    }
+
+    function countOnePercentTasks(todoListRows)
+    {
+        let count = 0;
+
+        for (const listRow of todoListRows)
+        {
+            for (const task of dataRows(listRow?.data))
+            {
+                if (task?.one_percent === true && String(task?.text || "").trim().length > 0)
+                {
+                    count += 1;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    function isTimeInsideWindow(date, startValue, endValue)
+    {
+        const current = date.getHours() * 60 + date.getMinutes();
+        const start = timeTextToMinutes(startValue);
+        const end = timeTextToMinutes(endValue);
+
+        if (start === null || end === null || start === end) return false;
+
+        if (start < end)
+        {
+            return current >= start && current < end;
+        }
+
+        return current >= start || current < end;
+    }
+
     function timeHasBeenReached(date, timeValue)
     {
         const normalized = String(timeValue || "23:00").slice(0, 5);
@@ -1004,7 +1049,7 @@
         return (date.getHours() * 60 + date.getMinutes()) >= (hour * 60 + minute);
     }
 
-    function buildNotifications(manualRows, occurrenceRows, activeRules, dismissedKeys, date, moneyRow, moneySettings, moneyAvailable)
+    function buildNotifications(manualRows, occurrenceRows, activeRules, dismissedKeys, date, moneyRow, moneySettings, moneyAvailable, onePercentSettings, onePercentTodoRows, onePercentAvailable)
     {
         const notifications = [];
         const dateKey = getLocalDateKey(date);
@@ -1097,6 +1142,35 @@
                 text: "Today’s spending record still hasn’t been filled.",
                 href: "html/cards/money_tracker.html",
                 footerText: "Tap to fill today’s spending"
+            });
+        }
+
+
+        const onePercentTaskCount = countOnePercentTasks(onePercentTodoRows);
+        const onePercentFinished = onePercentSettings?.finished_on === dateKey;
+        const onePercentWindowOpen = isTimeInsideWindow(
+            date,
+            onePercentSettings?.reminder_start || "09:00",
+            onePercentSettings?.reminder_end || "22:00"
+        );
+
+        if (
+            onePercentAvailable
+            && onePercentSettings?.reminders_enabled !== false
+            && onePercentTaskCount > 0
+            && !onePercentFinished
+            && onePercentWindowOpen
+        )
+        {
+            notifications.push({
+                id: "one-percent-daily",
+                dismissKey: "one-percent:daily",
+                type: "one-percent",
+                sourceLabel: "From card: 1% Work",
+                kindLabel: "Daily 1%",
+                text: `Today's 1% is still unfinished. ${onePercentTaskCount} project${onePercentTaskCount === 1 ? "" : "s"} waiting.`,
+                href: "html/cards/one_percent_work.html",
+                footerText: "Tap to do today's 1%"
             });
         }
 
@@ -1477,7 +1551,7 @@
 
         try
         {
-            const [manualResult, occurrenceResult, rulesResult, dismissalResult, moneyResult, moneySettingsResult] = await Promise.all([
+            const [manualResult, occurrenceResult, rulesResult, dismissalResult, moneyResult, moneySettingsResult, onePercentSettingsResult, onePercentTodoResult] = await Promise.all([
                 supabaseClient
                     .from("calendar_notes_shared")
                     .select("note_text")
@@ -1508,7 +1582,16 @@
                     .from(MONEY_SETTINGS_TABLE)
                     .select("reminder_time_1, reminder_time_2")
                     .eq("tracker_code", MONEY_TRACKER_CODE)
-                    .limit(1)
+                    .limit(1),
+                supabaseClient
+                    .from(ONE_PERCENT_SETTINGS_TABLE)
+                    .select("finished_on, reminders_enabled, reminder_start, reminder_end")
+                    .eq("workspace_code", ONE_PERCENT_WORKSPACE_CODE)
+                    .limit(1),
+                supabaseClient
+                    .from("todo_lists")
+                    .select("slug, data")
+                    .in("slug", ONE_PERCENT_TODO_SLUGS)
             ]);
 
             const manualRows = manualResult.error ? [] : (manualResult.data ?? []);
@@ -1518,6 +1601,9 @@
             const moneyRow = moneyResult.error ? null : (moneyResult.data?.[0] ?? null);
             const moneySettings = moneySettingsResult.error ? null : (moneySettingsResult.data?.[0] ?? null);
             const moneyAvailable = !moneyResult.error && !moneySettingsResult.error;
+            const onePercentSettings = onePercentSettingsResult.error ? null : (onePercentSettingsResult.data?.[0] ?? null);
+            const onePercentTodoRows = onePercentTodoResult.error ? [] : (onePercentTodoResult.data ?? []);
+            const onePercentAvailable = !onePercentSettingsResult.error && !onePercentTodoResult.error;
             dismissalStoreAvailable = !dismissalResult.error;
 
             const dismissedKeys = new Set();
@@ -1534,7 +1620,7 @@
             }
 
             const allFailed = Boolean(manualResult.error && occurrenceResult.error && rulesResult.error);
-            const hadPartialError = Boolean(manualResult.error || occurrenceResult.error || rulesResult.error || moneyResult.error || moneySettingsResult.error);
+            const hadPartialError = Boolean(manualResult.error || occurrenceResult.error || rulesResult.error || moneyResult.error || moneySettingsResult.error || onePercentSettingsResult.error || onePercentTodoResult.error);
 
             if (allFailed)
             {
@@ -1546,7 +1632,7 @@
                 console.warn("Notification dismissals are unavailable until the SQL update is run:", dismissalResult.error);
             }
 
-            const notifications = buildNotifications(manualRows, occurrenceRows, activeRules, dismissedKeys, now, moneyRow, moneySettings, moneyAvailable);
+            const notifications = buildNotifications(manualRows, occurrenceRows, activeRules, dismissedKeys, now, moneyRow, moneySettings, moneyAvailable, onePercentSettings, onePercentTodoRows, onePercentAvailable);
             renderNotifications(notifications, dateKey, hadPartialError);
         }
         catch (error)

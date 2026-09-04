@@ -247,7 +247,69 @@ function renderTable(slug){
     });
 
 
+
+    const onePercentBtn = document.createElement("button");
+    onePercentBtn.type = "button";
+
+    function refreshOnePercentButton()
+    {
+      const sent = r.one_percent === true;
+      onePercentBtn.className = "btn one-percent-send" + (sent ? " is-sent" : "");
+      onePercentBtn.textContent = sent ? "1% ✓" : "1%";
+      onePercentBtn.title = sent
+        ? "This task is already in 1% Work. Click to remove it from 1% Work."
+        : "Send this task to 1% Work";
+      onePercentBtn.setAttribute(
+        "aria-label",
+        sent ? "Remove this task from 1 percent Work" : "Send this task to 1 percent Work"
+      );
+    }
+
+    refreshOnePercentButton();
+
+    onePercentBtn.addEventListener("click", () => {
+      const taskText = String(r.text || "").trim();
+
+      if (!taskText)
+      {
+        input.focus();
+        input.placeholder = "Name the task first…";
+        return;
+      }
+
+      if (r.one_percent === true)
+      {
+        const removeIt = window.confirm(`Remove "${taskText}" from 1% Work?`);
+
+        if (!removeIt)
+        {
+          return;
+        }
+
+        r.one_percent = false;
+      }
+      else
+      {
+        r.one_percent = true;
+        r.one_percent_added_at = new Date().toISOString();
+
+        if (typeof r.one_percent_notes !== "string")
+        {
+          r.one_percent_notes = "";
+        }
+      }
+
+      refreshOnePercentButton();
+      scheduleSave(slug);
+
+      if (typeof window.refreshCalendarNotifications === "function")
+      {
+        void window.refreshCalendarNotifications({ silent: true });
+      }
+    });
+
     main.appendChild(input);
+    main.appendChild(onePercentBtn);
     main.appendChild(expandBtn);
 
     tdTask.appendChild(main);

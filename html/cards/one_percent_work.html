@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base href="https://idkeeee.github.io/Personal-Raysite-/">
+    <title>1% Work 🔥</title>
+    <link rel="stylesheet" href="css/navbar.css?v=4">
+    <link rel="stylesheet" href="css/sidebar.css?v=7">
+    <link rel="stylesheet" href="css/general_styles.css?v=3">
+    <link rel="stylesheet" href="css/cards.css?v=3">
+    <link rel="stylesheet" href="css/cards/one_percent_work.css?v=1">
+  </head>
+
+  <body>
+    <nav class="navbar">
+      <button class="hamburger" id="notificationMenuButton" type="button" onclick="toggleMenu()" aria-label="Open notification center">
+        <span class="hamburger_icon" aria-hidden="true">&#9776;</span>
+        <span class="notification_badge" id="notificationBadge" hidden>0</span>
+      </button>
+      <div class="ray_title"></div>
+    </nav>
+
+    <aside class="side_menu" id="sideMenu" aria-hidden="true" aria-label="Notification center">
+      <div class="side_menu_header">
+        <div>
+          <p class="notification_eyebrow">TODAY</p>
+          <h2>Notification Center</h2>
+          <p id="notificationDateLabel" class="notification_date_label">Checking the calendar...</p>
+        </div>
+        <button class="side_menu-close-button" aria-label="Close notification center" onclick="toggleMenu()">×</button>
+      </div>
+
+      <div class="notification_toolbar">
+        <span id="notificationSummary">Loading today’s tasks...</span>
+        <button id="notificationRefreshButton" class="notification_refresh_button" type="button">Refresh</button>
+      </div>
+
+      <div id="notificationStatus" class="notification_status" role="status" aria-live="polite">
+        Connecting to Ray...
+      </div>
+
+      <div id="notificationList" class="notification_list"></div>
+
+      <a id="notificationCalendarLink" class="notification_calendar_link" href="html/cards/calender.html">
+        Open Calender
+        <span aria-hidden="true">→</span>
+      </a>
+    </aside>
+    <div class="backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>
+
+    <main class="one-percent-shell">
+      <section class="one-percent-hero">
+        <div>
+          <p class="one-percent-kicker">DAILY SYSTEM</p>
+          <h1>1% Work</h1>
+          <p class="one-percent-subtitle">
+            You do not need to finish the project today. You only need to move it.
+          </p>
+        </div>
+
+        <button id="onePercentDoneButton" class="one-percent-done-button" type="button">
+          <span class="one-percent-done-small">TODAY'S 1%</span>
+          <strong id="onePercentDoneLabel">UNFINISHED</strong>
+          <span id="onePercentDoneHint">Tap when you've done enough for today</span>
+        </button>
+      </section>
+
+      <section class="one-percent-settings-card">
+        <div class="one-percent-settings-copy">
+          <p class="one-percent-kicker">HOURLY REMINDERS</p>
+          <h2>Reminder window</h2>
+          <p>
+            While today's 1% is unfinished, Ray can nag you once per hour inside this window.
+            Global Notification Center DND still wins.
+          </p>
+        </div>
+
+        <form id="onePercentReminderForm" class="one-percent-reminder-form">
+          <label class="one-percent-switch-row">
+            <input id="onePercentReminderEnabled" type="checkbox" checked>
+            <span class="one-percent-switch"></span>
+            <b>Hourly reminders</b>
+          </label>
+
+          <label>
+            <span>Start</span>
+            <input id="onePercentReminderStart" type="time" value="09:00" required>
+          </label>
+
+          <label>
+            <span>End</span>
+            <input id="onePercentReminderEnd" type="time" value="22:00" required>
+          </label>
+
+          <button id="onePercentReminderSave" type="submit">Save reminder window</button>
+        </form>
+
+        <p id="onePercentReminderStatus" class="one-percent-reminder-status">
+          Loading reminder settings...
+        </p>
+      </section>
+
+      <section class="one-percent-projects">
+        <div class="one-percent-projects-header">
+          <div>
+            <p class="one-percent-kicker">PROJECTS</p>
+            <h2>Your 1% pile</h2>
+          </div>
+          <a href="html/cards/to_do_list.html" class="one-percent-todo-link">Open To-Do List →</a>
+        </div>
+
+        <div id="onePercentEmpty" class="one-percent-empty" hidden>
+          No projects here yet. Open the To-Do List and hit the <b>1%</b> button on a task.
+        </div>
+
+        <div id="onePercentTaskList" class="one-percent-task-list"></div>
+      </section>
+
+      <div id="onePercentPageStatus" class="one-percent-page-status" role="status" aria-live="polite"></div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/cards/one_percent_work.js?v=1"></script>
+    <script src="js/generals.js"></script>
+    <script src="js/navbar.js?v=12"></script>
+  </body>
+</html>
