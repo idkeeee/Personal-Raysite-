@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <!-- Make all relative links resolve from your repo root -->
+        <base href="https://idkeeee.github.io/Personal-Raysite-/">
+
+        <title>Habit Stacking 🧱</title>
+
+        <link rel="stylesheet" href="css/navbar.css?v=4">
+        <link rel="stylesheet" href="css/sidebar.css?v=7">
+        <link rel="stylesheet" href="css/general_styles.css?v=3">
+        <link rel="stylesheet" href="css/cards.css?v=3">
+        <link rel="stylesheet" href="css/cards/habit_stacking.css?v=1">
+    </head>
+
+    <body>
+        <!-- Navbar ⬆️ -->
+        <nav class="navbar">
+            <button class="hamburger" id="notificationMenuButton" type="button" onclick="toggleMenu()" aria-label="Open notification center">
+                <span class="hamburger_icon" aria-hidden="true">&#9776;</span>
+                <span class="notification_badge" id="notificationBadge" hidden>0</span>
+            </button>
+            <div class="ray_title"></div>
+        </nav>
+
+        <!-- Notification Center ⬅️ -->
+        <aside class="side_menu" id="sideMenu" aria-hidden="true" aria-label="Notification center">
+            <div class="side_menu_header">
+                <div>
+                    <p class="notification_eyebrow">TODAY</p>
+                    <h2>Notification Center</h2>
+                    <p id="notificationDateLabel" class="notification_date_label">Checking the calendar...</p>
+                </div>
+                <button class="side_menu-close-button" aria-label="Close notification center" onclick="toggleMenu()">×</button>
+            </div>
+
+            <div class="notification_toolbar">
+                <span id="notificationSummary">Loading today’s tasks...</span>
+                <button id="notificationRefreshButton" class="notification_refresh_button" type="button">Refresh</button>
+            </div>
+
+            <div id="notificationStatus" class="notification_status" role="status" aria-live="polite">
+                Connecting to Ray...
+            </div>
+
+            <div id="notificationList" class="notification_list"></div>
+
+            <a id="notificationCalendarLink" class="notification_calendar_link" href="html/cards/calender.html">
+                Open Calender
+                <span aria-hidden="true">→</span>
+            </a>
+        </aside>
+        <div class="backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>
+
+        <main class="habit-shell">
+            <section class="habit-hero">
+                <div>
+                    <p class="habit-kicker">ATOMIC HABITS</p>
+                    <h1>Habit Stacking</h1>
+                    <p class="habit-subtitle">
+                        Give the new habit somewhere to land: after I do <b>this</b>, I do <b>that</b>.
+                    </p>
+                </div>
+
+                <div class="habit-actions">
+                    <button id="addHabitButton" class="habit-primary-button" type="button">
+                        + Add new habit
+                    </button>
+
+                    <button id="stackHabitButton" class="habit-secondary-button" type="button">
+                        🔗 Stack new habit
+                    </button>
+                </div>
+            </section>
+
+            <section class="habit-today-card">
+                <div>
+                    <p class="habit-kicker">TODAY</p>
+                    <h2>Run the chain</h2>
+                    <p>
+                        Tap each habit as you do it. Tomorrow the checks reset automatically.
+                    </p>
+                </div>
+
+                <div class="habit-today-total">
+                    <strong id="todayCompletedCount">0 / 0</strong>
+                    <span>done today</span>
+                </div>
+            </section>
+
+            <section class="habit-stacks-section">
+                <div class="habit-section-heading">
+                    <div>
+                        <p class="habit-kicker">YOUR STACKS</p>
+                        <h2>Existing chains</h2>
+                    </div>
+                    <button id="refreshHabitsButton" class="habit-refresh-button" type="button">Refresh</button>
+                </div>
+
+                <div id="habitEmptyState" class="habit-empty-state" hidden>
+                    <strong>No habits yet.</strong>
+                    <span>Hit “Add new habit” to make the anchor, then stack more habits onto it.</span>
+                </div>
+
+                <div id="habitStackList" class="habit-stack-list"></div>
+            </section>
+
+            <div id="habitPageStatus" class="habit-page-status" role="status" aria-live="polite"></div>
+        </main>
+
+        <!-- Add / stack / edit modal -->
+        <div id="habitModalBackdrop" class="habit-modal-backdrop" hidden>
+            <section id="habitModal" class="habit-modal" role="dialog" aria-modal="true" aria-labelledby="habitModalTitle">
+                <div class="habit-modal-header">
+                    <div>
+                        <p id="habitModalKicker" class="habit-kicker">NEW HABIT</p>
+                        <h2 id="habitModalTitle">Add new habit</h2>
+                    </div>
+
+                    <button id="habitModalClose" class="habit-modal-close" type="button" aria-label="Close">×</button>
+                </div>
+
+                <form id="habitForm">
+                    <label id="habitAfterField" class="habit-field" hidden>
+                        <span>After I...</span>
+                        <select id="habitAfterSelect"></select>
+                    </label>
+
+                    <label class="habit-field">
+                        <span id="habitTextLabel">Habit</span>
+                        <input
+                            id="habitTextInput"
+                            type="text"
+                            maxlength="180"
+                            autocomplete="off"
+                            placeholder="e.g. Brush my teeth"
+                            required
+                        >
+                    </label>
+
+                    <div id="habitFormulaPreview" class="habit-formula-preview" hidden>
+                        <span>AFTER I</span>
+                        <strong id="habitFormulaAnchor">...</strong>
+                        <span>I WILL</span>
+                        <strong id="habitFormulaNew">...</strong>
+                    </div>
+
+                    <div class="habit-modal-actions">
+                        <button id="habitCancelButton" class="habit-modal-cancel" type="button">Cancel</button>
+                        <button id="habitSaveButton" class="habit-modal-save" type="submit">Save habit</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        <script src="js/cards/habit_stacking.js?v=1"></script>
+        <script src="js/generals.js"></script>
+        <script src="js/navbar.js?v=12"></script>
+    </body>
+</html>
