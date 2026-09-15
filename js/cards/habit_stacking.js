@@ -97,6 +97,14 @@ function groupedStacks()
 
     result.sort(function (a, b)
     {
+        const aPosition = Number(a[0]?.stack_position ?? 0);
+        const bPosition = Number(b[0]?.stack_position ?? 0);
+
+        if (aPosition !== bPosition)
+        {
+            return aPosition - bPosition;
+        }
+
         const aTime = new Date(a[0]?.created_at || 0).getTime();
         const bTime = new Date(b[0]?.created_at || 0).getTime();
         return aTime - bTime;
@@ -171,7 +179,32 @@ function renderHabits()
         summary.className = "habit-stack-summary";
         summary.textContent = `${doneCount}/${stack.length} done today`;
 
-        head.append(number, summary);
+        const headRight = document.createElement("div");
+        headRight.className = "habit-stack-row-head-right";
+
+        const moveControls = document.createElement("div");
+        moveControls.className = "habit-row-move-controls";
+
+        const moveUp = makeButton(
+            "↑",
+            "habit-row-move-button",
+            function () { void moveRow(stack[0]?.stack_id, -1, moveUp, moveDown); },
+            "Move this row up"
+        );
+
+        const moveDown = makeButton(
+            "↓",
+            "habit-row-move-button",
+            function () { void moveRow(stack[0]?.stack_id, 1, moveUp, moveDown); },
+            "Move this row down"
+        );
+
+        moveUp.disabled = stackIndex === 0;
+        moveDown.disabled = stackIndex === stacks.length - 1;
+
+        moveControls.append(moveUp, moveDown);
+        headRight.append(summary, moveControls);
+        head.append(number, headRight);
 
         const trackWrap = document.createElement("div");
         trackWrap.className = "habit-stack-track-wrap";
@@ -247,6 +280,43 @@ function renderHabits()
     renderTodayProgress();
 }
 
+
+async function moveRow(stackId, direction, upButton, downButton)
+{
+    if (!stackId || ![-1, 1].includes(direction))
+    {
+        return;
+    }
+
+    upButton.disabled = true;
+    downButton.disabled = true;
+    upButton.classList.add("is-saving");
+    downButton.classList.add("is-saving");
+
+    try
+    {
+        const { error } = await supabaseClient.rpc("habit_stack_move_row", {
+            p_workspace_code: WORKSPACE_CODE,
+            p_stack_id: stackId,
+            p_direction: direction
+        });
+
+        if (error) throw error;
+
+        await loadHabits({ silent: true });
+        setPageStatus(
+            direction < 0 ? "Row moved up." : "Row moved down.",
+            "success"
+        );
+    }
+    catch (error)
+    {
+        console.error("Habit row move failed:", error);
+        setPageStatus(`Could not move row: ${error.message || error}`, "error");
+        renderHabits();
+    }
+}
+
 async function loadHabits(options = {})
 {
     if (!options.silent)
@@ -258,7 +328,7 @@ async function loadHabits(options = {})
     {
         const { data, error } = await supabaseClient
             .from(HABITS_TABLE)
-            .select("id, workspace_code, stack_id, habit_text, sort_order, last_completed_on, created_at, updated_at")
+            .select("id, workspace_code, stack_id, habit_text, sort_order, stack_position, last_completed_on, created_at, updated_at")
             .eq("workspace_code", WORKSPACE_CODE)
             .order("created_at", { ascending: true });
 

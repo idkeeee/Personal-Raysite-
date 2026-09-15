@@ -181,6 +181,50 @@ body{
     letter-spacing:.15em;
 }
 
+
+.habit-stack-row-head-right{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.habit-row-move-controls{
+    display:flex;
+    align-items:center;
+    gap:5px;
+}
+
+.habit-row-move-button{
+    width:34px;
+    height:30px;
+    display:grid;
+    place-items:center;
+    border:1px solid rgba(166,151,255,.28);
+    border-radius:9px;
+    background:rgba(166,151,255,.06);
+    color:var(--habit-purple);
+    font:inherit;
+    font-size:.95rem;
+    font-weight:900;
+    cursor:pointer;
+}
+
+.habit-row-move-button:hover:not(:disabled){
+    background:rgba(166,151,255,.14);
+    border-color:rgba(166,151,255,.52);
+}
+
+.habit-row-move-button:disabled{
+    opacity:.28;
+    cursor:not-allowed;
+}
+
+.habit-row-move-button.is-saving{
+    opacity:.55;
+    cursor:wait;
+}
+
 .habit-stack-summary{
     color:var(--habit-muted);
     font-size:.78rem;
@@ -325,6 +369,10 @@ body{
     color:var(--habit-lime);
     background:rgba(209,233,52,.08);
     box-shadow:0 0 0 1px rgba(209,233,52,.05) inset;
+}
+
+.habit-empty-state[hidden]{
+    display:none !important;
 }
 
 .habit-empty-state{
