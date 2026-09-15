@@ -1,5 +1,5 @@
 const SB_URL = window.SUPABASE_URL ?? "https://ntlsmrzpatcultvsrpll.supabase.co";
-const SB_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
+const SB_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4NzI5MzYsImV4cCI6MjA3MDQ0ODkzNn0.uaIzi2f3cjBTg2FI67Z2X3UADJjk0Rt_25g";
 const supabaseClient = window.supabase.createClient(SB_URL, SB_ANON);
 
 const WORKSPACE_CODE = "bagas-main-habit-stacking-v1";
@@ -15,7 +15,6 @@ const state = {
 
 const els = {
     addHabitButton: document.getElementById("addHabitButton"),
-    stackHabitButton: document.getElementById("stackHabitButton"),
     refreshHabitsButton: document.getElementById("refreshHabitsButton"),
     todayCompletedCount: document.getElementById("todayCompletedCount"),
     emptyState: document.getElementById("habitEmptyState"),
@@ -23,7 +22,6 @@ const els = {
     pageStatus: document.getElementById("habitPageStatus"),
 
     modalBackdrop: document.getElementById("habitModalBackdrop"),
-    modal: document.getElementById("habitModal"),
     modalClose: document.getElementById("habitModalClose"),
     modalKicker: document.getElementById("habitModalKicker"),
     modalTitle: document.getElementById("habitModalTitle"),
@@ -158,6 +156,22 @@ function renderFormulaPreview()
     els.formulaPreview.hidden = false;
 }
 
+function makeButton(text, className, onClick, title = "")
+{
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = className;
+    button.textContent = text;
+
+    if (title)
+    {
+        button.title = title;
+    }
+
+    button.addEventListener("click", onClick);
+    return button;
+}
+
 function renderHabits()
 {
     els.stackList.innerHTML = "";
@@ -167,115 +181,92 @@ function renderHabits()
 
     stacks.forEach(function (stack, stackIndex)
     {
-        const card = document.createElement("article");
-        card.className = "habit-stack-card";
+        const row = document.createElement("article");
+        row.className = "habit-stack-row";
 
-        const header = document.createElement("div");
-        header.className = "habit-stack-header";
+        const head = document.createElement("div");
+        head.className = "habit-stack-row-head";
 
-        const headerCopy = document.createElement("div");
-        headerCopy.className = "habit-stack-header-copy";
-
-        const stackNumber = document.createElement("span");
-        stackNumber.className = "habit-stack-number";
-        stackNumber.textContent = `STACK ${String(stackIndex + 1).padStart(2, "0")}`;
-
-        const title = document.createElement("p");
-        title.className = "habit-stack-title";
-        title.textContent = stack[0]?.habit_text || "Habit stack";
-
-        headerCopy.append(stackNumber, title);
+        const number = document.createElement("span");
+        number.className = "habit-stack-number";
+        number.textContent = `ROW ${String(stackIndex + 1).padStart(2, "0")}`;
 
         const doneCount = stack.filter(habitIsDoneToday).length;
-        const progress = document.createElement("span");
-        progress.className = "habit-stack-progress";
-        progress.textContent = `${doneCount}/${stack.length} today`;
+        const summary = document.createElement("span");
+        summary.className = "habit-stack-summary";
+        summary.textContent = `${doneCount}/${stack.length} done today`;
 
-        header.append(headerCopy, progress);
+        head.append(number, summary);
 
-        const chain = document.createElement("div");
-        chain.className = "habit-chain";
+        const trackWrap = document.createElement("div");
+        trackWrap.className = "habit-stack-track-wrap";
+
+        const track = document.createElement("div");
+        track.className = "habit-stack-track";
 
         stack.forEach(function (habit, habitIndex)
         {
-            if (habitIndex > 0)
-            {
-                const connector = document.createElement("div");
-                connector.className = "habit-connector";
-                connector.setAttribute("aria-hidden", "true");
-                chain.appendChild(connector);
-            }
+            const box = document.createElement("div");
+            box.className = "habit-box";
+            box.classList.toggle("is-done", habitIsDoneToday(habit));
 
-            const row = document.createElement("div");
-            row.className = "habit-row";
-            row.classList.toggle("is-done", habitIsDoneToday(habit));
+            const top = document.createElement("div");
+            top.className = "habit-box-top";
 
-            const check = document.createElement("button");
-            check.type = "button";
-            check.className = "habit-check";
-            check.textContent = habitIsDoneToday(habit) ? "✓" : String(habitIndex + 1);
-            check.title = habitIsDoneToday(habit)
-                ? "Mark unfinished for today"
-                : "Mark done for today";
+            const stepBadge = document.createElement("span");
+            stepBadge.className = "habit-step-badge";
+            stepBadge.textContent = habitIsDoneToday(habit) ? "✓" : String(habitIndex + 1);
 
-            check.addEventListener("click", function ()
-            {
-                void setHabitDone(habit, !habitIsDoneToday(habit));
-            });
-
-            const copy = document.createElement("div");
-            copy.className = "habit-row-copy";
+            const toggleDone = makeButton(
+                habitIsDoneToday(habit) ? "Done" : "Do",
+                "habit-done-button",
+                function () { void setHabitDone(habit, !habitIsDoneToday(habit)); },
+                habitIsDoneToday(habit) ? "Mark unfinished for today" : "Mark done for today"
+            );
 
             const label = document.createElement("p");
-            label.className = "habit-row-label";
+            label.className = "habit-box-label";
             label.textContent = habit.habit_text;
 
-            const cue = document.createElement("p");
-            cue.className = "habit-row-cue";
-            cue.textContent = habitIndex === 0
-                ? "Anchor habit"
-                : `After: ${stack[habitIndex - 1].habit_text}`;
-
-            copy.append(label, cue);
-
             const actions = document.createElement("div");
-            actions.className = "habit-row-actions";
+            actions.className = "habit-box-actions";
 
-            const stackAfter = document.createElement("button");
-            stackAfter.type = "button";
-            stackAfter.className = "habit-icon-button stack-after";
-            stackAfter.textContent = "+ Stack";
-            stackAfter.title = `Stack a new habit after "${habit.habit_text}"`;
-            stackAfter.addEventListener("click", function ()
-            {
-                openStackModal(habit.id);
-            });
-
-            const edit = document.createElement("button");
-            edit.type = "button";
-            edit.className = "habit-icon-button";
-            edit.textContent = "Edit";
-            edit.addEventListener("click", function ()
+            const edit = makeButton("Edit", "habit-mini-button", function ()
             {
                 openEditModal(habit);
             });
 
-            const remove = document.createElement("button");
-            remove.type = "button";
-            remove.className = "habit-icon-button delete";
-            remove.textContent = "Delete";
-            remove.addEventListener("click", function ()
+            const remove = makeButton("Delete", "habit-mini-button delete", function ()
             {
                 void deleteHabit(habit);
             });
 
-            actions.append(stackAfter, edit, remove);
-            row.append(check, copy, actions);
-            chain.appendChild(row);
+            top.append(stepBadge, toggleDone);
+            actions.append(edit, remove);
+            box.append(top, label, actions);
+            track.appendChild(box);
+
+            if (habitIndex < stack.length - 1)
+            {
+                const arrow = document.createElement("div");
+                arrow.className = "habit-arrow";
+                arrow.setAttribute("aria-hidden", "true");
+                arrow.textContent = "→";
+                track.appendChild(arrow);
+            }
         });
 
-        card.append(header, chain);
-        els.stackList.appendChild(card);
+        const plusButton = makeButton(
+            "+",
+            "habit-plus-button",
+            function () { openStackModal(stack[stack.length - 1]?.id || null); },
+            `Add a new habit to the end of row ${stackIndex + 1}`
+        );
+
+        track.appendChild(plusButton);
+        trackWrap.appendChild(track);
+        row.append(head, trackWrap);
+        els.stackList.appendChild(row);
     });
 
     renderTodayProgress();
@@ -353,14 +344,14 @@ function openAddModal()
     state.editingId = null;
     state.preselectedAfterId = null;
 
-    els.modalKicker.textContent = "NEW STACK";
-    els.modalTitle.textContent = "Add new habit";
-    els.textLabel.textContent = "Anchor habit";
+    els.modalKicker.textContent = "NEW ROW";
+    els.modalTitle.textContent = "Add new stack";
+    els.textLabel.textContent = "First habit in this row";
     els.textInput.placeholder = "e.g. Brush my teeth";
     els.textInput.value = "";
     els.afterField.hidden = true;
     els.formulaPreview.hidden = true;
-    els.saveButton.textContent = "Add habit";
+    els.saveButton.textContent = "Add stack";
 
     openModal();
 }
@@ -370,7 +361,7 @@ function openStackModal(afterId = null)
     if (state.habits.length === 0)
     {
         openAddModal();
-        setPageStatus("Add an anchor habit first, then you can stack onto it.", "success");
+        setPageStatus("Add the first row first, then you can grow it with the + button.", "success");
         return;
     }
 
@@ -379,12 +370,12 @@ function openStackModal(afterId = null)
     state.preselectedAfterId = afterId;
 
     els.modalKicker.textContent = "STACK IT";
-    els.modalTitle.textContent = "Stack new habit";
-    els.textLabel.textContent = "Then I will...";
+    els.modalTitle.textContent = "Add habit to a row";
+    els.textLabel.textContent = "New habit";
     els.textInput.placeholder = "e.g. Drink one glass of water";
     els.textInput.value = "";
     els.afterField.hidden = false;
-    els.saveButton.textContent = "Stack habit";
+    els.saveButton.textContent = "Add habit";
 
     renderAfterSelect(afterId);
     renderFormulaPreview();
@@ -440,7 +431,7 @@ async function setHabitDone(habit, finished)
 async function deleteHabit(habit)
 {
     const okay = window.confirm(
-        `Delete "${habit.habit_text}"?\n\nThe rest of its stack will close the gap automatically.`
+        `Delete "${habit.habit_text}"?\n\nThe rest of the row will close the gap automatically.`
     );
 
     if (!okay) return;
@@ -492,7 +483,7 @@ els.form.addEventListener("submit", async function (event)
             if (error) throw error;
             closeModal();
             await loadHabits({ silent: true });
-            setPageStatus(`New stack started with "${text}".`, "success");
+            setPageStatus(`New row started with "${text}".`, "success");
         }
         else if (state.modalMode === "stack")
         {
@@ -512,7 +503,7 @@ els.form.addEventListener("submit", async function (event)
             if (error) throw error;
             closeModal();
             await loadHabits({ silent: true });
-            setPageStatus(`Stacked "${text}".`, "success");
+            setPageStatus(`Added "${text}" to the row.`, "success");
         }
         else if (state.modalMode === "edit")
         {
@@ -541,7 +532,6 @@ els.form.addEventListener("submit", async function (event)
 });
 
 els.addHabitButton.addEventListener("click", openAddModal);
-els.stackHabitButton.addEventListener("click", function () { openStackModal(); });
 els.refreshHabitsButton.addEventListener("click", function () { void loadHabits(); });
 els.modalClose.addEventListener("click", closeModal);
 els.cancelButton.addEventListener("click", closeModal);
@@ -608,7 +598,5 @@ document.addEventListener("DOMContentLoaded", async function ()
         }
     });
 
-    // Midnight needs no destructive reset. Completion is date-based,
-    // so yesterday's checks simply stop matching today's date.
     window.setInterval(renderHabits, 60 * 1000);
 });

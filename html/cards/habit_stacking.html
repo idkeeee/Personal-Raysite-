@@ -13,7 +13,7 @@
         <link rel="stylesheet" href="css/sidebar.css?v=7">
         <link rel="stylesheet" href="css/general_styles.css?v=3">
         <link rel="stylesheet" href="css/cards.css?v=3">
-        <link rel="stylesheet" href="css/cards/habit_stacking.css?v=1">
+        <link rel="stylesheet" href="css/cards/habit_stacking.css?v=2">
     </head>
 
     <body>
@@ -61,17 +61,17 @@
                     <p class="habit-kicker">ATOMIC HABITS</p>
                     <h1>Habit Stacking</h1>
                     <p class="habit-subtitle">
-                        Give the new habit somewhere to land: after I do <b>this</b>, I do <b>that</b>.
+                        Visual chains. One row = one stack. Hit the <b>+</b> at the end of a row to grow that chain.
                     </p>
                 </div>
 
                 <div class="habit-actions">
                     <button id="addHabitButton" class="habit-primary-button" type="button">
-                        + Add new habit
+                        + Add new stack
                     </button>
 
-                    <button id="stackHabitButton" class="habit-secondary-button" type="button">
-                        🔗 Stack new habit
+                    <button id="refreshHabitsButton" class="habit-secondary-button" type="button">
+                        Refresh
                     </button>
                 </div>
             </section>
@@ -81,7 +81,7 @@
                     <p class="habit-kicker">TODAY</p>
                     <h2>Run the chain</h2>
                     <p>
-                        Tap each habit as you do it. Tomorrow the checks reset automatically.
+                        Tap a habit tile when you do it. Checks reset tomorrow automatically.
                     </p>
                 </div>
 
@@ -95,14 +95,14 @@
                 <div class="habit-section-heading">
                     <div>
                         <p class="habit-kicker">YOUR STACKS</p>
-                        <h2>Existing chains</h2>
+                        <h2>Visual rows</h2>
                     </div>
-                    <button id="refreshHabitsButton" class="habit-refresh-button" type="button">Refresh</button>
+                    <p class="habit-section-hint">Drag your eyes left → right. Every row is one habit stack.</p>
                 </div>
 
                 <div id="habitEmptyState" class="habit-empty-state" hidden>
                     <strong>No habits yet.</strong>
-                    <span>Hit “Add new habit” to make the anchor, then stack more habits onto it.</span>
+                    <span>Press “Add new stack” to make the first row.</span>
                 </div>
 
                 <div id="habitStackList" class="habit-stack-list"></div>
@@ -157,7 +157,7 @@
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="js/cards/habit_stacking.js?v=1"></script>
+        <script src="js/cards/habit_stacking.js?v=2"></script>
         <script src="js/generals.js"></script>
         <script src="js/navbar.js?v=12"></script>
     </body>
