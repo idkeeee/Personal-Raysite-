@@ -1,5 +1,5 @@
 const SB_URL = window.SUPABASE_URL ?? "https://ntlsmrzpatcultvsrpll.supabase.co";
-const SB_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4NzI5MzYsImV4cCI6MjA3MDQ0ODkzNn0.uaIzi2f3cjBTg2FI67Z2X3UADJjk0Rt_25g";
+const SB_ANON = window.SUPABASE_ANON ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bHNtcnpwYXRjdWx0dnNycGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDY0MDUsImV4cCI6MjA3NDAyMjQwNX0.5sggDXSK-ytAJqNpxfDAW2FI67Z2X3UADJjk0Rt_25g";
 const supabaseClient = window.supabase.createClient(SB_URL, SB_ANON);
 
 const WORKSPACE_CODE = "bagas-main-habit-stacking-v1";
@@ -26,8 +26,6 @@ const els = {
     modalKicker: document.getElementById("habitModalKicker"),
     modalTitle: document.getElementById("habitModalTitle"),
     form: document.getElementById("habitForm"),
-    afterField: document.getElementById("habitAfterField"),
-    afterSelect: document.getElementById("habitAfterSelect"),
     textLabel: document.getElementById("habitTextLabel"),
     textInput: document.getElementById("habitTextInput"),
     formulaPreview: document.getElementById("habitFormulaPreview"),
@@ -119,29 +117,6 @@ function renderTodayProgress()
     els.todayCompletedCount.textContent = `${done} / ${total}`;
 }
 
-function renderAfterSelect(selectedId = null)
-{
-    els.afterSelect.innerHTML = "";
-
-    for (const stack of groupedStacks())
-    {
-        stack.forEach(function (habit, index)
-        {
-            const option = document.createElement("option");
-            option.value = habit.id;
-            option.textContent = `${stack[0].habit_text}  ·  ${index + 1}. ${habit.habit_text}`;
-            els.afterSelect.appendChild(option);
-        });
-    }
-
-    const preferred = selectedId || state.preselectedAfterId;
-
-    if (preferred && state.habits.some(habit => habit.id === preferred))
-    {
-        els.afterSelect.value = preferred;
-    }
-}
-
 function renderFormulaPreview()
 {
     if (state.modalMode !== "stack")
@@ -150,7 +125,7 @@ function renderFormulaPreview()
         return;
     }
 
-    const anchor = state.habits.find(habit => habit.id === els.afterSelect.value);
+    const anchor = state.habits.find(habit => habit.id === state.preselectedAfterId);
     els.formulaAnchor.textContent = anchor?.habit_text || "...";
     els.formulaNew.textContent = els.textInput.value.trim() || "...";
     els.formulaPreview.hidden = false;
@@ -316,14 +291,7 @@ function openModal()
 
     window.setTimeout(function ()
     {
-        if (state.modalMode === "stack")
-        {
-            els.afterSelect.focus();
-        }
-        else
-        {
-            els.textInput.focus();
-        }
+        els.textInput.focus();
     }, 0);
 }
 
@@ -334,7 +302,6 @@ function closeModal()
     state.editingId = null;
     state.preselectedAfterId = null;
     els.form.reset();
-    els.afterField.hidden = true;
     els.formulaPreview.hidden = true;
 }
 
@@ -349,7 +316,6 @@ function openAddModal()
     els.textLabel.textContent = "First habit in this row";
     els.textInput.placeholder = "e.g. Brush my teeth";
     els.textInput.value = "";
-    els.afterField.hidden = true;
     els.formulaPreview.hidden = true;
     els.saveButton.textContent = "Add stack";
 
@@ -370,14 +336,12 @@ function openStackModal(afterId = null)
     state.preselectedAfterId = afterId;
 
     els.modalKicker.textContent = "STACK IT";
-    els.modalTitle.textContent = "Add habit to a row";
+    els.modalTitle.textContent = "Add habit to this row";
     els.textLabel.textContent = "New habit";
     els.textInput.placeholder = "e.g. Drink one glass of water";
     els.textInput.value = "";
-    els.afterField.hidden = false;
     els.saveButton.textContent = "Add habit";
 
-    renderAfterSelect(afterId);
     renderFormulaPreview();
     openModal();
 }
@@ -393,7 +357,6 @@ function openEditModal(habit)
     els.textLabel.textContent = "Habit";
     els.textInput.placeholder = "Habit name";
     els.textInput.value = habit.habit_text;
-    els.afterField.hidden = true;
     els.formulaPreview.hidden = true;
     els.saveButton.textContent = "Save changes";
 
@@ -487,11 +450,11 @@ els.form.addEventListener("submit", async function (event)
         }
         else if (state.modalMode === "stack")
         {
-            const afterId = els.afterSelect.value;
+            const afterId = state.preselectedAfterId;
 
             if (!afterId)
             {
-                throw new Error("Pick the habit this should come after.");
+                throw new Error("Could not find the end of this habit row.");
             }
 
             const { error } = await supabaseClient.rpc("habit_stack_insert_after", {
@@ -552,7 +515,6 @@ document.addEventListener("keydown", function (event)
     }
 });
 
-els.afterSelect.addEventListener("change", renderFormulaPreview);
 els.textInput.addEventListener("input", renderFormulaPreview);
 
 function subscribeRealtime()
