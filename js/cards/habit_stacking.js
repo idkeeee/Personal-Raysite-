@@ -10,7 +10,8 @@ const state = {
     habits: [],
     modalMode: "add",
     editingId: null,
-    preselectedAfterId: null
+    preselectedAfterId: null,
+    detailsHabitId: null
 };
 
 const els = {
@@ -32,7 +33,16 @@ const els = {
     formulaAnchor: document.getElementById("habitFormulaAnchor"),
     formulaNew: document.getElementById("habitFormulaNew"),
     cancelButton: document.getElementById("habitCancelButton"),
-    saveButton: document.getElementById("habitSaveButton")
+    saveButton: document.getElementById("habitSaveButton"),
+
+    detailsBackdrop: document.getElementById("habitDetailsBackdrop"),
+    detailsClose: document.getElementById("habitDetailsClose"),
+    detailsTitle: document.getElementById("habitDetailsTitle"),
+    detailsCue: document.getElementById("habitDetailsCue"),
+    detailsForm: document.getElementById("habitDetailsForm"),
+    detailsInput: document.getElementById("habitDetailsInput"),
+    detailsCancel: document.getElementById("habitDetailsCancel"),
+    detailsSave: document.getElementById("habitDetailsSave")
 };
 
 function getTodayKey(date = new Date())
@@ -217,6 +227,34 @@ function renderHabits()
             const box = document.createElement("div");
             box.className = "habit-box";
             box.classList.toggle("is-done", habitIsDoneToday(habit));
+            box.classList.toggle("has-details", String(habit.habit_details || "").trim().length > 0);
+            box.tabIndex = 0;
+            box.setAttribute("role", "button");
+            box.setAttribute("aria-label", `Open details for ${habit.habit_text}`);
+
+            box.addEventListener("click", function (event)
+            {
+                if (event.target.closest("button"))
+                {
+                    return;
+                }
+
+                openDetailsModal(habit, stack, habitIndex);
+            });
+
+            box.addEventListener("keydown", function (event)
+            {
+                if (event.target !== box)
+                {
+                    return;
+                }
+
+                if (event.key === "Enter" || event.key === " ")
+                {
+                    event.preventDefault();
+                    openDetailsModal(habit, stack, habitIndex);
+                }
+            });
 
             const top = document.createElement("div");
             top.className = "habit-box-top";
@@ -249,9 +287,15 @@ function renderHabits()
                 void deleteHabit(habit);
             });
 
+            const detailsHint = document.createElement("p");
+            detailsHint.className = "habit-box-details-hint";
+            detailsHint.textContent = String(habit.habit_details || "").trim()
+                ? "Tap for details •"
+                : "Tap for details";
+
             top.append(stepBadge, toggleDone);
             actions.append(edit, remove);
-            box.append(top, label, actions);
+            box.append(top, label, detailsHint, actions);
             track.appendChild(box);
 
             if (habitIndex < stack.length - 1)
@@ -328,7 +372,7 @@ async function loadHabits(options = {})
     {
         const { data, error } = await supabaseClient
             .from(HABITS_TABLE)
-            .select("id, workspace_code, stack_id, habit_text, sort_order, stack_position, last_completed_on, created_at, updated_at")
+            .select("id, workspace_code, stack_id, habit_text, habit_details, sort_order, stack_position, last_completed_on, created_at, updated_at")
             .eq("workspace_code", WORKSPACE_CODE)
             .order("created_at", { ascending: true });
 
@@ -351,6 +395,43 @@ async function loadHabits(options = {})
     {
         console.error("Habit Stacking sync failed:", error);
         setPageStatus(`Habit Stacking couldn't sync: ${error.message || error}`, "error");
+    }
+}
+
+
+function openDetailsModal(habit, stack, habitIndex)
+{
+    state.detailsHabitId = habit.id;
+
+    els.detailsTitle.textContent = habit.habit_text;
+
+    if (habitIndex === 0)
+    {
+        els.detailsCue.textContent = "Anchor habit · first step in this row";
+    }
+    else
+    {
+        els.detailsCue.textContent = `After: ${stack[habitIndex - 1]?.habit_text || "previous habit"}`;
+    }
+
+    els.detailsInput.value = String(habit.habit_details || "");
+    els.detailsBackdrop.hidden = false;
+    document.body.style.overflow = "hidden";
+
+    window.setTimeout(function ()
+    {
+        els.detailsInput.focus();
+    }, 0);
+}
+
+function closeDetailsModal()
+{
+    els.detailsBackdrop.hidden = true;
+    state.detailsHabitId = null;
+
+    if (els.modalBackdrop.hidden)
+    {
+        document.body.style.overflow = "";
     }
 }
 
@@ -488,6 +569,58 @@ async function deleteHabit(habit)
     }
 }
 
+
+els.detailsForm.addEventListener("submit", async function (event)
+{
+    event.preventDefault();
+
+    const habitId = state.detailsHabitId;
+
+    if (!habitId)
+    {
+        closeDetailsModal();
+        return;
+    }
+
+    const details = els.detailsInput.value.trim();
+    const previousText = els.detailsSave.textContent;
+
+    els.detailsSave.disabled = true;
+    els.detailsSave.textContent = "Saving...";
+
+    try
+    {
+        const { error } = await supabaseClient.rpc("habit_stack_set_details", {
+            p_workspace_code: WORKSPACE_CODE,
+            p_habit_id: habitId,
+            p_habit_details: details
+        });
+
+        if (error) throw error;
+
+        const habit = state.habits.find(item => item.id === habitId);
+
+        if (habit)
+        {
+            habit.habit_details = details;
+        }
+
+        closeDetailsModal();
+        renderHabits();
+        setPageStatus("Habit details saved.", "success");
+    }
+    catch (error)
+    {
+        console.error("Habit details save failed:", error);
+        setPageStatus(`Could not save habit details: ${error.message || error}`, "error");
+    }
+    finally
+    {
+        els.detailsSave.disabled = false;
+        els.detailsSave.textContent = previousText;
+    }
+});
+
 els.form.addEventListener("submit", async function (event)
 {
     event.preventDefault();
@@ -568,6 +701,8 @@ els.addHabitButton.addEventListener("click", openAddModal);
 els.refreshHabitsButton.addEventListener("click", function () { void loadHabits(); });
 els.modalClose.addEventListener("click", closeModal);
 els.cancelButton.addEventListener("click", closeModal);
+els.detailsClose.addEventListener("click", closeDetailsModal);
+els.detailsCancel.addEventListener("click", closeDetailsModal);
 
 els.modalBackdrop.addEventListener("click", function (event)
 {
@@ -577,9 +712,28 @@ els.modalBackdrop.addEventListener("click", function (event)
     }
 });
 
+els.detailsBackdrop.addEventListener("click", function (event)
+{
+    if (event.target === els.detailsBackdrop)
+    {
+        closeDetailsModal();
+    }
+});
+
 document.addEventListener("keydown", function (event)
 {
-    if (event.key === "Escape" && !els.modalBackdrop.hidden)
+    if (event.key !== "Escape")
+    {
+        return;
+    }
+
+    if (!els.detailsBackdrop.hidden)
+    {
+        closeDetailsModal();
+        return;
+    }
+
+    if (!els.modalBackdrop.hidden)
     {
         closeModal();
     }

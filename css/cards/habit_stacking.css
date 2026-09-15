@@ -593,3 +593,79 @@ body{
         font-size:1.7rem;
     }
 }
+
+
+/* Habit boxes are compact "thumbnails"; tap the box for the full description. */
+.habit-box{
+    cursor:pointer;
+    transition:
+        transform .14s ease,
+        border-color .14s ease,
+        background .14s ease;
+}
+
+.habit-box:hover{
+    transform:translateY(-2px);
+    border-color:rgba(166,151,255,.34);
+}
+
+.habit-box:focus-visible{
+    outline:2px solid var(--habit-purple);
+    outline-offset:3px;
+}
+
+.habit-box.has-details .habit-box-label::after{
+    content:"  •";
+    color:var(--habit-purple);
+}
+
+.habit-box-details-hint{
+    margin:0;
+    color:var(--habit-muted);
+    text-align:center;
+    font-size:.66rem;
+    font-weight:800;
+    opacity:.75;
+}
+
+.habit-details-modal{
+    width:min(620px,100%);
+}
+
+.habit-details-cue{
+    margin:5px 0 0;
+    color:var(--habit-muted);
+    font-size:.8rem;
+    line-height:1.4;
+}
+
+#habitDetailsForm{
+    display:grid;
+    gap:14px;
+}
+
+#habitDetailsInput{
+    width:100%;
+    min-height:180px;
+    box-sizing:border-box;
+    resize:vertical;
+    padding:12px 13px;
+    border:1px solid rgba(230,231,192,.14);
+    border-radius:11px;
+    background:#111014;
+    color:var(--habit-text);
+    font:inherit;
+    line-height:1.5;
+}
+
+#habitDetailsInput:focus{
+    border-color:rgba(166,151,255,.52);
+    outline:none;
+}
+
+.habit-details-note{
+    margin:0;
+    color:var(--habit-muted);
+    font-size:.76rem;
+    line-height:1.45;
+}

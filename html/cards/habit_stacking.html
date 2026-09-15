@@ -13,7 +13,7 @@
         <link rel="stylesheet" href="css/sidebar.css?v=7">
         <link rel="stylesheet" href="css/general_styles.css?v=3">
         <link rel="stylesheet" href="css/cards.css?v=3">
-        <link rel="stylesheet" href="css/cards/habit_stacking.css?v=4">
+        <link rel="stylesheet" href="css/cards/habit_stacking.css?v=5">
     </head>
 
     <body>
@@ -151,8 +151,44 @@
             </section>
         </div>
 
+
+        <!-- Habit details modal -->
+        <div id="habitDetailsBackdrop" class="habit-modal-backdrop" hidden>
+            <section class="habit-modal habit-details-modal" role="dialog" aria-modal="true" aria-labelledby="habitDetailsTitle">
+                <div class="habit-modal-header">
+                    <div>
+                        <p class="habit-kicker">HABIT DETAILS</p>
+                        <h2 id="habitDetailsTitle">Habit</h2>
+                        <p id="habitDetailsCue" class="habit-details-cue"></p>
+                    </div>
+
+                    <button id="habitDetailsClose" class="habit-modal-close" type="button" aria-label="Close">×</button>
+                </div>
+
+                <form id="habitDetailsForm">
+                    <label class="habit-field">
+                        <span>Extra details / description</span>
+                        <textarea
+                            id="habitDetailsInput"
+                            maxlength="4000"
+                            placeholder="Add whatever the little title box doesn't explain..."
+                        ></textarea>
+                    </label>
+
+                    <p class="habit-details-note">
+                        The row still only shows the short title. Tap the box whenever you need the full context.
+                    </p>
+
+                    <div class="habit-modal-actions">
+                        <button id="habitDetailsCancel" class="habit-modal-cancel" type="button">Cancel</button>
+                        <button id="habitDetailsSave" class="habit-modal-save" type="submit">Save details</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="js/cards/habit_stacking.js?v=4"></script>
+        <script src="js/cards/habit_stacking.js?v=5"></script>
         <script src="js/generals.js"></script>
         <script src="js/navbar.js?v=12"></script>
     </body>
