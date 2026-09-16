@@ -42,6 +42,8 @@
     const ONE_PERCENT_WORKSPACE_CODE = "bagas-main-one-percent-v1";
     const ONE_PERCENT_SETTINGS_TABLE = "one_percent_settings_shared";
     const ONE_PERCENT_TODO_SLUGS = ["todo-daily", "todo-super", "todo-short", "todo-long", "todo-school"];
+    const CHINESE_WOTD_HISTORY_SLUG = "zh-wotd-history";
+    const CHINESE_WOTD_SETTINGS_SLUG = "zh-wotd-settings";
     const QUIET_HOURS_TIME_ZONE = "Asia/Shanghai";
 
     let client = null;
@@ -1049,7 +1051,7 @@
         return (date.getHours() * 60 + date.getMinutes()) >= (hour * 60 + minute);
     }
 
-    function buildNotifications(manualRows, occurrenceRows, activeRules, dismissedKeys, date, moneyRow, moneySettings, moneyAvailable, onePercentSettings, onePercentTodoRows, onePercentAvailable)
+    function buildNotifications(manualRows, occurrenceRows, activeRules, dismissedKeys, date, moneyRow, moneySettings, moneyAvailable, onePercentSettings, onePercentTodoRows, onePercentAvailable, chineseWotdHistory, chineseWotdSettings, chineseWotdAvailable)
     {
         const notifications = [];
         const dateKey = getLocalDateKey(date);
@@ -1171,6 +1173,37 @@
                 text: `Today's 1% is still unfinished. ${onePercentTaskCount} project${onePercentTaskCount === 1 ? "" : "s"} waiting.`,
                 href: "html/cards/one_percent_work.html",
                 footerText: "Tap to do today's 1%"
+            });
+        }
+
+
+        const chineseTodayWord = Array.isArray(chineseWotdHistory)
+            ? chineseWotdHistory.find(function (entry)
+            {
+                return String(entry?.date || "") === dateKey;
+            })
+            : null;
+
+        if (chineseWotdAvailable && chineseWotdSettings?.enabled !== false)
+        {
+            const hasTodayWord = Boolean(
+                chineseTodayWord
+                && String(chineseTodayWord.hanzi || "").trim()
+                && String(chineseTodayWord.pinyin || "").trim()
+                && String(chineseTodayWord.yisi || "").trim()
+            );
+
+            notifications.push({
+                id: "chinese-word-of-day",
+                dismissKey: "chinese-wotd:daily",
+                type: "chinese-wotd",
+                sourceLabel: "From card: Chinese Trainer",
+                kindLabel: "Word of the Day",
+                text: hasTodayWord
+                    ? `Review today's word: ${String(chineseTodayWord.hanzi || "").trim()} · ${String(chineseTodayWord.pinyin || "").trim()}`
+                    : "You haven't filled today's Word of the Day yet.",
+                href: "html/cards/chinese.html#wotd",
+                footerText: hasTodayWord ? "Tap to review today's word" : "Tap to add today's word"
             });
         }
 
@@ -1551,7 +1584,7 @@
 
         try
         {
-            const [manualResult, occurrenceResult, rulesResult, dismissalResult, moneyResult, moneySettingsResult, onePercentSettingsResult, onePercentTodoResult] = await Promise.all([
+            const [manualResult, occurrenceResult, rulesResult, dismissalResult, moneyResult, moneySettingsResult, onePercentSettingsResult, onePercentTodoResult, chineseWotdResult] = await Promise.all([
                 supabaseClient
                     .from("calendar_notes_shared")
                     .select("note_text")
@@ -1591,7 +1624,11 @@
                 supabaseClient
                     .from("todo_lists")
                     .select("slug, data")
-                    .in("slug", ONE_PERCENT_TODO_SLUGS)
+                    .in("slug", ONE_PERCENT_TODO_SLUGS),
+                supabaseClient
+                    .from("zh_words")
+                    .select("slug, data")
+                    .in("slug", [CHINESE_WOTD_HISTORY_SLUG, CHINESE_WOTD_SETTINGS_SLUG])
             ]);
 
             const manualRows = manualResult.error ? [] : (manualResult.data ?? []);
@@ -1604,6 +1641,20 @@
             const onePercentSettings = onePercentSettingsResult.error ? null : (onePercentSettingsResult.data?.[0] ?? null);
             const onePercentTodoRows = onePercentTodoResult.error ? [] : (onePercentTodoResult.data ?? []);
             const onePercentAvailable = !onePercentSettingsResult.error && !onePercentTodoResult.error;
+
+            const chineseRows = chineseWotdResult.error ? [] : (chineseWotdResult.data ?? []);
+            const chineseHistoryRow = chineseRows.find(row => row.slug === CHINESE_WOTD_HISTORY_SLUG);
+            const chineseSettingsRow = chineseRows.find(row => row.slug === CHINESE_WOTD_SETTINGS_SLUG);
+            const chineseWotdHistory = Array.isArray(chineseHistoryRow?.data) ? chineseHistoryRow.data : [];
+            const chineseWotdSettings = (
+                chineseSettingsRow?.data
+                && typeof chineseSettingsRow.data === "object"
+                && !Array.isArray(chineseSettingsRow.data)
+            )
+                ? chineseSettingsRow.data
+                : null;
+            const chineseWotdAvailable = !chineseWotdResult.error && chineseWotdSettings !== null;
+
             dismissalStoreAvailable = !dismissalResult.error;
 
             const dismissedKeys = new Set();
@@ -1620,7 +1671,7 @@
             }
 
             const allFailed = Boolean(manualResult.error && occurrenceResult.error && rulesResult.error);
-            const hadPartialError = Boolean(manualResult.error || occurrenceResult.error || rulesResult.error || moneyResult.error || moneySettingsResult.error || onePercentSettingsResult.error || onePercentTodoResult.error);
+            const hadPartialError = Boolean(manualResult.error || occurrenceResult.error || rulesResult.error || moneyResult.error || moneySettingsResult.error || onePercentSettingsResult.error || onePercentTodoResult.error || chineseWotdResult.error);
 
             if (allFailed)
             {
@@ -1632,7 +1683,7 @@
                 console.warn("Notification dismissals are unavailable until the SQL update is run:", dismissalResult.error);
             }
 
-            const notifications = buildNotifications(manualRows, occurrenceRows, activeRules, dismissedKeys, now, moneyRow, moneySettings, moneyAvailable, onePercentSettings, onePercentTodoRows, onePercentAvailable);
+            const notifications = buildNotifications(manualRows, occurrenceRows, activeRules, dismissedKeys, now, moneyRow, moneySettings, moneyAvailable, onePercentSettings, onePercentTodoRows, onePercentAvailable, chineseWotdHistory, chineseWotdSettings, chineseWotdAvailable);
             renderNotifications(notifications, dateKey, hadPartialError);
         }
         catch (error)

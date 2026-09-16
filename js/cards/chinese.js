@@ -6,10 +6,14 @@ const sb = window.supabase.createClient(SB_URL, SB_ANON);
 /* rows in zh_words */
 const ZH_WORDS_SLUG = "zh-default";
 const ZH_CHAPTERS_SLUG = "zh-chapters";
+const ZH_WOTD_HISTORY_SLUG = "zh-wotd-history";
+const ZH_WOTD_SETTINGS_SLUG = "zh-wotd-settings";
 
 /* local mirror (offline-ish) */
 const CACHE_WORDS_KEY = "zh.words.v2";
 const CACHE_CHAPTERS_KEY = "zh.chapters.v1";
+const CACHE_WOTD_KEY = "zh.wotd.history.v1";
+const CACHE_WOTD_SETTINGS_KEY = "zh.wotd.settings.v1";
 const readLocal = (key) => { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } };
 const writeLocal = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} };
 
@@ -24,10 +28,20 @@ const SAMPLE_WORDS = [
 /* state */
 let words = readLocal(CACHE_WORDS_KEY) || [...SAMPLE_WORDS];
 let chapters = readLocal(CACHE_CHAPTERS_KEY) || [];
+let wotdHistory = Array.isArray(readLocal(CACHE_WOTD_KEY)) ? readLocal(CACHE_WOTD_KEY) : [];
+let wotdSettings = readLocal(CACHE_WOTD_SETTINGS_KEY) || { enabled:true, every_hours:1 };
 let session = "main"; // "main" | "trash"
+let uiMode = "trainer"; // "trainer" | "wotd"
 let viewIndex = 0;
+let wotdViewIndex = 0;
+let wotdDeck = [];
+let wotdRevealAll = false;
+let wotdCurrentPrompt = "hanzi";
 let lastWordsVersion = 0;
 let lastChaptersVersion = 0;
+let lastWotdVersion = 0;
+let lastWotdSettingsVersion = 0;
+let wotdSettingsPersisted = false;
 
 function normalizeWord(word = {}){
   return {
@@ -45,6 +59,67 @@ function normalizeChapter(chapter = {}){
     name: chapter.name ?? formatChapterName(chapter.created_at ?? new Date().toISOString()),
     created_at: chapter.created_at ?? new Date().toISOString()
   };
+}
+
+function normalizeWotdEntry(entry = {}){
+  return {
+    date: String(entry.date || ""),
+    hanzi: String(entry.hanzi || ""),
+    pinyin: String(entry.pinyin || ""),
+    yisi: String(entry.yisi || ""),
+    created_at: entry.created_at ?? new Date().toISOString()
+  };
+}
+
+function normalizeWotdSettings(value = {}){
+  const everyHours = Number(value.every_hours);
+  return {
+    enabled: value.enabled !== false,
+    every_hours: Number.isInteger(everyHours) && everyHours >= 1 && everyHours <= 24
+      ? everyHours
+      : 1
+  };
+}
+
+function getShanghaiDateKey(date = new Date()){
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone:"Asia/Shanghai",
+    year:"numeric",
+    month:"2-digit",
+    day:"2-digit"
+  }).formatToParts(date);
+
+  const values = Object.fromEntries(
+    parts.filter(part => part.type !== "literal").map(part => [part.type, part.value])
+  );
+
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function getTodayWotd(){
+  const today = getShanghaiDateKey();
+  return wotdHistory.find(entry => normalizeWotdEntry(entry).date === today) || null;
+}
+
+function rebuildWotdDeck(preferredDate = null){
+  const currentDate = preferredDate || wotdDeck[wotdViewIndex]?.date || getTodayWotd()?.date || null;
+  wotdDeck = wotdHistory
+    .map(normalizeWotdEntry)
+    .filter(entry => entry.date && entry.hanzi && entry.pinyin && entry.yisi)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  if (!wotdDeck.length){
+    wotdViewIndex = 0;
+    return;
+  }
+
+  const preferredIndex = currentDate
+    ? wotdDeck.findIndex(entry => entry.date === currentDate)
+    : -1;
+
+  wotdViewIndex = preferredIndex >= 0
+    ? preferredIndex
+    : Math.max(0, Math.min(wotdViewIndex, wotdDeck.length - 1));
 }
 
 function getView(){
@@ -94,6 +169,25 @@ const mCancel   = document.getElementById("mCancel");
 const dictSection = document.querySelector(".zh-dict");
 const toggleDictBtn = document.getElementById("toggleDictBtn");
 const btnOpenChapters = document.getElementById("btnOpenChapters");
+const modalTitle = document.getElementById("zhModalTitle");
+
+const trainerPane = document.getElementById("zhTrainerPane");
+const wotdPane = document.getElementById("zhWotdPane");
+const btnTrainerMode = document.getElementById("btnTrainerMode");
+const btnWotdMode = document.getElementById("btnWotdMode");
+const wotdCardEl = document.getElementById("zhWotdCard");
+const btnWotdAdd = document.getElementById("btnWotdAdd");
+const wotdTodayTitle = document.getElementById("wotdTodayTitle");
+const wotdTodayMeta = document.getElementById("wotdTodayMeta");
+const wotdFrequency = document.getElementById("wotdFrequency");
+const btnSaveWotdFrequency = document.getElementById("btnSaveWotdFrequency");
+const wotdReminderStatus = document.getElementById("wotdReminderStatus");
+const wotdHistoryCount = document.getElementById("wotdHistoryCount");
+const wotdHistoryList = document.getElementById("wotdHistoryList");
+const btnWotdPrev = document.getElementById("btnWotdPrev");
+const btnWotdReveal = document.getElementById("btnWotdReveal");
+const btnWotdNext = document.getElementById("btnWotdNext");
+const btnWotdShuffle = document.getElementById("btnWotdShuffle");
 
 /* Voice toggle state */
 let voiceEnabled = false;
@@ -101,7 +195,10 @@ const btnVoice = document.getElementById("btnVoice");
 
 /* Click/tap: always speak Hanzi of current card */
 btnVoice.addEventListener("click", () => {
-  const w = getView()[viewIndex]?.w;
+  const w = uiMode === "wotd"
+    ? wotdDeck[wotdViewIndex]
+    : getView()[viewIndex]?.w;
+
   if (w) speakChinese(w.hanzi);
 });
 
@@ -140,13 +237,15 @@ async function loadRemote(){
   const { data, error } = await sb
     .from("zh_words")
     .select("slug,data,version")
-    .in("slug", [ZH_WORDS_SLUG, ZH_CHAPTERS_SLUG]);
+    .in("slug", [ZH_WORDS_SLUG, ZH_CHAPTERS_SLUG, ZH_WOTD_HISTORY_SLUG, ZH_WOTD_SETTINGS_SLUG]);
 
   if (error) throw error;
 
   const rows = new Map((data ?? []).map(row => [row.slug, row]));
   const wordsRow = rows.get(ZH_WORDS_SLUG);
   const chaptersRow = rows.get(ZH_CHAPTERS_SLUG);
+  const wotdRow = rows.get(ZH_WOTD_HISTORY_SLUG);
+  const wotdSettingsRow = rows.get(ZH_WOTD_SETTINGS_SLUG);
 
   if (wordsRow?.data && Array.isArray(wordsRow.data)) {
     words = wordsRow.data.map(normalizeWord);
@@ -161,12 +260,29 @@ async function loadRemote(){
     lastChaptersVersion = chaptersRow.version ?? 0;
     writeLocal(CACHE_CHAPTERS_KEY, chapters);
   }
+
+  if (wotdRow?.data && Array.isArray(wotdRow.data)) {
+    wotdHistory = wotdRow.data.map(normalizeWotdEntry);
+    lastWotdVersion = wotdRow.version ?? 0;
+    writeLocal(CACHE_WOTD_KEY, wotdHistory);
+  }
+
+  if (wotdSettingsRow?.data && typeof wotdSettingsRow.data === "object" && !Array.isArray(wotdSettingsRow.data)) {
+    wotdSettings = normalizeWotdSettings(wotdSettingsRow.data);
+    lastWotdSettingsVersion = wotdSettingsRow.version ?? 0;
+    wotdSettingsPersisted = true;
+    writeLocal(CACHE_WOTD_SETTINGS_KEY, wotdSettings);
+  }
+
+  rebuildWotdDeck();
 }
 
 let saveWordsTimer = null;
 let saveChaptersTimer = null;
+let saveWotdTimer = null;
 function scheduleSaveWords(){ clearTimeout(saveWordsTimer); saveWordsTimer = setTimeout(saveWordsRemote, 250); }
 function scheduleSaveChapters(){ clearTimeout(saveChaptersTimer); saveChaptersTimer = setTimeout(saveChaptersRemote, 250); }
+function scheduleSaveWotd(){ clearTimeout(saveWotdTimer); saveWotdTimer = setTimeout(saveWotdRemote, 150); }
 
 async function saveWordsRemote(){
   lastWordsVersion = Date.now();
@@ -185,6 +301,44 @@ async function saveChaptersRemote(){
   );
   if (!error) writeLocal(CACHE_CHAPTERS_KEY, chapters);
 }
+
+async function saveWotdRemote(){
+  lastWotdVersion = Date.now();
+  const { error } = await sb.from("zh_words").upsert(
+    {
+      slug: ZH_WOTD_HISTORY_SLUG,
+      data: wotdHistory.map(normalizeWotdEntry),
+      version: lastWotdVersion,
+      updated_at: new Date().toISOString()
+    },
+    { onConflict:"slug" }
+  );
+
+  if (error) throw error;
+  writeLocal(CACHE_WOTD_KEY, wotdHistory);
+}
+
+async function saveWotdSettingsRemote(){
+  lastWotdSettingsVersion = Date.now();
+  const cleanSettings = normalizeWotdSettings(wotdSettings);
+
+  const { error } = await sb.from("zh_words").upsert(
+    {
+      slug: ZH_WOTD_SETTINGS_SLUG,
+      data: cleanSettings,
+      version: lastWotdSettingsVersion,
+      updated_at: new Date().toISOString()
+    },
+    { onConflict:"slug" }
+  );
+
+  if (error) throw error;
+
+  wotdSettings = cleanSettings;
+  wotdSettingsPersisted = true;
+  writeLocal(CACHE_WOTD_SETTINGS_KEY, wotdSettings);
+}
+
 
 function subscribeRealtime(){
   const ch = sb
@@ -212,11 +366,224 @@ function subscribeRealtime(){
           chapters = Array.isArray(row.data) ? row.data.map(normalizeChapter).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)) : [];
           writeLocal(CACHE_CHAPTERS_KEY, chapters);
           renderDict();
+          return;
+        }
+
+        if (row.slug === ZH_WOTD_HISTORY_SLUG) {
+          const v = row.version ?? 0;
+          if (v && v <= lastWotdVersion) return;
+          wotdHistory = Array.isArray(row.data) ? row.data.map(normalizeWotdEntry) : [];
+          lastWotdVersion = v;
+          writeLocal(CACHE_WOTD_KEY, wotdHistory);
+          rebuildWotdDeck();
+          renderWotdAll();
+          return;
+        }
+
+        if (row.slug === ZH_WOTD_SETTINGS_SLUG) {
+          const v = row.version ?? 0;
+          if (v && v <= lastWotdSettingsVersion) return;
+          wotdSettings = normalizeWotdSettings(row.data || {});
+          lastWotdSettingsVersion = v;
+          wotdSettingsPersisted = true;
+          writeLocal(CACHE_WOTD_SETTINGS_KEY, wotdSettings);
+          renderWotdReminderSettings();
         }
       }
     )
     .subscribe();
   window.addEventListener("beforeunload", () => sb.removeChannel(ch));
+}
+
+
+/* ===== Word of the Day ===== */
+function setUiMode(mode){
+  uiMode = mode === "wotd" ? "wotd" : "trainer";
+  const isWotd = uiMode === "wotd";
+
+  trainerPane.hidden = isWotd;
+  wotdPane.hidden = !isWotd;
+  btnTrainerMode.classList.toggle("active", !isWotd);
+  btnWotdMode.classList.toggle("active", isWotd);
+
+  if (isWotd){
+    renderWotdAll();
+    if (location.hash !== "#wotd") history.replaceState(null, "", "#wotd");
+  } else if (location.hash === "#wotd"){
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+}
+
+function enabledWotdModes(){
+  const pool = ["hanzi","pinyin","yisi"].filter(m => selected.has(m));
+  if (voiceEnabled) pool.push("voice");
+  return pool.length ? pool : ["hanzi"];
+}
+
+function pickWotdPromptRandom(){
+  const pool = enabledWotdModes();
+  wotdCurrentPrompt = pool[Math.floor(Math.random() * pool.length)];
+}
+
+function renderWotdToday(){
+  const today = getTodayWotd();
+
+  if (!today){
+    wotdTodayTitle.textContent = "Nothing picked yet";
+    wotdTodayMeta.textContent = "Add today's word and it becomes part of the permanent Word of the Day history.";
+    btnWotdAdd.textContent = "＋ Add today's word";
+    return;
+  }
+
+  const w = normalizeWotdEntry(today);
+  wotdTodayTitle.innerHTML = `<span class="zh-wotd-today-word"><strong>${escapeHtml(w.hanzi)}</strong><span>${escapeHtml(w.pinyin)}</span></span>`;
+  wotdTodayMeta.textContent = w.yisi;
+  btnWotdAdd.textContent = "Edit today's word";
+}
+
+function renderWotdReminderSettings(){
+  const settings = normalizeWotdSettings(wotdSettings);
+  wotdFrequency.value = settings.enabled ? String(settings.every_hours) : "0";
+
+  wotdReminderStatus.textContent = settings.enabled
+    ? `Ray will remind you every ${settings.every_hours === 1 ? "hour" : `${settings.every_hours} hours`} outside global DND.`
+    : "Word of the Day notifications are off.";
+
+  wotdReminderStatus.className = "zh-wotd-reminder-status";
+}
+
+function renderWotdCard(){
+  const w = wotdDeck[wotdViewIndex] || null;
+
+  if (!w){
+    wotdCardEl.innerHTML = `<div class="zh-wotd-empty-card">No Word of the Day history yet.<br>Add today's word to start the deck.</div>`;
+    return;
+  }
+
+  const parts = [];
+
+  if (wotdRevealAll){
+    if (selected.has("hanzi")) parts.push(`<div class="hanzi">${escapeHtml(w.hanzi)}</div>`);
+    if (selected.has("pinyin")) parts.push(`<div class="pinyin">${escapeHtml(w.pinyin)}</div>`);
+    if (selected.has("yisi")) parts.push(`<div class="yisi">${escapeHtml(w.yisi)}</div>`);
+  } else if (wotdCurrentPrompt === "voice"){
+    parts.push(`
+      <div class="voice" aria-label="Tap to hear this word">
+        <span class="big-voice" id="wotdBigVoice">🔊</span>
+      </div>
+    `);
+  } else {
+    const key = wotdCurrentPrompt;
+    parts.push(`<div class="${key}">${escapeHtml(w[key] || "—")}</div>`);
+  }
+
+  wotdCardEl.innerHTML = `<div class="zh-lines">${parts.join("")}</div>`;
+
+  if (!wotdRevealAll && wotdCurrentPrompt === "voice"){
+    document.getElementById("wotdBigVoice")?.addEventListener("click", () => speakChinese(w.hanzi));
+  }
+}
+
+function renderWotdHistoryList(){
+  wotdHistoryList.innerHTML = "";
+  const sorted = wotdHistory
+    .map(normalizeWotdEntry)
+    .filter(entry => entry.date)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  wotdHistoryCount.textContent = `${sorted.length} word${sorted.length === 1 ? "" : "s"}`;
+
+  for (const entry of sorted){
+    const li = document.createElement("li");
+    li.className = "dict-item";
+    li.innerHTML = `
+      <div>
+        <span class="zh-wotd-date">${escapeHtml(entry.date)}</span>
+        <div class="dict-hanzi">${escapeHtml(entry.hanzi)}</div>
+        <div class="dict-pinyin">${escapeHtml(entry.pinyin)}</div>
+        <div class="dict-yisi">${escapeHtml(entry.yisi)}</div>
+      </div>
+      <div class="word-actions">
+        <button class="zh-btn mini" data-wotd-edit="${escapeHtml(entry.date)}">Edit</button>
+      </div>
+    `;
+    wotdHistoryList.appendChild(li);
+  }
+}
+
+function renderWotdAll(){
+  rebuildWotdDeck();
+  renderWotdToday();
+  renderWotdReminderSettings();
+
+  if (!wotdDeck.length){
+    wotdRevealAll = false;
+  } else if (!enabledWotdModes().includes(wotdCurrentPrompt)){
+    pickWotdPromptRandom();
+  }
+
+  renderWotdCard();
+  renderWotdHistoryList();
+}
+
+function openWotdModal(dateKey = getShanghaiDateKey()){
+  const existingIndex = wotdHistory.findIndex(entry => normalizeWotdEntry(entry).date === dateKey);
+  const existing = existingIndex >= 0 ? normalizeWotdEntry(wotdHistory[existingIndex]) : null;
+
+  modal.hidden = false;
+  document.body.classList.add("modal-open");
+  modalTitle.textContent = dateKey === getShanghaiDateKey()
+    ? (existing ? "Edit today's Word of the Day" : "Add today's Word of the Day")
+    : `Edit Word of the Day · ${dateKey}`;
+
+  inHanzi.value = existing?.hanzi || "";
+  inPinyin.value = existing?.pinyin || "";
+  inYisi.value = existing?.yisi || "";
+  mSave.onclick = () => saveWotdWord(dateKey);
+  setTimeout(() => inHanzi.focus(), 0);
+}
+
+async function saveWotdWord(dateKey){
+  const hanzi = inHanzi.value.trim();
+  const pinyin = inPinyin.value.trim();
+  const yisi = inYisi.value.trim();
+
+  if (!hanzi || !pinyin || !yisi){
+    pulseInputs();
+    return;
+  }
+
+  const existingIndex = wotdHistory.findIndex(entry => normalizeWotdEntry(entry).date === dateKey);
+  const entry = normalizeWotdEntry({
+    ...(existingIndex >= 0 ? wotdHistory[existingIndex] : {}),
+    date: dateKey,
+    hanzi,
+    pinyin,
+    yisi,
+    created_at: existingIndex >= 0
+      ? normalizeWotdEntry(wotdHistory[existingIndex]).created_at
+      : new Date().toISOString()
+  });
+
+  if (existingIndex >= 0) wotdHistory[existingIndex] = entry;
+  else wotdHistory.push(entry);
+
+  rebuildWotdDeck(dateKey);
+  wotdRevealAll = false;
+  pickWotdPromptRandom();
+  renderWotdAll();
+  closeModal();
+
+  try{
+    await saveWotdRemote();
+  } catch(error){
+    console.error("Word of the Day save failed:", error);
+    window.alert(`Word of the Day save failed: ${error.message || error}`);
+  }
+
+  if (typeof window.refreshCalendarNotifications === "function"){
+    void window.refreshCalendarNotifications({ silent:true });
+  }
 }
 
 /* ===== Curtain (drag-to-cover) ===== */
@@ -571,7 +938,8 @@ document.querySelectorAll(".zh-toggle:not(#btnVoice)").forEach(btn => {
       const pool = enabledModes();
       if (!pool.includes(currentPrompt)) pickPromptRandom();
     }
-    renderCard();
+    if (uiMode === "wotd") renderWotdCard();
+    else renderCard();
   });
 });
 
@@ -581,6 +949,7 @@ addBtn.addEventListener("click", () => openAddModal("create"));
 function openAddModal(mode, idx=null){
   modal.hidden = false;
   document.body.classList.add("modal-open");
+  modalTitle.textContent = mode === "edit" ? "Edit word" : "Add new word";
   if (mode === "edit" && idx != null) {
     const w = normalizeWord(words[idx]);
     inHanzi.value  = w.hanzi;
@@ -620,6 +989,82 @@ function saveWord(mode, idx=null){
   closeModal();
 }
 
+
+/* ===== Word of the Day controls ===== */
+btnTrainerMode.addEventListener("click", () => setUiMode("trainer"));
+btnWotdMode.addEventListener("click", () => setUiMode("wotd"));
+btnWotdAdd.addEventListener("click", () => openWotdModal(getShanghaiDateKey()));
+
+btnWotdPrev.addEventListener("click", () => {
+  if (!wotdDeck.length) return;
+  wotdViewIndex = (wotdViewIndex - 1 + wotdDeck.length) % wotdDeck.length;
+  wotdRevealAll = false;
+  pickWotdPromptRandom();
+  renderWotdCard();
+});
+
+btnWotdNext.addEventListener("click", () => {
+  if (!wotdDeck.length) return;
+  wotdViewIndex = (wotdViewIndex + 1) % wotdDeck.length;
+  wotdRevealAll = false;
+  pickWotdPromptRandom();
+  renderWotdCard();
+});
+
+btnWotdReveal.addEventListener("click", () => {
+  wotdRevealAll = true;
+  renderWotdCard();
+});
+
+btnWotdShuffle.addEventListener("click", () => {
+  for (let i = wotdDeck.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [wotdDeck[i], wotdDeck[j]] = [wotdDeck[j], wotdDeck[i]];
+  }
+
+  wotdViewIndex = 0;
+  wotdRevealAll = false;
+  pickWotdPromptRandom();
+  renderWotdCard();
+});
+
+wotdHistoryList.addEventListener("click", (event) => {
+  const edit = event.target.closest("[data-wotd-edit]");
+  if (!edit) return;
+  openWotdModal(edit.dataset.wotdEdit);
+});
+
+btnSaveWotdFrequency.addEventListener("click", async () => {
+  const selectedValue = Number(wotdFrequency.value);
+  const previousText = btnSaveWotdFrequency.textContent;
+
+  wotdSettings = selectedValue === 0
+    ? { enabled:false, every_hours:1 }
+    : { enabled:true, every_hours:selectedValue };
+
+  btnSaveWotdFrequency.disabled = true;
+  btnSaveWotdFrequency.textContent = "Saving...";
+  wotdReminderStatus.textContent = "Saving reminder frequency...";
+  wotdReminderStatus.className = "zh-wotd-reminder-status";
+
+  try{
+    await saveWotdSettingsRemote();
+    renderWotdReminderSettings();
+    wotdReminderStatus.classList.add("is-success");
+
+    if (typeof window.refreshCalendarNotifications === "function"){
+      void window.refreshCalendarNotifications({ silent:true });
+    }
+  } catch(error){
+    console.error("Word of the Day reminder settings save failed:", error);
+    wotdReminderStatus.textContent = `Could not save: ${error.message || error}`;
+    wotdReminderStatus.className = "zh-wotd-reminder-status is-error";
+  } finally {
+    btnSaveWotdFrequency.disabled = false;
+    btnSaveWotdFrequency.textContent = previousText;
+  }
+});
+
 /* ===== visuals/helpers ===== */
 function flashCard(){
   cardEl.style.transition = "background-color .25s";
@@ -636,9 +1081,19 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<"
 /* ===== boot ===== */
 (async function init(){
   try { await loadRemote(); } catch(e){ console.warn("zh load failed, using local:", e.message); }
+
+  if (!wotdSettingsPersisted){
+    try { await saveWotdSettingsRemote(); }
+    catch(e){ console.warn("WOTD settings init failed:", e.message); }
+  }
+
   pickPromptRandom();
+  pickWotdPromptRandom();
   renderCard();
   renderDict();
+  rebuildWotdDeck();
+  renderWotdAll();
   syncTrashBtn();
+  setUiMode(location.hash === "#wotd" ? "wotd" : "trainer");
   subscribeRealtime();
 })();

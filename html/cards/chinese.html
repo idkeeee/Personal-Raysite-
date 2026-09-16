@@ -14,7 +14,7 @@
         <link rel="stylesheet" href="css/sidebar.css?v=7">
         <link rel="stylesheet" href="css/general_styles.css?v=3">
         <link rel="stylesheet" href="css/cards.css?v=3">
-        <link rel="stylesheet" href="css/cards/chinese.css?v=7">
+        <link rel="stylesheet" href="css/cards/chinese.css?v=8">
     </head>
 
     <body>
@@ -61,7 +61,14 @@
         <!-- Main CODE AREA -->
         <section class="zh-wrap">
             <header class="zh-head">
-                <h2>Chinese Trainer</h2>
+                <div>
+                    <h2>Chinese Trainer</h2>
+                    <div class="zh-page-mode" aria-label="Chinese Trainer mode">
+                        <button id="btnTrainerMode" class="zh-page-mode-btn active" type="button">Trainer</button>
+                        <button id="btnWotdMode" class="zh-page-mode-btn" type="button">Word of the Day</button>
+                    </div>
+                </div>
+
                 <div class="zh-mode">
                     <button class="zh-toggle active" data-mode="hanzi">Hanzi</button>
                     <button class="zh-toggle active" data-mode="pinyin">Pinyin</button>
@@ -70,6 +77,7 @@
                 </div>
             </header>
 
+            <div id="zhTrainerPane">
             <div class="zh-card" id="zhCard" aria-live="polite"></div>
 
             <!-- controls row -->
@@ -95,6 +103,69 @@
                 </h3>
                 <ul id="dictList" class="dict-list"><!-- rows injected --></ul>
             </section>
+            </div>
+
+            <!-- Word of the Day mode -->
+            <div id="zhWotdPane" hidden>
+                <section class="zh-wotd-today">
+                    <div>
+                        <p class="zh-wotd-kicker">TODAY'S WORD</p>
+                        <h3 id="wotdTodayTitle">Nothing picked yet</h3>
+                        <p id="wotdTodayMeta">Add today's word and it becomes part of the permanent Word of the Day history.</p>
+                    </div>
+
+                    <button id="btnWotdAdd" class="zh-btn primary" type="button">＋ Add today's word</button>
+                </section>
+
+                <section class="zh-wotd-reminders">
+                    <div>
+                        <p class="zh-wotd-kicker">REMINDERS</p>
+                        <h3>How often should Ray nag you?</h3>
+                        <p>Your global Notification Center DND still controls sleeping hours.</p>
+                    </div>
+
+                    <div class="zh-wotd-reminder-controls">
+                        <label>
+                            <span>Notification frequency</span>
+                            <select id="wotdFrequency">
+                                <option value="1">Every hour</option>
+                                <option value="2">Every 2 hours</option>
+                                <option value="3">Every 3 hours</option>
+                                <option value="4">Every 4 hours</option>
+                                <option value="6">Every 6 hours</option>
+                                <option value="8">Every 8 hours</option>
+                                <option value="12">Every 12 hours</option>
+                                <option value="0">Off</option>
+                            </select>
+                        </label>
+
+                        <button id="btnSaveWotdFrequency" class="zh-btn primary" type="button">Save</button>
+                    </div>
+
+                    <p id="wotdReminderStatus" class="zh-wotd-reminder-status">Loading reminder settings...</p>
+                </section>
+
+                <section class="zh-wotd-history">
+                    <div class="zh-wotd-history-head">
+                        <div>
+                            <p class="zh-wotd-kicker">FLASHCARDS</p>
+                            <h3>Word of the Day history</h3>
+                        </div>
+                        <span id="wotdHistoryCount">0 words</span>
+                    </div>
+
+                    <div class="zh-card" id="zhWotdCard" aria-live="polite"></div>
+
+                    <div class="zh-ctrl">
+                        <button class="zh-btn ghost" id="btnWotdPrev" type="button">◀ Prev</button>
+                        <button class="zh-btn" id="btnWotdReveal" type="button">Reveal</button>
+                        <button class="zh-btn" id="btnWotdNext" type="button">Next ▶</button>
+                        <button class="zh-btn ghost" id="btnWotdShuffle" type="button">Shuffle</button>
+                    </div>
+
+                    <ul id="wotdHistoryList" class="dict-list zh-wotd-history-list"></ul>
+                </section>
+            </div>
         </section>
 
         <!-- tiny modal for add word -->
@@ -117,9 +188,9 @@
 
 
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="js/cards/chinese.js?v=7"></script>
+        <script src="js/cards/chinese.js?v=8"></script>
         <script src="js/generals.js"></script>
-        <script src="js/navbar.js?v=12"></script>
+        <script src="js/navbar.js?v=13"></script>
     </body>
 
 </html>

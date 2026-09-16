@@ -211,3 +211,190 @@
     justify-content:flex-start;
   }
 }
+
+
+/* ===== Word of the Day ===== */
+.zh-page-mode{
+  display:flex;
+  gap:7px;
+  margin-top:8px;
+  flex-wrap:wrap;
+}
+
+.zh-page-mode-btn{
+  border:1px solid #4b4950;
+  background:#17161a;
+  color:var(--ink);
+  padding:6px 10px;
+  border-radius:999px;
+  cursor:pointer;
+  font:inherit;
+  font-size:12px;
+  font-weight:900;
+}
+
+.zh-page-mode-btn.active{
+  color:#111214;
+  background:var(--accent);
+  border-color:var(--accent);
+}
+
+#zhWotdPane[hidden],
+#zhTrainerPane[hidden]{
+  display:none !important;
+}
+
+.zh-wotd-today,
+.zh-wotd-reminders,
+.zh-wotd-history{
+  margin-top:12px;
+  padding:16px;
+  border:1px solid #343239;
+  border-radius:16px;
+  background:#1b1a1d;
+  color:var(--ink);
+}
+
+.zh-wotd-today{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.zh-wotd-kicker{
+  margin:0 0 5px;
+  color:#a697ff;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.16em;
+}
+
+.zh-wotd-today h3,
+.zh-wotd-reminders h3,
+.zh-wotd-history h3{
+  margin:0;
+  color:var(--ink);
+}
+
+.zh-wotd-today p:not(.zh-wotd-kicker),
+.zh-wotd-reminders p:not(.zh-wotd-kicker){
+  margin:6px 0 0;
+  color:#a9a99f;
+  line-height:1.45;
+}
+
+.zh-wotd-today-word{
+  display:flex;
+  gap:9px;
+  align-items:baseline;
+  flex-wrap:wrap;
+}
+
+.zh-wotd-today-word strong{
+  font-size:24px;
+}
+
+.zh-wotd-reminders{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:14px 20px;
+  align-items:center;
+}
+
+.zh-wotd-reminder-controls{
+  display:flex;
+  align-items:end;
+  gap:9px;
+}
+
+.zh-wotd-reminder-controls label{
+  display:grid;
+  gap:5px;
+  color:#aaa99f;
+  font-size:12px;
+  font-weight:900;
+}
+
+.zh-wotd-reminder-controls select{
+  min-width:170px;
+  min-height:42px;
+  padding:8px 11px;
+  border:1px solid #4b4950;
+  border-radius:11px;
+  background:#121214;
+  color:var(--ink);
+  font:inherit;
+  font-weight:800;
+  color-scheme:dark;
+}
+
+.zh-wotd-reminder-status{
+  grid-column:1 / -1;
+  margin:0 !important;
+  font-size:12px;
+}
+
+.zh-wotd-reminder-status.is-success{ color:var(--accent) !important; }
+.zh-wotd-reminder-status.is-error{ color:#ff9e9e !important; }
+
+.zh-wotd-history-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  gap:12px;
+  margin-bottom:12px;
+}
+
+#wotdHistoryCount{
+  color:#aaa99f;
+  font-size:12px;
+  font-weight:900;
+}
+
+.zh-wotd-history-list{
+  margin-top:14px;
+}
+
+.zh-wotd-history-list .dict-item{
+  grid-template-columns:minmax(0,1fr) auto;
+}
+
+.zh-wotd-date{
+  display:inline-block;
+  margin-bottom:5px;
+  color:#a697ff;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+
+.zh-wotd-empty-card{
+  color:#aaa99f;
+  line-height:1.5;
+}
+
+@media (max-width:700px){
+  .zh-wotd-today{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .zh-wotd-today .zh-btn{
+    width:100%;
+  }
+
+  .zh-wotd-reminders{
+    grid-template-columns:1fr;
+  }
+
+  .zh-wotd-reminder-controls{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .zh-wotd-reminder-controls select,
+  .zh-wotd-reminder-controls .zh-btn{
+    width:100%;
+  }
+}
