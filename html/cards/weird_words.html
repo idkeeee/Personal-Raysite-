@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <!-- Make all relative links resolve from your repo root -->
+        <base href="https://idkeeee.github.io/Personal-Raysite-/">
+
+        <title>Weird Words 📚</title>
+
+        <link rel="stylesheet" href="css/navbar.css?v=4">
+        <link rel="stylesheet" href="css/sidebar.css?v=7">
+        <link rel="stylesheet" href="css/general_styles.css?v=3">
+        <link rel="stylesheet" href="css/cards.css?v=3">
+        <link rel="stylesheet" href="css/cards/weird_words.css?v=1">
+    </head>
+
+    <body>
+        <!-- Navbar ⬆️ -->
+        <nav class="navbar">
+            <button class="hamburger" id="notificationMenuButton" type="button" onclick="toggleMenu()" aria-label="Open notification center">
+                <span class="hamburger_icon" aria-hidden="true">&#9776;</span>
+                <span class="notification_badge" id="notificationBadge" hidden>0</span>
+            </button>
+            <div class="ray_title"></div>
+        </nav>
+
+        <!-- Notification Center ⬅️ -->
+        <aside class="side_menu" id="sideMenu" aria-hidden="true" aria-label="Notification center">
+            <div class="side_menu_header">
+                <div>
+                    <p class="notification_eyebrow">TODAY</p>
+                    <h2>Notification Center</h2>
+                    <p id="notificationDateLabel" class="notification_date_label">Checking the calendar...</p>
+                </div>
+                <button class="side_menu-close-button" aria-label="Close notification center" onclick="toggleMenu()">×</button>
+            </div>
+
+            <div class="notification_toolbar">
+                <span id="notificationSummary">Loading today’s tasks...</span>
+                <button id="notificationRefreshButton" class="notification_refresh_button" type="button">Refresh</button>
+            </div>
+
+            <div id="notificationStatus" class="notification_status" role="status" aria-live="polite">
+                Connecting to Ray...
+            </div>
+
+            <div id="notificationList" class="notification_list"></div>
+
+            <a id="notificationCalendarLink" class="notification_calendar_link" href="html/cards/calender.html">
+                Open Calender
+                <span aria-hidden="true">→</span>
+            </a>
+        </aside>
+        <div class="backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>
+
+        <main class="ww-shell">
+            <section class="ww-hero">
+                <div>
+                    <p class="ww-kicker">ENGLISH TRAINER</p>
+                    <h1>Weird Words</h1>
+                    <p class="ww-subtitle">
+                        For the words you have definitely Googled before and somehow still forgot.
+                    </p>
+                </div>
+
+                <button id="wwAddButton" class="ww-primary-button" type="button">
+                    + Add new word
+                </button>
+            </section>
+
+            <section class="ww-trainer">
+                <div class="ww-counter">
+                    <span id="wwCounter">0 / 0</span>
+                </div>
+
+                <button id="wwCard" class="ww-card" type="button" aria-live="polite">
+                    <span id="wwWord" class="ww-word">No words yet</span>
+                    <span id="wwDefinition" class="ww-definition" hidden>
+                        Add a weird word to start the deck.
+                    </span>
+                    <span id="wwCardHint" class="ww-card-hint">Tap to reveal definition</span>
+                </button>
+
+                <div class="ww-controls">
+                    <button id="wwPrevButton" class="ww-button ghost" type="button">◀ Prev</button>
+                    <button id="wwRevealButton" class="ww-button" type="button">Reveal</button>
+                    <button id="wwNextButton" class="ww-button" type="button">Next ▶</button>
+                    <button id="wwShuffleButton" class="ww-button ghost" type="button">Shuffle</button>
+                </div>
+            </section>
+
+            <section class="ww-dictionary">
+                <div class="ww-dictionary-head">
+                    <div>
+                        <p class="ww-kicker">ALL WORDS</p>
+                        <h2>Dictionary</h2>
+                    </div>
+                    <span id="wwWordCount">0 words</span>
+                </div>
+
+                <div id="wwEmpty" class="ww-empty" hidden>
+                    No weird words yet. Suspiciously normal vocabulary.
+                </div>
+
+                <div id="wwList" class="ww-list"></div>
+            </section>
+
+            <div id="wwStatus" class="ww-status" role="status" aria-live="polite"></div>
+        </main>
+
+        <!-- Add / edit word modal -->
+        <div id="wwModalBackdrop" class="ww-modal-backdrop" hidden>
+            <section class="ww-modal" role="dialog" aria-modal="true" aria-labelledby="wwModalTitle">
+                <div class="ww-modal-head">
+                    <div>
+                        <p class="ww-kicker">WORD + DEFINITION</p>
+                        <h2 id="wwModalTitle">Add new word</h2>
+                    </div>
+                    <button id="wwModalClose" class="ww-modal-close" type="button" aria-label="Close">×</button>
+                </div>
+
+                <form id="wwForm">
+                    <label class="ww-field">
+                        <span>Word</span>
+                        <input id="wwWordInput" type="text" maxlength="160" autocomplete="off" placeholder="e.g. perspicacious" required>
+                    </label>
+
+                    <label class="ww-field">
+                        <span>Definition</span>
+                        <textarea id="wwDefinitionInput" maxlength="4000" placeholder="e.g. having a ready insight into things" required></textarea>
+                    </label>
+
+                    <div class="ww-modal-actions">
+                        <button id="wwCancelButton" class="ww-button ghost" type="button">Cancel</button>
+                        <button id="wwSaveButton" class="ww-button primary" type="submit">Save word</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        <script src="js/cards/weird_words.js?v=1"></script>
+        <script src="js/generals.js"></script>
+        <script src="js/navbar.js?v=13"></script>
+    </body>
+</html>
