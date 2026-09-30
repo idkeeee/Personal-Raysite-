@@ -14,7 +14,7 @@
         <link rel="stylesheet" href="css/sidebar.css?v=7">
         <link rel="stylesheet" href="css/general_styles.css?v=3">
         <link rel="stylesheet" href="css/cards.css?v=3">
-        <link rel="stylesheet" href="css/cards/chinese.css?v=8">
+        <link rel="stylesheet" href="css/cards/chinese.css?v=9">
     </head>
 
     <body>
@@ -117,6 +117,38 @@
                     <button id="btnWotdAdd" class="zh-btn primary" type="button">＋ Add today's word</button>
                 </section>
 
+                <section class="zh-wotd-prep">
+                    <div>
+                        <p class="zh-wotd-kicker">PREP AHEAD</p>
+                        <h3>Queue future words</h3>
+                        <p>
+                            Pick a future date now. When that day arrives, the prepared word automatically becomes that day's Word of the Day.
+                        </p>
+                    </div>
+
+                    <div class="zh-wotd-prep-controls">
+                        <label>
+                            <span>Future date</span>
+                            <input id="wotdFutureDate" type="date">
+                        </label>
+
+                        <button id="btnWotdFutureAdd" class="zh-btn primary" type="button">Prepare this date</button>
+                    </div>
+
+                    <div class="zh-wotd-upcoming">
+                        <div class="zh-wotd-upcoming-head">
+                            <strong>Prepared words</strong>
+                            <span id="wotdUpcomingCount">0 queued</span>
+                        </div>
+
+                        <div id="wotdUpcomingEmpty" class="zh-wotd-upcoming-empty">
+                            Nothing queued yet. Tomorrow-you is currently freeloading.
+                        </div>
+
+                        <ul id="wotdUpcomingList" class="dict-list zh-wotd-upcoming-list"></ul>
+                    </div>
+                </section>
+
                 <section class="zh-wotd-reminders">
                     <div>
                         <p class="zh-wotd-kicker">REMINDERS</p>
@@ -188,7 +220,7 @@
 
 
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="js/cards/chinese.js?v=8"></script>
+        <script src="js/cards/chinese.js?v=9"></script>
         <script src="js/generals.js"></script>
         <script src="js/navbar.js?v=13"></script>
     </body>

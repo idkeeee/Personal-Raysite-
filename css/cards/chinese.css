@@ -245,6 +245,7 @@
 }
 
 .zh-wotd-today,
+.zh-wotd-prep,
 .zh-wotd-reminders,
 .zh-wotd-history{
   margin-top:12px;
@@ -271,6 +272,7 @@
 }
 
 .zh-wotd-today h3,
+.zh-wotd-prep h3,
 .zh-wotd-reminders h3,
 .zh-wotd-history h3{
   margin:0;
@@ -278,6 +280,7 @@
 }
 
 .zh-wotd-today p:not(.zh-wotd-kicker),
+.zh-wotd-prep p:not(.zh-wotd-kicker),
 .zh-wotd-reminders p:not(.zh-wotd-kicker){
   margin:6px 0 0;
   color:#a9a99f;
@@ -293,6 +296,102 @@
 
 .zh-wotd-today-word strong{
   font-size:24px;
+}
+
+
+
+.zh-wotd-prep{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:14px 20px;
+  align-items:center;
+}
+
+.zh-wotd-prep-controls{
+  display:flex;
+  align-items:end;
+  gap:9px;
+}
+
+.zh-wotd-prep-controls label{
+  display:grid;
+  gap:5px;
+  color:#aaa99f;
+  font-size:12px;
+  font-weight:900;
+}
+
+.zh-wotd-prep-controls input[type="date"]{
+  min-width:170px;
+  min-height:42px;
+  box-sizing:border-box;
+  padding:8px 11px;
+  border:1px solid #4b4950;
+  border-radius:11px;
+  background:#121214;
+  color:var(--ink);
+  font:inherit;
+  font-weight:800;
+  color-scheme:dark;
+}
+
+.zh-wotd-upcoming{
+  grid-column:1 / -1;
+  padding-top:13px;
+  border-top:1px solid #343239;
+}
+
+.zh-wotd-upcoming-head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+  margin-bottom:9px;
+}
+
+.zh-wotd-upcoming-head strong{
+  color:var(--ink);
+}
+
+#wotdUpcomingCount{
+  color:#aaa99f;
+  font-size:12px;
+  font-weight:900;
+}
+
+.zh-wotd-upcoming-empty{
+  padding:15px 12px;
+  border:1px dashed #46434b;
+  border-radius:12px;
+  color:#aaa99f;
+  text-align:center;
+  font-size:13px;
+}
+
+.zh-wotd-upcoming-empty[hidden]{
+  display:none !important;
+}
+
+.zh-wotd-upcoming-list{
+  display:grid;
+  gap:8px;
+}
+
+.zh-wotd-upcoming-list:empty{
+  display:none;
+}
+
+.zh-wotd-upcoming-list .dict-item{
+  grid-template-columns:minmax(0,1fr) auto;
+}
+
+.zh-wotd-date.future{
+  color:var(--accent);
+}
+
+.zh-wotd-move-btn{
+  border-color:#5b7750 !important;
+  color:#bff0aa !important;
 }
 
 .zh-wotd-reminders{
@@ -384,8 +483,19 @@
     width:100%;
   }
 
+  .zh-wotd-prep,
   .zh-wotd-reminders{
     grid-template-columns:1fr;
+  }
+
+  .zh-wotd-prep-controls{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .zh-wotd-prep-controls input[type="date"],
+  .zh-wotd-prep-controls .zh-btn{
+    width:100%;
   }
 
   .zh-wotd-reminder-controls{

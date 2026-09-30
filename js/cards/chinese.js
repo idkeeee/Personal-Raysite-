@@ -101,11 +101,57 @@ function getTodayWotd(){
   return wotdHistory.find(entry => normalizeWotdEntry(entry).date === today) || null;
 }
 
+function addDaysToDateKey(dateKey, days){
+  const date = new Date(`${dateKey}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function getTomorrowDateKey(){
+  return addDaysToDateKey(getShanghaiDateKey(), 1);
+}
+
+function getNextOpenWotdDate(){
+  const usedDates = new Set(wotdHistory.map(entry => normalizeWotdEntry(entry).date));
+  let candidate = getTomorrowDateKey();
+
+  for (let i = 0; i < 3660; i++){
+    if (!usedDates.has(candidate)) return candidate;
+    candidate = addDaysToDateKey(candidate, 1);
+  }
+
+  return getTomorrowDateKey();
+}
+
+function getUpcomingWotdEntries(){
+  const today = getShanghaiDateKey();
+
+  return wotdHistory
+    .map(normalizeWotdEntry)
+    .filter(entry => entry.date > today)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function getPastAndTodayWotdEntries(){
+  const today = getShanghaiDateKey();
+
+  return wotdHistory
+    .map(normalizeWotdEntry)
+    .filter(entry => entry.date && entry.date <= today)
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
 function rebuildWotdDeck(preferredDate = null){
   const currentDate = preferredDate || wotdDeck[wotdViewIndex]?.date || getTodayWotd()?.date || null;
   wotdDeck = wotdHistory
     .map(normalizeWotdEntry)
-    .filter(entry => entry.date && entry.hanzi && entry.pinyin && entry.yisi)
+    .filter(entry =>
+      entry.date &&
+      entry.date <= getShanghaiDateKey() &&
+      entry.hanzi &&
+      entry.pinyin &&
+      entry.yisi
+    )
     .sort((a, b) => b.date.localeCompare(a.date));
 
   if (!wotdDeck.length){
@@ -184,6 +230,11 @@ const btnSaveWotdFrequency = document.getElementById("btnSaveWotdFrequency");
 const wotdReminderStatus = document.getElementById("wotdReminderStatus");
 const wotdHistoryCount = document.getElementById("wotdHistoryCount");
 const wotdHistoryList = document.getElementById("wotdHistoryList");
+const wotdFutureDate = document.getElementById("wotdFutureDate");
+const btnWotdFutureAdd = document.getElementById("btnWotdFutureAdd");
+const wotdUpcomingCount = document.getElementById("wotdUpcomingCount");
+const wotdUpcomingEmpty = document.getElementById("wotdUpcomingEmpty");
+const wotdUpcomingList = document.getElementById("wotdUpcomingList");
 const btnWotdPrev = document.getElementById("btnWotdPrev");
 const btnWotdReveal = document.getElementById("btnWotdReveal");
 const btnWotdNext = document.getElementById("btnWotdNext");
@@ -291,6 +342,23 @@ async function saveWordsRemote(){
     { onConflict: "slug" }
   );
   if (!error) writeLocal(CACHE_WORDS_KEY, words);
+}
+
+async function saveWordsRemoteStrict(){
+  lastWordsVersion = Date.now();
+
+  const { error } = await sb.from("zh_words").upsert(
+    {
+      slug: ZH_WORDS_SLUG,
+      data: words.map(normalizeWord),
+      version: lastWordsVersion,
+      updated_at: new Date().toISOString()
+    },
+    { onConflict:"slug" }
+  );
+
+  if (error) throw error;
+  writeLocal(CACHE_WORDS_KEY, words);
 }
 
 async function saveChaptersRemote(){
@@ -484,12 +552,56 @@ function renderWotdCard(){
   }
 }
 
+function renderWotdPrepControls(){
+  if (!wotdFutureDate || !btnWotdFutureAdd) return;
+
+  const tomorrow = getTomorrowDateKey();
+  wotdFutureDate.min = tomorrow;
+
+  if (!wotdFutureDate.value || wotdFutureDate.value < tomorrow){
+    wotdFutureDate.value = getNextOpenWotdDate();
+  }
+
+  const existing = wotdHistory.some(
+    entry => normalizeWotdEntry(entry).date === wotdFutureDate.value
+  );
+
+  btnWotdFutureAdd.textContent = existing
+    ? "Edit prepared word"
+    : "Prepare this date";
+}
+
+function renderWotdUpcomingList(){
+  const upcoming = getUpcomingWotdEntries();
+
+  wotdUpcomingList.innerHTML = "";
+  wotdUpcomingCount.textContent = `${upcoming.length} queued`;
+  wotdUpcomingEmpty.hidden = upcoming.length !== 0;
+
+  for (const entry of upcoming){
+    const li = document.createElement("li");
+    li.className = "dict-item";
+
+    li.innerHTML = `
+      <div>
+        <span class="zh-wotd-date future">${escapeHtml(entry.date)} · PREPARED</span>
+        <div class="dict-hanzi">${escapeHtml(entry.hanzi)}</div>
+        <div class="dict-pinyin">${escapeHtml(entry.pinyin)}</div>
+        <div class="dict-yisi">${escapeHtml(entry.yisi)}</div>
+      </div>
+      <div class="word-actions">
+        <button class="zh-btn mini" data-wotd-edit="${escapeHtml(entry.date)}">Edit</button>
+        <button class="zh-btn ghost mini zh-wotd-move-btn" data-wotd-move="${escapeHtml(entry.date)}">To regular stash</button>
+      </div>
+    `;
+
+    wotdUpcomingList.appendChild(li);
+  }
+}
+
 function renderWotdHistoryList(){
   wotdHistoryList.innerHTML = "";
-  const sorted = wotdHistory
-    .map(normalizeWotdEntry)
-    .filter(entry => entry.date)
-    .sort((a, b) => b.date.localeCompare(a.date));
+  const sorted = getPastAndTodayWotdEntries();
 
   wotdHistoryCount.textContent = `${sorted.length} word${sorted.length === 1 ? "" : "s"}`;
 
@@ -505,15 +617,100 @@ function renderWotdHistoryList(){
       </div>
       <div class="word-actions">
         <button class="zh-btn mini" data-wotd-edit="${escapeHtml(entry.date)}">Edit</button>
+        <button class="zh-btn ghost mini zh-wotd-move-btn" data-wotd-move="${escapeHtml(entry.date)}">To regular stash</button>
       </div>
     `;
     wotdHistoryList.appendChild(li);
   }
 }
 
+async function moveWotdToRegularStash(dateKey){
+  const sourceIndex = wotdHistory.findIndex(
+    entry => normalizeWotdEntry(entry).date === dateKey
+  );
+
+  if (sourceIndex < 0) return;
+
+  const entry = normalizeWotdEntry(wotdHistory[sourceIndex]);
+
+  const okay = window.confirm(
+    `Move "${entry.hanzi}" to the regular Chinese stash?\n\nIt will be removed from the Word of the Day list.`
+  );
+
+  if (!okay) return;
+
+  const wordsSnapshot = words.map(normalizeWord);
+  const wotdSnapshot = wotdHistory.map(normalizeWotdEntry);
+
+  const alreadyInRegularStash = words.some((rawWord) => {
+    const word = normalizeWord(rawWord);
+
+    return (
+      !word.deleted_at &&
+      word.chapters.length === 0 &&
+      word.hanzi === entry.hanzi &&
+      word.pinyin === entry.pinyin &&
+      word.yisi === entry.yisi
+    );
+  });
+
+  try{
+    // Destination first. If source removal later fails, there is never data loss.
+    if (!alreadyInRegularStash){
+      words.push({
+        hanzi: entry.hanzi,
+        pinyin: entry.pinyin,
+        yisi: entry.yisi,
+        deleted_at: null,
+        chapters: []
+      });
+
+      await saveWordsRemoteStrict();
+    }
+
+    wotdHistory.splice(sourceIndex, 1);
+    await saveWotdRemote();
+
+    rebuildWotdDeck();
+    clampViewIndex();
+    renderCard();
+    renderDict();
+    renderWotdAll();
+
+    if (typeof window.refreshCalendarNotifications === "function"){
+      void window.refreshCalendarNotifications({ silent:true });
+    }
+
+    window.alert(
+      alreadyInRegularStash
+        ? `"${entry.hanzi}" was already in the regular stash, so I removed the Word of the Day copy.`
+        : `"${entry.hanzi}" moved to the regular stash.`
+    );
+  } catch(error){
+    console.error("Move Word of the Day to regular stash failed:", error);
+
+    // Restore the local view. If the destination save succeeded but source
+    // removal failed, the server has an extra safe copy rather than lost data.
+    words = wordsSnapshot;
+    wotdHistory = wotdSnapshot;
+    writeLocal(CACHE_WORDS_KEY, words);
+    writeLocal(CACHE_WOTD_KEY, wotdHistory);
+    rebuildWotdDeck();
+    renderCard();
+    renderDict();
+    renderWotdAll();
+
+    window.alert(
+      `Couldn't finish moving "${entry.hanzi}". Nothing was deleted. Try again.\n\n${error.message || error}`
+    );
+  }
+}
+
 function renderWotdAll(){
   rebuildWotdDeck();
   renderWotdToday();
+  renderWotdPrepControls();
+  renderWotdUpcomingList();
   renderWotdReminderSettings();
 
   if (!wotdDeck.length){
@@ -534,7 +731,7 @@ function openWotdModal(dateKey = getShanghaiDateKey()){
   document.body.classList.add("modal-open");
   modalTitle.textContent = dateKey === getShanghaiDateKey()
     ? (existing ? "Edit today's Word of the Day" : "Add today's Word of the Day")
-    : `Edit Word of the Day · ${dateKey}`;
+    : (existing ? `Edit prepared Word of the Day · ${dateKey}` : `Prepare Word of the Day · ${dateKey}`);
 
   inHanzi.value = existing?.hanzi || "";
   inPinyin.value = existing?.pinyin || "";
@@ -579,6 +776,11 @@ async function saveWotdWord(dateKey){
   } catch(error){
     console.error("Word of the Day save failed:", error);
     window.alert(`Word of the Day save failed: ${error.message || error}`);
+  }
+
+  if (dateKey > getShanghaiDateKey() && wotdFutureDate){
+    wotdFutureDate.value = getNextOpenWotdDate();
+    renderWotdPrepControls();
   }
 
   if (typeof window.refreshCalendarNotifications === "function"){
@@ -995,6 +1197,19 @@ btnTrainerMode.addEventListener("click", () => setUiMode("trainer"));
 btnWotdMode.addEventListener("click", () => setUiMode("wotd"));
 btnWotdAdd.addEventListener("click", () => openWotdModal(getShanghaiDateKey()));
 
+btnWotdFutureAdd.addEventListener("click", () => {
+  const dateKey = wotdFutureDate.value;
+
+  if (!dateKey || dateKey <= getShanghaiDateKey()){
+    window.alert("Pick a future date first.");
+    return;
+  }
+
+  openWotdModal(dateKey);
+});
+
+wotdFutureDate.addEventListener("change", renderWotdPrepControls);
+
 btnWotdPrev.addEventListener("click", () => {
   if (!wotdDeck.length) return;
   wotdViewIndex = (wotdViewIndex - 1 + wotdDeck.length) % wotdDeck.length;
@@ -1028,11 +1243,21 @@ btnWotdShuffle.addEventListener("click", () => {
   renderWotdCard();
 });
 
-wotdHistoryList.addEventListener("click", (event) => {
+function handleWotdListClick(event){
   const edit = event.target.closest("[data-wotd-edit]");
-  if (!edit) return;
-  openWotdModal(edit.dataset.wotdEdit);
-});
+  if (edit){
+    openWotdModal(edit.dataset.wotdEdit);
+    return;
+  }
+
+  const move = event.target.closest("[data-wotd-move]");
+  if (move){
+    void moveWotdToRegularStash(move.dataset.wotdMove);
+  }
+}
+
+wotdHistoryList.addEventListener("click", handleWotdListClick);
+wotdUpcomingList.addEventListener("click", handleWotdListClick);
 
 btnSaveWotdFrequency.addEventListener("click", async () => {
   const selectedValue = Number(wotdFrequency.value);
