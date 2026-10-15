@@ -8,6 +8,8 @@ const ZH_WORDS_SLUG = "zh-default";
 const ZH_CHAPTERS_SLUG = "zh-chapters";
 const ZH_WOTD_HISTORY_SLUG = "zh-wotd-history";
 const ZH_WOTD_SETTINGS_SLUG = "zh-wotd-settings";
+const ZH_WOTD_ATTENDANCE_TABLE = "chinese_wotd_attendance_shared";
+const ZH_WOTD_TRACKER_CODE = "bagas-main-chinese-wotd-v1";
 
 /* local mirror (offline-ish) */
 const CACHE_WORDS_KEY = "zh.words.v2";
@@ -42,6 +44,7 @@ let lastChaptersVersion = 0;
 let lastWotdVersion = 0;
 let lastWotdSettingsVersion = 0;
 let wotdSettingsPersisted = false;
+let wotdAttendance = { sent_count:0, ack_count:0, attendance_percent:0, latest_slot_key:null, latest_acknowledged:false };
 
 function normalizeWord(word = {}){
   return {
@@ -77,7 +80,9 @@ function normalizeWotdSettings(value = {}){
     enabled: value.enabled !== false,
     every_hours: Number.isInteger(everyHours) && everyHours >= 1 && everyHours <= 24
       ? everyHours
-      : 1
+      : 1,
+    last_rollover_date: value.last_rollover_date ? String(value.last_rollover_date) : null,
+    skip_date: value.skip_date ? String(value.skip_date) : null
   };
 }
 
@@ -230,11 +235,15 @@ const btnSaveWotdFrequency = document.getElementById("btnSaveWotdFrequency");
 const wotdReminderStatus = document.getElementById("wotdReminderStatus");
 const wotdHistoryCount = document.getElementById("wotdHistoryCount");
 const wotdHistoryList = document.getElementById("wotdHistoryList");
-const wotdFutureDate = document.getElementById("wotdFutureDate");
 const btnWotdFutureAdd = document.getElementById("btnWotdFutureAdd");
 const wotdUpcomingCount = document.getElementById("wotdUpcomingCount");
 const wotdUpcomingEmpty = document.getElementById("wotdUpcomingEmpty");
 const wotdUpcomingList = document.getElementById("wotdUpcomingList");
+const wotdAttendanceSummary = document.getElementById("wotdAttendanceSummary");
+const wotdAttendanceBarFill = document.getElementById("wotdAttendanceBarFill");
+const wotdAttendanceRule = document.getElementById("wotdAttendanceRule");
+const btnWotdAcknowledge = document.getElementById("btnWotdAcknowledge");
+const btnWotdSkip = document.getElementById("btnWotdSkip");
 const btnWotdPrev = document.getElementById("btnWotdPrev");
 const btnWotdReveal = document.getElementById("btnWotdReveal");
 const btnWotdNext = document.getElementById("btnWotdNext");
@@ -460,9 +469,101 @@ function subscribeRealtime(){
       }
     )
     .subscribe();
-  window.addEventListener("beforeunload", () => sb.removeChannel(ch));
+
+  const attendanceChannel = sb
+    .channel("zh-wotd-attendance-rt")
+    .on(
+      "postgres_changes",
+      {
+        event:"*",
+        schema:"public",
+        table:ZH_WOTD_ATTENDANCE_TABLE,
+        filter:`tracker_code=eq.${ZH_WOTD_TRACKER_CODE}`
+      },
+      () => { void loadWotdAttendance(); }
+    )
+    .subscribe();
+
+  window.addEventListener("beforeunload", () => {
+    sb.removeChannel(ch);
+    sb.removeChannel(attendanceChannel);
+  });
 }
 
+
+
+async function loadWotdAttendance(){
+  const { data, error } = await sb.rpc("chinese_wotd_get_attendance", {
+    p_tracker_code: ZH_WOTD_TRACKER_CODE,
+    p_today: getShanghaiDateKey()
+  });
+
+  if (error){
+    console.warn("WOTD attendance load failed:", error.message);
+    return;
+  }
+
+  wotdAttendance = {
+    sent_count: Number(data?.sent_count || 0),
+    ack_count: Number(data?.ack_count || 0),
+    attendance_percent: Number(data?.attendance_percent || 0),
+    latest_slot_key: data?.latest_slot_key || null,
+    latest_acknowledged: data?.latest_acknowledged === true
+  };
+
+  renderWotdAttendance();
+}
+
+function renderWotdAttendance(){
+  if (!wotdAttendanceSummary || !btnWotdAcknowledge || !btnWotdSkip) return;
+
+  const todayWord = getTodayWotd();
+  const sent = Math.max(0, Number(wotdAttendance.sent_count) || 0);
+  const ack = Math.max(0, Number(wotdAttendance.ack_count) || 0);
+  const percent = sent > 0 ? Math.round((ack / sent) * 100) : 0;
+  const skipped = wotdSettings?.skip_date === getShanghaiDateKey();
+
+  wotdAttendanceBarFill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+  wotdAttendanceRule.className = "zh-wotd-attendance-rule";
+
+  if (!todayWord){
+    wotdAttendanceSummary.textContent = "Add today's word first. Attendance starts when review notifications begin.";
+    btnWotdAcknowledge.disabled = true;
+    btnWotdAcknowledge.textContent = "Waiting for a Word of the Day";
+    btnWotdSkip.disabled = true;
+    btnWotdSkip.textContent = "Skip this word";
+    wotdAttendanceRule.textContent = "No active word means there is nothing to advance yet.";
+    return;
+  }
+
+  wotdAttendanceSummary.textContent = sent > 0
+    ? `${ack} / ${sent} check-ins acknowledged · ${percent}% presence today`
+    : "No review check-ins have been sent yet today.";
+
+  if (!wotdAttendance.latest_slot_key){
+    btnWotdAcknowledge.disabled = true;
+    btnWotdAcknowledge.textContent = "Waiting for next notification";
+  } else if (wotdAttendance.latest_acknowledged){
+    btnWotdAcknowledge.disabled = true;
+    btnWotdAcknowledge.textContent = "Acknowledged ✓";
+  } else {
+    btnWotdAcknowledge.disabled = false;
+    btnWotdAcknowledge.textContent = "I'm here · acknowledge";
+  }
+
+  btnWotdSkip.disabled = skipped;
+  btnWotdSkip.textContent = skipped ? "Skipping tomorrow ✓" : "Skip this word";
+
+  if (skipped){
+    wotdAttendanceRule.textContent = "Skip locked in. The next prepared word will start tomorrow.";
+    wotdAttendanceRule.classList.add("is-skipped");
+  } else if (sent > 0 && percent >= 80){
+    wotdAttendanceRule.textContent = "Currently at 80%+. If you stay there through the end of the day, the next queued word starts tomorrow.";
+    wotdAttendanceRule.classList.add("is-on-track");
+  } else {
+    wotdAttendanceRule.textContent = "Reach 80% by the end of the day. Every missed review notification stays in the denominator.";
+  }
+}
 
 /* ===== Word of the Day ===== */
 function setUiMode(mode){
@@ -500,6 +601,7 @@ function renderWotdToday(){
     wotdTodayTitle.textContent = "Nothing picked yet";
     wotdTodayMeta.textContent = "Add today's word and it becomes part of the permanent Word of the Day history.";
     btnWotdAdd.textContent = "＋ Add today's word";
+    renderWotdAttendance();
     return;
   }
 
@@ -507,6 +609,7 @@ function renderWotdToday(){
   wotdTodayTitle.innerHTML = `<span class="zh-wotd-today-word"><strong>${escapeHtml(w.hanzi)}</strong><span>${escapeHtml(w.pinyin)}</span></span>`;
   wotdTodayMeta.textContent = w.yisi;
   btnWotdAdd.textContent = "Edit today's word";
+  renderWotdAttendance();
 }
 
 function renderWotdReminderSettings(){
@@ -518,6 +621,7 @@ function renderWotdReminderSettings(){
     : "Word of the Day notifications are off.";
 
   wotdReminderStatus.className = "zh-wotd-reminder-status";
+  renderWotdAttendance();
 }
 
 function renderWotdCard(){
@@ -553,22 +657,8 @@ function renderWotdCard(){
 }
 
 function renderWotdPrepControls(){
-  if (!wotdFutureDate || !btnWotdFutureAdd) return;
-
-  const tomorrow = getTomorrowDateKey();
-  wotdFutureDate.min = tomorrow;
-
-  if (!wotdFutureDate.value || wotdFutureDate.value < tomorrow){
-    wotdFutureDate.value = getNextOpenWotdDate();
-  }
-
-  const existing = wotdHistory.some(
-    entry => normalizeWotdEntry(entry).date === wotdFutureDate.value
-  );
-
-  btnWotdFutureAdd.textContent = existing
-    ? "Edit prepared word"
-    : "Prepare this date";
+  if (!btnWotdFutureAdd) return;
+  btnWotdFutureAdd.textContent = "＋ Add to queue";
 }
 
 function renderWotdUpcomingList(){
@@ -578,13 +668,13 @@ function renderWotdUpcomingList(){
   wotdUpcomingCount.textContent = `${upcoming.length} queued`;
   wotdUpcomingEmpty.hidden = upcoming.length !== 0;
 
-  for (const entry of upcoming){
+  for (const [queueIndex, entry] of upcoming.entries()){
     const li = document.createElement("li");
     li.className = "dict-item";
 
     li.innerHTML = `
       <div>
-        <span class="zh-wotd-date future">${escapeHtml(entry.date)} · PREPARED</span>
+        <span class="zh-wotd-date future">QUEUE #${queueIndex + 1}${queueIndex === 0 ? " · NEXT" : ""}</span>
         <div class="dict-hanzi">${escapeHtml(entry.hanzi)}</div>
         <div class="dict-pinyin">${escapeHtml(entry.pinyin)}</div>
         <div class="dict-yisi">${escapeHtml(entry.yisi)}</div>
@@ -731,7 +821,7 @@ function openWotdModal(dateKey = getShanghaiDateKey()){
   document.body.classList.add("modal-open");
   modalTitle.textContent = dateKey === getShanghaiDateKey()
     ? (existing ? "Edit today's Word of the Day" : "Add today's Word of the Day")
-    : (existing ? `Edit prepared Word of the Day · ${dateKey}` : `Prepare Word of the Day · ${dateKey}`);
+    : (existing ? "Edit queued Word of the Day" : "Add prepared Word of the Day");
 
   inHanzi.value = existing?.hanzi || "";
   inPinyin.value = existing?.pinyin || "";
@@ -776,11 +866,6 @@ async function saveWotdWord(dateKey){
   } catch(error){
     console.error("Word of the Day save failed:", error);
     window.alert(`Word of the Day save failed: ${error.message || error}`);
-  }
-
-  if (dateKey > getShanghaiDateKey() && wotdFutureDate){
-    wotdFutureDate.value = getNextOpenWotdDate();
-    renderWotdPrepControls();
   }
 
   if (typeof window.refreshCalendarNotifications === "function"){
@@ -1198,17 +1283,8 @@ btnWotdMode.addEventListener("click", () => setUiMode("wotd"));
 btnWotdAdd.addEventListener("click", () => openWotdModal(getShanghaiDateKey()));
 
 btnWotdFutureAdd.addEventListener("click", () => {
-  const dateKey = wotdFutureDate.value;
-
-  if (!dateKey || dateKey <= getShanghaiDateKey()){
-    window.alert("Pick a future date first.");
-    return;
-  }
-
-  openWotdModal(dateKey);
+  openWotdModal(getNextOpenWotdDate());
 });
-
-wotdFutureDate.addEventListener("change", renderWotdPrepControls);
 
 btnWotdPrev.addEventListener("click", () => {
   if (!wotdDeck.length) return;
@@ -1259,13 +1335,79 @@ function handleWotdListClick(event){
 wotdHistoryList.addEventListener("click", handleWotdListClick);
 wotdUpcomingList.addEventListener("click", handleWotdListClick);
 
+
+btnWotdAcknowledge.addEventListener("click", async () => {
+  btnWotdAcknowledge.disabled = true;
+  const oldText = btnWotdAcknowledge.textContent;
+  btnWotdAcknowledge.textContent = "Saving check-in...";
+
+  try{
+    const { data, error } = await sb.rpc("chinese_wotd_ack_latest", {
+      p_tracker_code: ZH_WOTD_TRACKER_CODE,
+      p_today: getShanghaiDateKey()
+    });
+
+    if (error) throw error;
+
+    wotdAttendance = {
+      sent_count: Number(data?.sent_count || 0),
+      ack_count: Number(data?.ack_count || 0),
+      attendance_percent: Number(data?.attendance_percent || 0),
+      latest_slot_key: data?.latest_slot_key || null,
+      latest_acknowledged: data?.latest_acknowledged === true
+    };
+
+    renderWotdAttendance();
+  } catch(error){
+    console.error("WOTD acknowledgement failed:", error);
+    window.alert(`Couldn't save this check-in.\n\n${error.message || error}`);
+    btnWotdAcknowledge.disabled = false;
+    btnWotdAcknowledge.textContent = oldText;
+  }
+});
+
+btnWotdSkip.addEventListener("click", async () => {
+  const today = getShanghaiDateKey();
+  const current = getTodayWotd();
+  if (!current) return;
+
+  const okay = window.confirm(
+    `Skip "${current.hanzi}"?\n\nThe next prepared word will become tomorrow's Word of the Day even if today's attendance is below 80%.`
+  );
+  if (!okay) return;
+
+  btnWotdSkip.disabled = true;
+  const oldText = btnWotdSkip.textContent;
+  btnWotdSkip.textContent = "Saving skip...";
+
+  try{
+    wotdSettings = {
+      ...normalizeWotdSettings(wotdSettings),
+      skip_date: today
+    };
+    await saveWotdSettingsRemote();
+    renderWotdAttendance();
+
+    if (typeof window.refreshCalendarNotifications === "function"){
+      void window.refreshCalendarNotifications({ silent:true });
+    }
+  } catch(error){
+    console.error("WOTD skip failed:", error);
+    window.alert(`Couldn't save the skip.\n\n${error.message || error}`);
+    btnWotdSkip.disabled = false;
+    btnWotdSkip.textContent = oldText;
+  }
+});
+
 btnSaveWotdFrequency.addEventListener("click", async () => {
   const selectedValue = Number(wotdFrequency.value);
   const previousText = btnSaveWotdFrequency.textContent;
 
-  wotdSettings = selectedValue === 0
-    ? { enabled:false, every_hours:1 }
-    : { enabled:true, every_hours:selectedValue };
+  wotdSettings = {
+    ...normalizeWotdSettings(wotdSettings),
+    enabled: selectedValue !== 0,
+    every_hours: selectedValue === 0 ? 1 : selectedValue
+  };
 
   btnSaveWotdFrequency.disabled = true;
   btnSaveWotdFrequency.textContent = "Saving...";
@@ -1318,7 +1460,13 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<"
   renderDict();
   rebuildWotdDeck();
   renderWotdAll();
+  try { await loadWotdAttendance(); } catch(e){ console.warn("WOTD attendance init failed:", e.message); }
   syncTrashBtn();
   setUiMode(location.hash === "#wotd" ? "wotd" : "trainer");
   subscribeRealtime();
+
+  window.addEventListener("focus", () => {
+    void loadRemote().then(() => renderWotdAll()).catch(() => {});
+    void loadWotdAttendance();
+  });
 })();

@@ -14,7 +14,7 @@
         <link rel="stylesheet" href="css/sidebar.css?v=7">
         <link rel="stylesheet" href="css/general_styles.css?v=3">
         <link rel="stylesheet" href="css/cards.css?v=3">
-        <link rel="stylesheet" href="css/cards/chinese.css?v=9">
+        <link rel="stylesheet" href="css/cards/chinese.css?v=10">
     </head>
 
     <body>
@@ -117,22 +117,42 @@
                     <button id="btnWotdAdd" class="zh-btn primary" type="button">＋ Add today's word</button>
                 </section>
 
+                <section class="zh-wotd-attendance">
+                    <div class="zh-wotd-attendance-copy">
+                        <p class="zh-wotd-kicker">CHECK-IN</p>
+                        <h3>Did you actually show up?</h3>
+                        <p id="wotdAttendanceSummary">No review check-ins have been sent yet today.</p>
+
+                        <div class="zh-wotd-attendance-bar" aria-hidden="true">
+                            <span id="wotdAttendanceBarFill"></span>
+                        </div>
+
+                        <p id="wotdAttendanceRule" class="zh-wotd-attendance-rule">
+                            Reach 80% by the end of the day and the next prepared word becomes tomorrow's word.
+                        </p>
+                    </div>
+
+                    <div class="zh-wotd-attendance-actions">
+                        <button id="btnWotdAcknowledge" class="zh-btn primary" type="button" disabled>
+                            Waiting for next notification
+                        </button>
+                        <button id="btnWotdSkip" class="zh-btn ghost zh-wotd-skip-btn" type="button" disabled>
+                            Skip this word
+                        </button>
+                    </div>
+                </section>
+
                 <section class="zh-wotd-prep">
                     <div>
                         <p class="zh-wotd-kicker">PREP AHEAD</p>
-                        <h3>Queue future words</h3>
+                        <h3>Prepared queue</h3>
                         <p>
-                            Pick a future date now. When that day arrives, the prepared word automatically becomes that day's Word of the Day.
+                            Add words here in order. If today's attendance reaches 80%, the top queued word becomes tomorrow's word. If not, today's word stays and the queue waits.
                         </p>
                     </div>
 
                     <div class="zh-wotd-prep-controls">
-                        <label>
-                            <span>Future date</span>
-                            <input id="wotdFutureDate" type="date">
-                        </label>
-
-                        <button id="btnWotdFutureAdd" class="zh-btn primary" type="button">Prepare this date</button>
+                        <button id="btnWotdFutureAdd" class="zh-btn primary" type="button">＋ Add to queue</button>
                     </div>
 
                     <div class="zh-wotd-upcoming">
@@ -220,9 +240,9 @@
 
 
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="js/cards/chinese.js?v=9"></script>
+        <script src="js/cards/chinese.js?v=10"></script>
         <script src="js/generals.js"></script>
-        <script src="js/navbar.js?v=13"></script>
+        <script src="js/navbar.js?v=14"></script>
     </body>
 
 </html>

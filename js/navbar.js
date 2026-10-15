@@ -1184,7 +1184,7 @@
             })
             : null;
 
-        if (chineseWotdAvailable && chineseWotdSettings?.enabled !== false)
+        if (chineseWotdAvailable && chineseWotdSettings?.enabled !== false && chineseWotdSettings?.skip_date !== dateKey)
         {
             const hasTodayWord = Boolean(
                 chineseTodayWord
