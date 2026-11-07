@@ -76,13 +76,21 @@ function normalizeWotdEntry(entry = {}){
 
 function normalizeWotdSettings(value = {}){
   const everyHours = Number(value.every_hours);
+  const allowedPromptFields = ["hanzi", "pinyin", "yisi"];
+  const requestedPromptFields = Array.isArray(value.prompt_fields)
+    ? value.prompt_fields.filter(field => allowedPromptFields.includes(field))
+    : allowedPromptFields;
+
+  const promptFields = [...new Set(requestedPromptFields)];
+
   return {
     enabled: value.enabled !== false,
     every_hours: Number.isInteger(everyHours) && everyHours >= 1 && everyHours <= 24
       ? everyHours
       : 1,
     last_rollover_date: value.last_rollover_date ? String(value.last_rollover_date) : null,
-    skip_date: value.skip_date ? String(value.skip_date) : null
+    skip_date: value.skip_date ? String(value.skip_date) : null,
+    prompt_fields: promptFields.length ? promptFields : ["hanzi"]
   };
 }
 
@@ -220,6 +228,7 @@ const mCancel   = document.getElementById("mCancel");
 const dictSection = document.querySelector(".zh-dict");
 const toggleDictBtn = document.getElementById("toggleDictBtn");
 const btnOpenChapters = document.getElementById("btnOpenChapters");
+const trainerDisplayModes = document.getElementById("trainerDisplayModes");
 const modalTitle = document.getElementById("zhModalTitle");
 
 const trainerPane = document.getElementById("zhTrainerPane");
@@ -235,6 +244,10 @@ const btnSaveWotdFrequency = document.getElementById("btnSaveWotdFrequency");
 const wotdReminderStatus = document.getElementById("wotdReminderStatus");
 const wotdHistoryCount = document.getElementById("wotdHistoryCount");
 const wotdHistoryList = document.getElementById("wotdHistoryList");
+const wotdModeButtons = [...document.querySelectorAll(".zh-wotd-toggle")];
+const btnWotdMoveCurrentLatest = document.getElementById("btnWotdMoveCurrentLatest");
+const btnWotdDeleteCurrent = document.getElementById("btnWotdDeleteCurrent");
+const wotdCurrentActionStatus = document.getElementById("wotdCurrentActionStatus");
 const btnWotdFutureAdd = document.getElementById("btnWotdFutureAdd");
 const wotdUpcomingCount = document.getElementById("wotdUpcomingCount");
 const wotdUpcomingEmpty = document.getElementById("wotdUpcomingEmpty");
@@ -416,6 +429,25 @@ async function saveWotdSettingsRemote(){
   writeLocal(CACHE_WOTD_SETTINGS_KEY, wotdSettings);
 }
 
+async function resetWotdAttendanceForDate(dateKey){
+  const { error } = await sb.rpc("chinese_wotd_reset_attendance_day", {
+    p_tracker_code: ZH_WOTD_TRACKER_CODE,
+    p_today: dateKey
+  });
+
+  if (error) throw error;
+
+  if (dateKey === getShanghaiDateKey()){
+    wotdAttendance = {
+      sent_count:0,
+      ack_count:0,
+      attendance_percent:0,
+      latest_slot_key:null,
+      latest_acknowledged:false
+    };
+  }
+}
+
 
 function subscribeRealtime(){
   const ch = sb
@@ -572,6 +604,7 @@ function setUiMode(mode){
 
   trainerPane.hidden = isWotd;
   wotdPane.hidden = !isWotd;
+  if (trainerDisplayModes) trainerDisplayModes.hidden = isWotd;
   btnTrainerMode.classList.toggle("active", !isWotd);
   btnWotdMode.classList.toggle("active", isWotd);
 
@@ -584,14 +617,20 @@ function setUiMode(mode){
 }
 
 function enabledWotdModes(){
-  const pool = ["hanzi","pinyin","yisi"].filter(m => selected.has(m));
-  if (voiceEnabled) pool.push("voice");
-  return pool.length ? pool : ["hanzi"];
+  return normalizeWotdSettings(wotdSettings).prompt_fields;
 }
 
 function pickWotdPromptRandom(){
   const pool = enabledWotdModes();
   wotdCurrentPrompt = pool[Math.floor(Math.random() * pool.length)];
+}
+
+function renderWotdModeButtons(){
+  const activeModes = new Set(enabledWotdModes());
+
+  for (const button of wotdModeButtons){
+    button.classList.toggle("active", activeModes.has(button.dataset.wotdMode));
+  }
 }
 
 function renderWotdToday(){
@@ -624,8 +663,23 @@ function renderWotdReminderSettings(){
   renderWotdAttendance();
 }
 
+function renderWotdCurrentActions(){
+  const current = wotdDeck[wotdViewIndex] || null;
+  const latestChapter = getLatestChapter();
+
+  btnWotdDeleteCurrent.disabled = !current;
+  btnWotdMoveCurrentLatest.disabled = !current || !latestChapter;
+
+  btnWotdMoveCurrentLatest.textContent = !latestChapter
+    ? "No chapter yet"
+    : `Move current → ${latestChapter.name}`;
+}
+
 function renderWotdCard(){
   const w = wotdDeck[wotdViewIndex] || null;
+
+  renderWotdModeButtons();
+  renderWotdCurrentActions();
 
   if (!w){
     wotdCardEl.innerHTML = `<div class="zh-wotd-empty-card">No Word of the Day history yet.<br>Add today's word to start the deck.</div>`;
@@ -633,27 +687,21 @@ function renderWotdCard(){
   }
 
   const parts = [];
+  const activeModes = enabledWotdModes();
 
   if (wotdRevealAll){
-    if (selected.has("hanzi")) parts.push(`<div class="hanzi">${escapeHtml(w.hanzi)}</div>`);
-    if (selected.has("pinyin")) parts.push(`<div class="pinyin">${escapeHtml(w.pinyin)}</div>`);
-    if (selected.has("yisi")) parts.push(`<div class="yisi">${escapeHtml(w.yisi)}</div>`);
-  } else if (wotdCurrentPrompt === "voice"){
-    parts.push(`
-      <div class="voice" aria-label="Tap to hear this word">
-        <span class="big-voice" id="wotdBigVoice">🔊</span>
-      </div>
-    `);
+    if (activeModes.includes("hanzi")) parts.push(`<div class="hanzi">${escapeHtml(w.hanzi)}</div>`);
+    if (activeModes.includes("pinyin")) parts.push(`<div class="pinyin">${escapeHtml(w.pinyin)}</div>`);
+    if (activeModes.includes("yisi")) parts.push(`<div class="yisi">${escapeHtml(w.yisi)}</div>`);
   } else {
-    const key = wotdCurrentPrompt;
+    const key = activeModes.includes(wotdCurrentPrompt)
+      ? wotdCurrentPrompt
+      : activeModes[0];
+
     parts.push(`<div class="${key}">${escapeHtml(w[key] || "—")}</div>`);
   }
 
   wotdCardEl.innerHTML = `<div class="zh-lines">${parts.join("")}</div>`;
-
-  if (!wotdRevealAll && wotdCurrentPrompt === "voice"){
-    document.getElementById("wotdBigVoice")?.addEventListener("click", () => speakChinese(w.hanzi));
-  }
 }
 
 function renderWotdPrepControls(){
@@ -796,9 +844,200 @@ async function moveWotdToRegularStash(dateKey){
   }
 }
 
+function setWotdCurrentActionStatus(text, kind = ""){
+  wotdCurrentActionStatus.textContent = text;
+  wotdCurrentActionStatus.className = "zh-wotd-current-action-status";
+
+  if (kind){
+    wotdCurrentActionStatus.classList.add(`is-${kind}`);
+  }
+}
+
+async function deleteCurrentWotdCard(){
+  const current = wotdDeck[wotdViewIndex] || null;
+  if (!current) return;
+
+  const isToday = current.date === getShanghaiDateKey();
+  const okay = window.confirm(
+    `Delete "${current.hanzi}" from Word of the Day history?`
+    + (isToday
+      ? "\n\nThis is today's active word, so today's WOTD check-in progress will also be reset."
+      : "")
+  );
+
+  if (!okay) return;
+
+  const historySnapshot = wotdHistory.map(normalizeWotdEntry);
+  const originalDate = current.date;
+
+  btnWotdDeleteCurrent.disabled = true;
+  setWotdCurrentActionStatus("Deleting current WOTD...");
+
+  try{
+    const sourceIndex = wotdHistory.findIndex(
+      entry => normalizeWotdEntry(entry).date === originalDate
+    );
+
+    if (sourceIndex < 0) throw new Error("Word of the Day entry not found.");
+
+    wotdHistory.splice(sourceIndex, 1);
+    await saveWotdRemote();
+
+    if (isToday){
+      await resetWotdAttendanceForDate(originalDate);
+    }
+
+    rebuildWotdDeck();
+    wotdRevealAll = false;
+    pickWotdPromptRandom();
+    renderWotdAll();
+
+    setWotdCurrentActionStatus(`Deleted "${current.hanzi}".`, "success");
+
+    if (typeof window.refreshCalendarNotifications === "function"){
+      void window.refreshCalendarNotifications({ silent:true });
+    }
+  } catch(error){
+    console.error("Delete current WOTD failed:", error);
+
+    wotdHistory = historySnapshot;
+    writeLocal(CACHE_WOTD_KEY, wotdHistory);
+
+    try{
+      await saveWotdRemote();
+    } catch(restoreError){
+      console.error("WOTD restore after delete failure also failed:", restoreError);
+    }
+
+    rebuildWotdDeck(originalDate);
+    renderWotdAll();
+    setWotdCurrentActionStatus(`Could not delete: ${error.message || error}`, "error");
+  }
+}
+
+async function moveCurrentWotdToLatestChapter(){
+  const current = wotdDeck[wotdViewIndex] || null;
+  const latest = getLatestChapter();
+
+  if (!current) return;
+
+  if (!latest){
+    window.alert("No chapter yet. Open Chapters and create one first.");
+    return;
+  }
+
+  const isToday = current.date === getShanghaiDateKey();
+  const okay = window.confirm(
+    `Move "${current.hanzi}" to latest chapter "${latest.name}"?`
+    + "\n\nThis is cut-paste: it will be removed from Word of the Day history."
+    + (isToday
+      ? "\n\nBecause this is today's active word, today's WOTD check-in progress will also be reset."
+      : "")
+  );
+
+  if (!okay) return;
+
+  const wordsSnapshot = words.map(normalizeWord);
+  const historySnapshot = wotdHistory.map(normalizeWotdEntry);
+  const originalDate = current.date;
+
+  btnWotdMoveCurrentLatest.disabled = true;
+  setWotdCurrentActionStatus(`Moving "${current.hanzi}" to ${latest.name}...`);
+
+  try{
+    let matchingIndex = words.findIndex((rawWord) => {
+      const word = normalizeWord(rawWord);
+      return (
+        word.hanzi === current.hanzi &&
+        word.pinyin === current.pinyin &&
+        word.yisi === current.yisi
+      );
+    });
+
+    if (matchingIndex >= 0){
+      const matchingWord = normalizeWord(words[matchingIndex]);
+      matchingWord.deleted_at = null;
+
+      if (!matchingWord.chapters.includes(latest.id)){
+        matchingWord.chapters.push(latest.id);
+      }
+
+      words[matchingIndex] = matchingWord;
+    } else {
+      words.push({
+        hanzi: current.hanzi,
+        pinyin: current.pinyin,
+        yisi: current.yisi,
+        deleted_at: null,
+        chapters: [latest.id]
+      });
+    }
+
+    // Destination first, source second. If the network hiccups, we prefer
+    // an extra safe copy over losing the word.
+    await saveWordsRemoteStrict();
+
+    const sourceIndex = wotdHistory.findIndex(
+      entry => normalizeWotdEntry(entry).date === originalDate
+    );
+
+    if (sourceIndex < 0) throw new Error("Word of the Day entry not found.");
+
+    wotdHistory.splice(sourceIndex, 1);
+    await saveWotdRemote();
+
+    if (isToday){
+      await resetWotdAttendanceForDate(originalDate);
+    }
+
+    rebuildWotdDeck();
+    clampViewIndex();
+    wotdRevealAll = false;
+    pickWotdPromptRandom();
+
+    renderCard();
+    renderDict();
+    renderWotdAll();
+
+    setWotdCurrentActionStatus(
+      `Moved "${current.hanzi}" to ${latest.name}.`,
+      "success"
+    );
+
+    if (typeof window.refreshCalendarNotifications === "function"){
+      void window.refreshCalendarNotifications({ silent:true });
+    }
+  } catch(error){
+    console.error("Move current WOTD to latest chapter failed:", error);
+
+    words = wordsSnapshot;
+    wotdHistory = historySnapshot;
+    writeLocal(CACHE_WORDS_KEY, words);
+    writeLocal(CACHE_WOTD_KEY, wotdHistory);
+
+    try{
+      await saveWordsRemoteStrict();
+      await saveWotdRemote();
+    } catch(restoreError){
+      console.error("Restore after WOTD move failure also failed:", restoreError);
+    }
+
+    rebuildWotdDeck(originalDate);
+    renderCard();
+    renderDict();
+    renderWotdAll();
+
+    setWotdCurrentActionStatus(
+      `Could not finish the move: ${error.message || error}`,
+      "error"
+    );
+  }
+}
+
 function renderWotdAll(){
   rebuildWotdDeck();
   renderWotdToday();
+  renderWotdModeButtons();
   renderWotdPrepControls();
   renderWotdUpcomingList();
   renderWotdReminderSettings();
@@ -1225,8 +1464,7 @@ document.querySelectorAll(".zh-toggle:not(#btnVoice)").forEach(btn => {
       const pool = enabledModes();
       if (!pool.includes(currentPrompt)) pickPromptRandom();
     }
-    if (uiMode === "wotd") renderWotdCard();
-    else renderCard();
+    renderCard();
   });
 });
 
@@ -1284,6 +1522,58 @@ btnWotdAdd.addEventListener("click", () => openWotdModal(getShanghaiDateKey()));
 
 btnWotdFutureAdd.addEventListener("click", () => {
   openWotdModal(getNextOpenWotdDate());
+});
+
+for (const button of wotdModeButtons){
+  button.addEventListener("click", async () => {
+    const mode = button.dataset.wotdMode;
+    const previousSettings = normalizeWotdSettings(wotdSettings);
+    const nextModes = new Set(previousSettings.prompt_fields);
+
+    if (nextModes.has(mode)){
+      if (nextModes.size === 1){
+        setWotdCurrentActionStatus("Keep at least one WOTD prompt field enabled.");
+        return;
+      }
+
+      nextModes.delete(mode);
+    } else {
+      nextModes.add(mode);
+    }
+
+    wotdSettings = {
+      ...previousSettings,
+      prompt_fields: ["hanzi", "pinyin", "yisi"].filter(field => nextModes.has(field))
+    };
+
+    if (!enabledWotdModes().includes(wotdCurrentPrompt)){
+      pickWotdPromptRandom();
+    }
+
+    wotdRevealAll = false;
+    renderWotdCard();
+
+    try{
+      await saveWotdSettingsRemote();
+      renderWotdModeButtons();
+    } catch(error){
+      console.error("WOTD prompt-field save failed:", error);
+      wotdSettings = previousSettings;
+      renderWotdCard();
+      setWotdCurrentActionStatus(
+        `Could not save WOTD display settings: ${error.message || error}`,
+        "error"
+      );
+    }
+  });
+}
+
+btnWotdMoveCurrentLatest.addEventListener("click", () => {
+  void moveCurrentWotdToLatestChapter();
+});
+
+btnWotdDeleteCurrent.addEventListener("click", () => {
+  void deleteCurrentWotdCard();
 });
 
 btnWotdPrev.addEventListener("click", () => {

@@ -14,7 +14,7 @@
         <link rel="stylesheet" href="css/sidebar.css?v=7">
         <link rel="stylesheet" href="css/general_styles.css?v=3">
         <link rel="stylesheet" href="css/cards.css?v=3">
-        <link rel="stylesheet" href="css/cards/chinese.css?v=10">
+        <link rel="stylesheet" href="css/cards/chinese.css?v=11">
     </head>
 
     <body>
@@ -69,7 +69,7 @@
                     </div>
                 </div>
 
-                <div class="zh-mode">
+                <div class="zh-mode" id="trainerDisplayModes">
                     <button class="zh-toggle active" data-mode="hanzi">Hanzi</button>
                     <button class="zh-toggle active" data-mode="pinyin">Pinyin</button>
                     <button class="zh-toggle active" data-mode="yisi">Yìsi</button>
@@ -206,6 +206,19 @@
                         <span id="wotdHistoryCount">0 words</span>
                     </div>
 
+                    <div class="zh-wotd-display-options">
+                        <div>
+                            <strong>What can appear on the front?</strong>
+                            <p>Select one for a fixed prompt, or multiple if you want RNG between them.</p>
+                        </div>
+
+                        <div class="zh-wotd-mode" aria-label="Word of the Day flashcard fields">
+                            <button class="zh-wotd-toggle active" data-wotd-mode="hanzi" type="button">Hanzi</button>
+                            <button class="zh-wotd-toggle active" data-wotd-mode="pinyin" type="button">Pinyin</button>
+                            <button class="zh-wotd-toggle active" data-wotd-mode="yisi" type="button">Yìsi</button>
+                        </div>
+                    </div>
+
                     <div class="zh-card" id="zhWotdCard" aria-live="polite"></div>
 
                     <div class="zh-ctrl">
@@ -214,6 +227,17 @@
                         <button class="zh-btn" id="btnWotdNext" type="button">Next ▶</button>
                         <button class="zh-btn ghost" id="btnWotdShuffle" type="button">Shuffle</button>
                     </div>
+
+                    <div class="zh-wotd-current-actions">
+                        <button class="zh-btn ghost" id="btnWotdMoveCurrentLatest" type="button">
+                            Move current → latest chapter
+                        </button>
+                        <button class="zh-btn ghost zh-wotd-delete-current" id="btnWotdDeleteCurrent" type="button">
+                            Delete current
+                        </button>
+                    </div>
+
+                    <p id="wotdCurrentActionStatus" class="zh-wotd-current-action-status"></p>
 
                     <ul id="wotdHistoryList" class="dict-list zh-wotd-history-list"></ul>
                 </section>
@@ -240,7 +264,7 @@
 
 
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="js/cards/chinese.js?v=10"></script>
+        <script src="js/cards/chinese.js?v=11"></script>
         <script src="js/generals.js"></script>
         <script src="js/navbar.js?v=14"></script>
     </body>

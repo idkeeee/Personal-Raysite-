@@ -579,3 +579,115 @@
 .zh-wotd-prep-controls{
   justify-content:flex-end;
 }
+
+
+/* ===== WOTD flashcard field controls + current-card actions ===== */
+.zh-mode[hidden]{
+  display:none !important;
+}
+
+.zh-wotd-display-options{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin:0 0 12px;
+  padding:12px 13px;
+  border:1px solid #343239;
+  border-radius:13px;
+  background:#151417;
+}
+
+.zh-wotd-display-options strong{
+  color:var(--ink);
+  font-size:13px;
+}
+
+.zh-wotd-display-options p{
+  margin:4px 0 0;
+  color:#aaa99f;
+  font-size:12px;
+  line-height:1.4;
+}
+
+.zh-wotd-mode{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+.zh-wotd-toggle{
+  border:1px solid #555;
+  background:#232126;
+  color:var(--ink);
+  padding:8px 12px;
+  border-radius:12px;
+  cursor:pointer;
+  font:inherit;
+  font-size:12px;
+  font-weight:900;
+  transition:box-shadow .15s ease, border-color .15s ease, transform .06s ease;
+}
+
+.zh-wotd-toggle:active{
+  transform:scale(.98);
+}
+
+.zh-wotd-toggle.active{
+  border-color:color-mix(in oklab, var(--accent) 80%, #fff 20%);
+  box-shadow:0 0 0 2px #000 inset, 0 0 18px 3px color-mix(in oklab, var(--accent) 55%, #fff 45%);
+}
+
+.zh-wotd-current-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:9px;
+  flex-wrap:wrap;
+  margin:4px 0 0;
+}
+
+.zh-wotd-delete-current{
+  color:#ff9e9e !important;
+  border-color:#6f3c42 !important;
+}
+
+.zh-wotd-current-action-status{
+  min-height:18px;
+  margin:6px 0 0;
+  color:#aaa99f;
+  text-align:right;
+  font-size:12px;
+}
+
+.zh-wotd-current-action-status.is-success{
+  color:var(--accent);
+}
+
+.zh-wotd-current-action-status.is-error{
+  color:#ff9e9e;
+}
+
+@media (max-width:700px){
+  .zh-wotd-display-options{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .zh-wotd-mode{
+    justify-content:flex-start;
+  }
+
+  .zh-wotd-current-actions{
+    display:grid;
+    grid-template-columns:1fr;
+  }
+
+  .zh-wotd-current-actions .zh-btn{
+    width:100%;
+  }
+
+  .zh-wotd-current-action-status{
+    text-align:left;
+  }
+}
